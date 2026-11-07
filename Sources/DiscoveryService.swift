@@ -54,6 +54,7 @@ enum DiscoveryService {
             components.queryItems = [
                 .init(name: "q", value: "language:\(code) subject:\(slug)"),
                 .init(name: "lang", value: language),
+                .init(name: "sort", value: "readinglog"),
                 .init(name: "fields", value: "key,author_name,cover_i,editions,editions.key,editions.title,editions.language,editions.cover_i"),
                 .init(name: "limit", value: "24")
             ]

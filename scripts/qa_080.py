@@ -119,7 +119,7 @@ try:report["gutendex"]=ebooks()
 except Exception as e:report["gutendex"]={"error":str(e)}
 for lang in ["ru","en"]:
     code="rus" if lang=="ru" else "eng"
-    url="https://openlibrary.org/search.json?"+urllib.parse.urlencode({"q":"language:"+code+" subject:adventure","lang":lang,"fields":"key,author_name,cover_i,editions,editions.key,editions.title,editions.language,editions.cover_i","limit":4})
+    url="https://openlibrary.org/search.json?"+urllib.parse.urlencode({"q":"language:"+code+" subject:adventure","lang":lang,"sort":"readinglog","fields":"key,author_name,cover_i,editions,editions.key,editions.title,editions.language,editions.cover_i","limit":4})
     try:
         r=get(url);d=json.loads(r["data"])
         report["discovery_"+lang]={"url":url,"docs":d.get("docs",[])[:4]}
