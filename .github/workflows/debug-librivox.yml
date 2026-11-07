@@ -1,0 +1,16 @@
+name: Diagnose LibriVox Search
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - scripts/debug_librivox.py
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/debug_librivox.py
