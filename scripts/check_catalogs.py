@@ -64,3 +64,47 @@ report = {"checked_at": datetime.now(timezone.utc).isoformat(), "checks": out}
 with open("catalog-check.json", "w", encoding="utf-8") as file:
     json.dump(report, file, ensure_ascii=False, indent=2)
 print("Completed checks:", len(out), flush=True)
+
+# Diagnostic-only exploration of the OPDS navigation layer and EPUB links.
+for r in out:
+    if not (r["name"].startswith("Flibusta primary title") or r["name"].startswith("Project Gutenberg OPDS query")):
+        continue
+    try:
+        with urllib.request.urlopen(urllib.request.Request(r["url"], headers={"User-Agent": "DarkReader-Test/0.1", "Accept": "application/atom+xml"}), timeout=12) as response:
+            feed = ET.fromstring(response.read(2000000))
+        atom_ns = "{http://www.w3.org/2005/Atom}"
+        entries = feed.findall(f"{atom_ns}entry")
+        details = []
+        links_to_visit = []
+        for entry in entries[:4]:
+            title = (entry.findtext(f"{atom_ns}title") or "")[:90]
+            links = []
+            for link in entry.findall(f"{atom_ns}link"):
+                href = urllib.parse.urljoin(r["url"], link.attrib.get("href", ""))
+                relation = link.attrib.get("rel", "")
+                mime = link.attrib.get("type", "")
+                links.append({"href": href[:210], "rel": relation, "type": mime})
+                if ("atom+xml" in mime or "/opds/" in href) and "searchTerms" not in href and href.startswith("https://"):
+                    links_to_visit.append(href)
+            details.append({"title": title, "links": links[:6]})
+        print("OPDS-EXPLORE:", json.dumps({"name": r["name"], "entries": details}, ensure_ascii=False), flush=True)
+        for follow in list(dict.fromkeys(links_to_visit))[:2]:
+            try:
+                with urllib.request.urlopen(urllib.request.Request(follow, headers={"User-Agent":"DarkReader-Test/0.1","Accept":"application/atom+xml"}), timeout=12) as response:
+                    nested = ET.fromstring(response.read(1200000))
+                    code = response.status
+                samples=[]
+                for e in nested.findall(f"{atom_ns}entry")[:2]:
+                    samples.append({
+                        "title":(e.findtext(f"{atom_ns}title") or "")[:100],
+                        "links":[{
+                            "rel":l.attrib.get("rel",""),
+                            "type":l.attrib.get("type",""),
+                            "href":urllib.parse.urljoin(follow,l.attrib.get("href",""))[:190]
+                        } for l in e.findall(f"{atom_ns}link")[:5]]
+                    })
+                print("OPDS-FOLLOW:", json.dumps({"url":follow,"status":code,"entry_count":len(nested.findall(f"{atom_ns}entry")),"entries":samples}, ensure_ascii=False),flush=True)
+            except Exception as e:
+                print("OPDS-FOLLOW-ERROR:", str(e), follow, flush=True)
+    except Exception as e:
+        print("OPDS-EXPLORE-ERROR:", r["name"], str(e), flush=True)
