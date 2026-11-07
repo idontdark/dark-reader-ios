@@ -78,10 +78,14 @@ enum AudioCatalogService {
             "война и мир": "War and Peace",
             "анна каренина": "Anna Karenina",
             "достоевский": "Dostoyevsky", "толстой": "Tolstoy",
-            "булгаков": "Bulgakov", "кийосаки": "Kiyosaki"
+            "булгаков": "Bulgakov", "кийосаки": "Kiyosaki",
+            "dostoevsky": "Dostoyevsky", "dostoyevsky": "Достоевский",
+            "tolstoy": "Толстой", "bulgakov": "Булгаков", "kiyosaki": "Кийосаки"
         ]
         let normalized = RecommendationProfile.normalized(term)
         if let alias = aliases[normalized] { return [term, alias] }
+        if let match = aliases.keys.sorted(by: { $0.count > $1.count }).first(where: { normalized.contains($0) }),
+           let alias = aliases[match] { return [term, alias] }
         return [term]
     }
 
@@ -207,9 +211,7 @@ enum AudioCatalogService {
     }
 
     private static func searchArchive(_ term: String, byAuthor: Bool, language: String?) async throws -> [AudioBook] {
-        let safeTerm = RecommendationProfile.normalized(term)
-        let field = byAuthor ? "creator" : "title"
-        let words = safeTerm.split(separator: " ").map { "\(field):\($0)*" }.joined(separator: " AND ")
+        guard let words = archiveSearchExpression(term, byAuthor: byAuthor) else { return [] }
         let query = "mediatype:audio AND (subject:audiobooks OR subject:\"audio books\" OR collection:librivoxaudio OR collection:audio_bookspoetry) AND (\(words))" + languageQuery(language)
         var components = URLComponents(string: "https://archive.org/advancedsearch.php")!
         components.queryItems = [
@@ -245,6 +247,15 @@ enum AudioCatalogService {
                 genres: RecommendationProfile.classify(string(item["subject"]) ?? "")
             )
         }
+    }
+
+    static func archiveSearchExpression(_ term: String, byAuthor: Bool) -> String? {
+        let stopwords: Set<String> = ["и", "в", "во", "на", "с", "the", "a", "an", "and", "of"]
+        let tokens = RecommendationProfile.normalized(term).split(separator: " ").map(String.init)
+            .filter { !stopwords.contains($0) }
+        guard !tokens.isEmpty else { return nil }
+        let field = byAuthor ? "creator" : "title"
+        return tokens.map { "\(field):\($0)*" }.joined(separator: " AND ")
     }
 
     private static func audioGenreQuery(_ genre: String, archive: Bool) -> String? {

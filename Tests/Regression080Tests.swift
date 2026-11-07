@@ -49,6 +49,9 @@ final class Regression080Tests: XCTestCase {
         XCTAssertTrue(AudioCatalogService.searchVariants("Богатый папа, бедный папа").contains("Rich Dad Poor Dad"))
         XCTAssertTrue(AudioCatalogService.searchVariants("Анна Каренина").contains("Anna Karenina"))
         XCTAssertEqual(RecommendationProfile.normalized("Лев — ТОЛСТОЙ!"), "лев толстой")
+        XCTAssertEqual(AudioCatalogService.archiveSearchExpression("War and Peace", byAuthor: false), "title:war* AND title:peace*")
+        XCTAssertEqual(AudioCatalogService.archiveSearchExpression("Война и мир", byAuthor: false), "title:война* AND title:мир*")
+        XCTAssertTrue(AudioCatalogService.searchVariants("Лев Николаевич Толстой").contains("Tolstoy"))
     }
     func testReadingSignalsExcludeKnownBooks() throws {
         let defaults = UserDefaults(suiteName: UUID().uuidString)!

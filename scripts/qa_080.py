@@ -53,13 +53,14 @@ report["website_search"]=list(concurrent.futures.ThreadPoolExecutor(10).map(webs
     [(s,q) for s in [sites[0],sites[1],sites[2],sites[4],sites[8]] for q in ["Богатый папа","Толстой"]]))
 queries=["Богатый папа, бедный папа","Мастер и Маргарита","Преступление и наказание","Война и мир","Анна Каренина"]
 def audio_search(term):
-    q='mediatype:audio AND (collection:librivoxaudio OR collection:audio_bookspoetry OR subject:audiobooks) AND ('+" AND ".join('title:'+w+'*' for w in re.findall(r'\w+',term.lower()))+') AND language:(rus OR ru OR Russian)'
+    words=[w for w in re.findall(r'\w+',term.lower()) if w not in ['и','в','во','на','с','the','a','an','and','of']]
+    q='mediatype:audio AND (collection:librivoxaudio OR collection:audio_bookspoetry OR subject:audiobooks OR subject:аудиокниги) AND ('+" AND ".join('title:'+w+'*' for w in words)+') AND language:(rus OR ru OR Russian)'
     url="https://archive.org/advancedsearch.php?"+urllib.parse.urlencode({"q":q,"output":"json","rows":3,"fl[]":["identifier","title","language"]},doseq=True)
     try:
         r=get(url);d=json.loads(r["data"])["response"]
         return {"query":term,"url":url,"total":d["numFound"],"results":d["docs"],"playback":"not tested"}
     except Exception as e:return {"query":term,"error":str(e)}
-report["audio_search"]=list(concurrent.futures.ThreadPoolExecutor(5).map(audio_search,queries))
+report["audio_search"]=list(concurrent.futures.ThreadPoolExecutor(5).map(audio_search,queries+["Rich Dad Poor Dad","Master and Margarita","Crime and Punishment","War and Peace","Anna Karenina"]))
 report["opds"]=[probe(u) for u in ["http://flibusta.is/opds","https://flibusta.is/opds","https://www.gutenberg.org/ebooks/search.opds/?query=Doyle"]]
 def opds_download():
     ns={"a":"http://www.w3.org/2005/Atom"}
