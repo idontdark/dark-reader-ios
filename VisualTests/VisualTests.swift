@@ -51,7 +51,7 @@ final class VisualTests: XCTestCase {
         capture("04-language", app)
         app.buttons["Продолжить"].tap()
         app.buttons["Продолжить"].tap()
-        let genre = app.buttons.matching(NSPredicate(format:"label CONTAINS %@", "Детективы")).firstMatch
+        let genre = app.buttons.matching(NSPredicate(format:"label CONTAINS %@", "Приключения")).firstMatch
         XCTAssertTrue(genre.waitForExistence(timeout:5))
         genre.tap()
         app.buttons["Продолжить"].tap()
