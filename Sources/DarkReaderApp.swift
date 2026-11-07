@@ -2,7 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 enum ReaderTab: Int, CaseIterable, Hashable {
-    case library, catalog, add, settings
+    case library, catalog, audio, add, settings
 }
 
 @MainActor
@@ -16,6 +16,7 @@ struct DarkReaderApp: App {
     @StateObject private var library = DarkReaderAppState.shared.books
     @StateObject private var sync = DarkReaderAppState.shared.sync
     @StateObject private var navigation = ReaderNavigation()
+    @StateObject private var audioPlayer = AudioPlayerModel()
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
     @AppStorage("appAppearance") private var appearance = "dark"
@@ -40,6 +41,9 @@ struct DarkReaderApp: App {
                 CatalogScreen()
                     .tabItem { Label("Каталог", systemImage: "magnifyingglass") }
                     .tag(ReaderTab.catalog)
+                AudioCatalogScreen()
+                    .tabItem { Label("Аудиокниги", systemImage: "headphones") }
+                    .tag(ReaderTab.audio)
                 ImportScreen()
                     .tabItem { Label("Добавить", systemImage: "square.and.arrow.down") }
                     .tag(ReaderTab.add)
@@ -54,6 +58,7 @@ struct DarkReaderApp: App {
             .environmentObject(library)
             .environmentObject(sync)
             .environmentObject(navigation)
+            .environmentObject(audioPlayer)
             .environment(\.locale, Locale(identifier: appLanguage))
             .fullScreenCover(isPresented: Binding(
                 get: { onboardingSchemaVersion < 2 },

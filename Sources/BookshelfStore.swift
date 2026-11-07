@@ -37,10 +37,10 @@ final class BookshelfStore: ObservableObject {
     func addImportedFile(from source: URL, title: String, author: String = "Неизвестный автор") throws {
         let scoped = source.startAccessingSecurityScopedResource()
         defer { if scoped { source.stopAccessingSecurityScopedResource() } }
-        guard source.pathExtension.lowercased() == "epub" else { throw ReaderError.noEPUB }
-        try validateEPUB(source)
+        let prepared = try BookFormatConverter.prepare(source)
+        try validateEPUB(prepared)
         let filename = UUID().uuidString + ".epub"
-        try fileManager.copyItem(at: source, to: directory.appendingPathComponent(filename))
+        try fileManager.copyItem(at: prepared, to: directory.appendingPathComponent(filename))
         books.insert(LocalBook(title: title, author: author, filename: filename), at: 0)
         persist(localChange: true)
     }
@@ -56,9 +56,16 @@ final class BookshelfStore: ObservableObject {
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw ReaderError.invalidEPUB
         }
-        try validateEPUB(temporaryURL)
+        let fileType = book.downloadFormat ?? epubURL.pathExtension.lowercased()
+        let staging = fileManager.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString + "." + (["fb2", "mobi", "zip"].contains(fileType) ? fileType : "epub")
+        )
+        try fileManager.moveItem(at: temporaryURL, to: staging)
+        defer { try? fileManager.removeItem(at: staging) }
+        let prepared = try BookFormatConverter.prepare(staging)
+        try validateEPUB(prepared)
         let filename = UUID().uuidString + ".epub"
-        try fileManager.moveItem(at: temporaryURL, to: directory.appendingPathComponent(filename))
+        try fileManager.copyItem(at: prepared, to: directory.appendingPathComponent(filename))
         var imported = LocalBook(title: book.title, author: book.author, filename: filename)
         imported.coverURL = book.coverURL
         books.insert(imported, at: 0)
@@ -68,7 +75,10 @@ final class BookshelfStore: ObservableObject {
 
     /// Import a downloaded EPUB file from a direct HTTPS URL.
     func downloadFromURL(_ url: URL, progress: (@MainActor (Double) -> Void)? = nil) async throws {
-        guard url.scheme == "https" else { throw ReaderError.invalidCatalogURL }
+        guard url.scheme == "https", url.host != nil else { throw ReaderError.invalidCatalogURL }
+        guard ["epub", "fb2", "mobi", "zip"].contains(url.pathExtension.lowercased()) else {
+            throw ImportFormatError.unsupported
+        }
         let name = url.deletingPathExtension().lastPathComponent.removingPercentEncoding ?? "Книга"
         let item = CatalogBook(id: url.absoluteString, title: name.isEmpty ? "Книга" : name,
                                author: "Неизвестный автор", epubURL: url)

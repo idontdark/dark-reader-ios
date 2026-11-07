@@ -27,13 +27,26 @@ struct CatalogScreen: View {
     @AppStorage("preferredBookLanguage") private var bookLanguage = "auto"
     @AppStorage("hintCatalogShown") private var hintCatalogShown = false
     @State private var showCatalogTip = false
+    @AppStorage("savedOPDSCatalogs") private var savedOPDSCatalogs = "[]"
+    @AppStorage("preferredGenresJSON") private var genresJSON = "[]"
+    @State private var searchTask: Task<Void, Never>?
+    @State private var vpnTask: Task<Void, Never>?
+    @State private var requestID = UUID()
+    @State private var showVPNHint = false
+    @State private var selectedBook: CatalogBook?
+    @State private var recommended: [CatalogBook] = []
+    @State private var loadedRecommendations = false
 
     private var providerName: String {
         switch provider {
         case "flibusta": "Флибуста"
         case "gutenberg": "Project Gutenberg"
         case "gutendex": "Gutendex"
-        default: "Другой OPDS"
+        default:
+            if let selected = OPDSSources.decode(savedOPDSCatalogs).first(where: { "opds:" + $0.id.uuidString == provider }) {
+                return selected.name
+            }
+            return "Другой OPDS"
         }
     }
 
@@ -46,9 +59,18 @@ struct CatalogScreen: View {
                     VStack(alignment: .leading, spacing: 14) {
                         Menu {
                             Button("Флибуста", systemImage: "books.vertical") { provider = "flibusta" }
-                            Button("Project Gutenberg", systemImage: "globe") { provider = "gutenberg" }
-                            Button("Gutendex", systemImage: "book.closed") { provider = "gutendex" }
-                            Button("Другой OPDS", systemImage: "server.rack") { provider = "custom" }
+                            Button("Gutendex · Project Gutenberg", systemImage: "book.closed") { provider = "gutendex" }
+                            if !OPDSSources.decode(savedOPDSCatalogs).isEmpty {
+                                Divider()
+                                ForEach(OPDSSources.decode(savedOPDSCatalogs)) { item in
+                                    Button(item.name, systemImage: "books.vertical") {
+                                        provider = "opds:" + item.id.uuidString
+                                    }
+                                }
+                            }
+                            if provider == "custom" {
+                                Button("Другой OPDS", systemImage: "server.rack") { provider = "custom" }
+                            }
                         } label: {
                             HStack {
                                 Image(systemName: "square.stack")
@@ -71,7 +93,7 @@ struct CatalogScreen: View {
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled()
                                 .submitLabel(.search)
-                                .onSubmit { Task { await search() } }
+                                .onSubmit { if !searching { startSearch() } }
                                 .foregroundStyle(.white)
                             if !query.isEmpty {
                                 Button { query = "" } label: {
@@ -106,11 +128,12 @@ struct CatalogScreen: View {
                         .font(.footnote)
                         .foregroundStyle(ReaderStyle.secondary)
 
-                        PurpleAction(title: searching ? "Ищем…" : "Найти книги", icon: "magnifyingglass") {
-                            Task { await search() }
+                        PurpleAction(title: searching ? "Отменить поиск" : "Найти книги",
+                                     icon: searching ? "xmark" : "magnifyingglass") {
+                            if searching { cancelSearch() } else { startSearch() }
                         }
-                        .disabled(searching || query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        .opacity(searching || query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1)
+                        .disabled(!searching && query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .opacity(!searching && query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1)
                     }
 
                     if let completedTitle {
@@ -134,6 +157,34 @@ struct CatalogScreen: View {
                             .padding(.bottom, 13)
                             PurpleAction(title: "Открыть библиотеку", icon: "books.vertical") {
                                 navigation.tab = .library
+                            }
+                        }
+                    }
+
+                    if !hasSearched && !recommended.isEmpty {
+                        VStack(alignment: .leading, spacing: 13) {
+                            SectionLabel(text: "Для вас")
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(alignment: .top, spacing: 12) {
+                                    ForEach(recommended) { book in
+                                        Button { selectedBook = book } label: {
+                                            VStack(alignment: .leading, spacing: 6) {
+                                                BookArtwork(title: book.title, author: book.author,
+                                                            coverURL: book.coverURL, width: 96, height: 140)
+                                                Text(book.title)
+                                                    .font(.caption.weight(.semibold))
+                                                    .foregroundStyle(.white)
+                                                    .lineLimit(2)
+                                                Text(book.author)
+                                                    .font(.caption2)
+                                                    .foregroundStyle(ReaderStyle.secondary)
+                                                    .lineLimit(1)
+                                            }
+                                            .frame(width: 96, alignment: .leading)
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
                             }
                         }
                     }
@@ -166,9 +217,16 @@ struct CatalogScreen: View {
                             }
                         }
                         if searching {
-                            HStack(spacing: 12) {
-                                ProgressView().tint(Color(hex: accentHex))
-                                Text("Ищем книги…").foregroundStyle(ReaderStyle.secondary)
+                            VStack(alignment: .leading, spacing: 9) {
+                                HStack(spacing: 12) {
+                                    ProgressView().tint(Color(hex: accentHex))
+                                    Text("Ищем книги…").foregroundStyle(ReaderStyle.secondary)
+                                }
+                                if showVPNHint {
+                                    Text("Поиск занимает больше времени обычного. Если каталог не отвечает, попробуйте VPN.")
+                                        .font(.footnote)
+                                        .foregroundStyle(ReaderStyle.secondary)
+                                }
                             }
                             .padding(18)
                         } else if hasSearched && results.isEmpty {
@@ -195,6 +253,10 @@ struct CatalogScreen: View {
             .toolbar(.hidden, for: .navigationBar)
             .onAppear {
                 handlePendingAuthor()
+                if !loadedRecommendations {
+                    loadedRecommendations = true
+                    Task { await fetchRecommendations() }
+                }
                 if !hintCatalogShown {
                     hintCatalogShown = true
                     showCatalogTip = true
@@ -207,10 +269,16 @@ struct CatalogScreen: View {
                 Text("Найдите книгу по названию или автору и скачайте EPUB. Он появится в библиотеке.")
             }
             .onChange(of: provider) { _, _ in
+                cancelSearch()
                 history = []
                 results = []
                 completedTitle = nil
                 hasSearched = false
+            }
+            .onDisappear { cancelSearch() }
+            .sheet(item: $selectedBook) { book in
+                CatalogBookDetailSheet(book: book) { selectedBook = nil }
+                    .environmentObject(library)
             }
             .alert("Не удалось выполнить действие", isPresented: Binding(
                 get: { error != nil }, set: { if !$0 { error = nil } }
@@ -234,8 +302,11 @@ struct CatalogScreen: View {
     private func bookRow(_ book: CatalogBook) -> some View {
         ReaderCard {
             HStack(alignment: .center, spacing: 13) {
-                BookArtwork(title: book.title, author: book.author,
-                            coverURL: book.coverURL, width: 66, height: 94)
+                Button { selectedBook = book } label: {
+                    BookArtwork(title: book.title, author: book.author,
+                                coverURL: book.coverURL, width: 66, height: 94)
+                }
+                .buttonStyle(.plain)
                 VStack(alignment: .leading, spacing: 7) {
                     Text(book.title)
                         .font(.subheadline.weight(.semibold))
@@ -300,25 +371,75 @@ struct CatalogScreen: View {
         navigation.authorToSearch = nil
         query = author
         mode = "author"
-        Task { await search() }
+        startSearch()
     }
 
-    private func search() async {
+    private func cancelSearch() {
+        searchTask?.cancel()
+        vpnTask?.cancel()
+        searchTask = nil
+        vpnTask = nil
+        requestID = UUID()
+        searching = false
+        showVPNHint = false
+    }
+
+    private func startSearch() {
         guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        cancelSearch()
+        let token = UUID()
+        requestID = token
+        let selectedProvider = provider
+        let matchingOPDS = OPDSSources.decode(savedOPDSCatalogs).first {
+            selectedProvider == "opds:" + $0.id.uuidString
+        }
+        let term = query
+        let selectedMode = mode
+        let languageChoice = ReaderPreferences.effectiveLanguage(bookLanguage, appLanguage: language)
         searching = true
-        defer { searching = false }
-        do {
-            results = try await CatalogProviders.search(
-                query: query, mode: mode, provider: provider,
-                customURL: customURL, customParameter: customParameter,
-                language: ReaderPreferences.effectiveLanguage(bookLanguage, appLanguage: language)
-            )
-            hasSearched = true
-            heading = "Результаты"
-            history.removeAll()
-            completedTitle = nil
-        } catch {
-            self.error = error.localizedDescription
+        showVPNHint = false
+        error = nil
+        vpnTask = Task {
+            do { try await Task.sleep(nanoseconds: 7_000_000_000) }
+            catch { return }
+            if searching && requestID == token { showVPNHint = true }
+        }
+        searchTask = Task {
+            do {
+                let books = try await CatalogProviders.search(
+                    query: term, mode: selectedMode,
+                    provider: matchingOPDS == nil ? selectedProvider : "custom",
+                    customURL: matchingOPDS?.url ?? customURL,
+                    customParameter: matchingOPDS?.searchParameter ?? customParameter,
+                    language: languageChoice
+                )
+                try Task.checkCancellation()
+                guard requestID == token else { return }
+                results = books
+                hasSearched = true
+                heading = "Результаты"
+                history.removeAll()
+                completedTitle = nil
+            } catch is CancellationError {
+                return
+            } catch {
+                guard requestID == token else { return }
+                self.error = "Каталог не ответил. Проверьте интернет или попробуйте VPN."
+            }
+            guard requestID == token else { return }
+            searching = false
+            vpnTask?.cancel()
+            showVPNHint = false
+        }
+    }
+
+    private func fetchRecommendations() async {
+        guard let genre = ReaderPreferences.array(genresJSON).first else { return }
+        let preferred = ReaderPreferences.effectiveLanguage(bookLanguage, appLanguage: language)
+        if let suggested = try? await CatalogProviders.recommendations(
+            genre: genre, language: preferred
+        ) {
+            recommended = Array(suggested.prefix(12))
         }
     }
 

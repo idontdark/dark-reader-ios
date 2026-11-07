@@ -44,7 +44,7 @@ struct CloudSyncScreen: View {
                             pickingFolder = true
                         }
                     }
-                    Text("Выберите папку именно в iCloud Drive через приложение «Файлы». Dark Reader создаст в ней собственную папку.")
+                    Text("Книги и прогресс будут сохраняться в выбранном хранилище.")
                         .font(.footnote)
                         .foregroundStyle(ReaderStyle.secondary)
                 }

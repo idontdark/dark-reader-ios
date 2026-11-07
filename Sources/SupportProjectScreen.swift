@@ -41,12 +41,12 @@ private struct CryptoCurrency: Identifiable {
     var id: String { code }
     static let all: [CryptoCurrency] = [
         .init(name: "TON", network: "The Open Network", code: "TON", address: CryptoWallet.ton),
-        .init(name: "Solana", network: "Solana", code: "SOL", address: CryptoWallet.sol),
-        .init(name: "Ethereum", network: "Ethereum", code: "ETH", address: CryptoWallet.evm),
-        .init(name: "Bitcoin", network: "Bitcoin", code: "BTC", address: CryptoWallet.btc),
-        .init(name: "Bitcoin Cash", network: "Bitcoin Cash", code: "BCH", address: CryptoWallet.bch),
-        .init(name: "Litecoin", network: "Litecoin", code: "LTC", address: CryptoWallet.ltc),
-        .init(name: "TRON", network: "Tron", code: "TRX", address: CryptoWallet.trx),
+        .init(name: "SOL", network: "Solana", code: "SOL", address: CryptoWallet.sol),
+        .init(name: "ETH", network: "Ethereum", code: "ETH", address: CryptoWallet.evm),
+        .init(name: "BTC", network: "Bitcoin", code: "BTC", address: CryptoWallet.btc),
+        .init(name: "BCH", network: "Bitcoin Cash", code: "BCH", address: CryptoWallet.bch),
+        .init(name: "LTC", network: "Litecoin", code: "LTC", address: CryptoWallet.ltc),
+        .init(name: "TRX", network: "Tron", code: "TRX", address: CryptoWallet.trx),
         .init(name: "BNB", network: "BNB Smart Chain", code: "BNB", address: CryptoWallet.evm)
     ]
 }
@@ -187,34 +187,36 @@ private struct BNBMark: Shape {
 
 private struct WalletRow: View {
     let name: String
-    let subtitle: String
     let code: String
     let address: String
     let copy: () -> Void
 
     var body: some View {
         Button(action: copy) {
-            HStack(spacing: 12) {
-                CryptoMark(code: code)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(name).font(.subheadline.weight(.semibold)).foregroundStyle(.white)
-                    Text(subtitle).font(.caption).foregroundStyle(ReaderStyle.secondary)
-                    Text(address)
-                        .font(.system(size: 11, design: .monospaced))
+            VStack(spacing: 11) {
+                HStack(spacing: 12) {
+                    CryptoMark(code: code)
+                    Text(name)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                    Spacer()
+                    Image(systemName: "doc.on.doc")
+                        .font(.body)
                         .foregroundStyle(ReaderStyle.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
                 }
-                Spacer(minLength: 8)
-                Image(systemName: "doc.on.doc")
-                    .font(.system(size: 16))
-                    .foregroundStyle(ReaderStyle.secondary)
+                Text(address)
+                    .font(.system(size: 12, weight: .medium, design: .monospaced))
+                    .lineLimit(3)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.white.opacity(0.9))
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 4)
             }
             .padding(.vertical, 11)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Скопировать адрес \(name), \(subtitle)")
+        .accessibilityLabel("Скопировать адрес \(name)")
     }
 }
 
@@ -249,18 +251,18 @@ struct SupportProjectScreen: View {
                         .padding(.bottom, 14)
                         Picker("Сеть", selection: $network) {
                             ForEach(USDTNetwork.allCases) { item in
-                                Text(item.label).tag(item)
+                                Text(item.rawValue.uppercased()).tag(item)
                             }
                         }
                         .tint(Color(hex: accentHex))
                         .padding(.bottom, 8)
                         ReaderDivider()
-                        WalletRow(name: "USDT", subtitle: network.label, code: "USDT",
+                        WalletRow(name: "USDT", code: "USDT",
                                   address: network.address) {
                             copyAddress(network.address, label: "USDT")
                         }
                     }
-                    Label("Отправляйте USDT только через выбранную сеть. ERC20 = Ethereum, TRC20 = Tron, BEP20 = BNB Smart Chain, TON = The Open Network, SOL = Solana. Ошибка сети может привести к потере средств.",
+                    Label("Проверьте сеть перед отправкой. Перевод USDT через другую сеть может привести к потере средств.",
                           systemImage: "exclamationmark.triangle")
                         .font(.caption)
                         .foregroundStyle(ReaderStyle.secondary)
@@ -272,8 +274,7 @@ struct SupportProjectScreen: View {
                     SectionLabel(text: "Другие криптовалюты")
                     ReaderCard {
                         ForEach(CryptoCurrency.all) { currency in
-                            WalletRow(name: currency.name, subtitle: currency.network,
-                                      code: currency.code, address: currency.address) {
+                            WalletRow(name: currency.name, code: currency.code, address: currency.address) {
                                 copyAddress(currency.address, label: currency.name)
                             }
                             if currency.code != CryptoCurrency.all.last?.code {

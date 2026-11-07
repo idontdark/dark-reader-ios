@@ -38,10 +38,10 @@ jobs:
           test -f "$APP/DarkReader"
           test -f "$APP/Assets.car"
           VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Info.plist")
-          test "$VERSION" = "0.4.0"
+          test "$VERSION" = "0.5.0"
           mkdir -p dist/Payload
           ditto "$APP" "dist/Payload/DarkReader.app"
-          (cd dist && zip -qry ../DarkReader-unsigned.ipa Payload)
+          (cd dist && zip -qry ../DarkReader-0.5.0-unsigned.ipa Payload)
           unzip -tq DarkReader-unsigned.ipa
           unzip -Z1 DarkReader-unsigned.ipa | grep -qx 'Payload/DarkReader.app/Info.plist'
           unzip -Z1 DarkReader-unsigned.ipa | grep -qx 'Payload/DarkReader.app/DarkReader'
@@ -57,7 +57,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
-          name: Dark Reader 0.4.0 build ${{ github.run_number }}
+          name: Dark Reader 0.5.0 build ${{ github.run_number }}
           prerelease: true
           generate_release_notes: false
           body: |

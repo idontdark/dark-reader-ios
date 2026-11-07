@@ -51,12 +51,13 @@ struct ImportScreen: View {
                     VStack(alignment: .leading, spacing: 12) {
                         SectionLabel(text: "По прямой ссылке")
                         ReaderCard {
-                            Text("Вставьте ссылку на EPUB")
+                            Text("Вставьте ссылку на книгу")
                                 .font(.subheadline.weight(.medium))
+                                .foregroundStyle(Color(hex: accentHex))
                             HStack {
                                 Image(systemName: "link")
                                     .foregroundStyle(ReaderStyle.secondary)
-                                TextField("https://example.com/book.epub", text: $directURL)
+                                TextField("https://example.com/book.fb2", text: $directURL)
                                     .keyboardType(.URL)
                                     .textInputAutocapitalization(.never)
                                     .autocorrectionDisabled()
@@ -71,7 +72,7 @@ struct ImportScreen: View {
                                     .foregroundStyle(ReaderStyle.secondary)
                                     .padding(.top, 7)
                             }
-                            PurpleAction(title: downloading ? "Скачиваем…" : "Загрузить EPUB",
+                            PurpleAction(title: downloading ? "Загружаем…" : "Загрузить книгу",
                                          icon: "arrow.down.to.line") {
                                 Task { await downloadURL() }
                             }
@@ -88,7 +89,7 @@ struct ImportScreen: View {
                                     .font(.title2)
                                 VStack(alignment: .leading, spacing: 5) {
                                     Text("Книга добавлена").font(.headline)
-                                    Text("Найдёте её в библиотеке. Можно открывать и читать без интернета.")
+                                    Text("Книга готова. Она появится в библиотеке и будет доступна без интернета.")
                                         .font(.subheadline)
                                         .foregroundStyle(ReaderStyle.secondary)
                                 }
@@ -100,7 +101,7 @@ struct ImportScreen: View {
                         }
                     }
 
-                    Text("Поддерживается EPUB. Другие форматы будут добавляться отдельно. Файлы хранятся на устройстве и могут синхронизироваться с выбранной папкой iCloud Drive.")
+                    Text("EPUB, FB2, MOBI и ZIP с книгой внутри. Защищённые DRM-файлы не поддерживаются.")
                         .font(.footnote)
                         .foregroundStyle(ReaderStyle.secondary)
                 }
@@ -112,7 +113,7 @@ struct ImportScreen: View {
             .toolbar(.hidden, for: .navigationBar)
             .fileImporter(
                 isPresented: $importing,
-                allowedContentTypes: [UTType(filenameExtension: "epub") ?? .data],
+                allowedContentTypes: ["epub", "fb2", "mobi", "zip"].compactMap { UTType(filenameExtension: $0) },
                 allowsMultipleSelection: true
             ) { result in
                 switch result {
@@ -144,7 +145,7 @@ struct ImportScreen: View {
 
     private var isValidURL: Bool {
         guard let url = URL(string: directURL.trimmingCharacters(in: .whitespacesAndNewlines)) else { return false }
-        return url.scheme == "https" && url.host != nil
+        return url.scheme == "https" && url.host != nil && ["epub", "fb2", "mobi", "zip"].contains(url.pathExtension.lowercased())
     }
 
     private func downloadURL() async {

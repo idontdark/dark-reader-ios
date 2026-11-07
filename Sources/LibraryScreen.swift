@@ -184,7 +184,7 @@ struct LibraryScreen: View {
             .alert("Ваша библиотека", isPresented: $showLibraryTip) {
                 Button("Понятно") { hintLibraryShown = true }
             } message: {
-                Text("Скачанные книги и прогресс чтения находятся здесь. Добавить книгу можно кнопкой +.")
+                Text("Здесь хранятся ваши книги. Чтобы добавить новую, нажмите +.")
             }
             .sheet(item: $selected) { book in
                 ReaderScreen(bookID: book.id)

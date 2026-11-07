@@ -201,7 +201,7 @@ final class CloudSyncManager: ObservableObject {
             "readerTheme", "readerFont", "readerFontSize", "readerScroll",
             "appTheme", "appAppearance", "accentHex", "readerBackgroundHex", "readerTextHex",
             "appLanguage", "preferredBookLanguage", "preferredGenresJSON",
-            "preferredAuthorsJSON", "wantsBooks", "wantsAudiobooks"
+            "preferredAuthorsJSON", "wantsBooks", "wantsAudiobooks", "savedOPDSCatalogs"
         ]
         var values: [String: String] = [:]
         for key in keys {
@@ -225,7 +225,7 @@ final class CloudSyncManager: ObservableObject {
                 defaults.set(value == "1" || value.lowercased() == "true", forKey: key)
             case "readerTheme", "readerFont", "appTheme", "appAppearance", "accentHex",
                  "readerBackgroundHex", "readerTextHex", "appLanguage",
-                 "preferredBookLanguage", "preferredGenresJSON", "preferredAuthorsJSON":
+                 "preferredBookLanguage", "preferredGenresJSON", "preferredAuthorsJSON", "savedOPDSCatalogs":
                 defaults.set(value, forKey: key)
             default:
                 break

@@ -1,36 +1,48 @@
 # Dark Reader - Books & Audiobooks
 
-iOS SwiftUI reader built with Readium Swift Toolkit 3.11.1. The current release supports EPUB reading and an OPDS book catalog. Audiobook source integration and playback remain planned, not yet implemented.
+A free SwiftUI reading and listening app for iOS 17+ (ipa_dark design). Source distribution supports a user-signed, unsigned IPA. The current release is **0.5.0**.
 
-## What's new in 0.4.0
+## Reading and importing
 
-- A five-step first-launch guide (language, reading/listening preference, genres, authors, ready). Each step is skippable.
-- Russian and English interface localization, selectable again in Settings > App language.
-- Independent book-language preference, defaulting to the chosen app language.
-- Actual Gutendex API language filtering using the documented \`languages=ru\` or \`languages=en\` parameter.
-- The Flibusta and OPDS sources cannot guarantee language filtering; the app explains the limitation instead of inventing a filter.
-- Favorite authors and genres remain editable in Settings and favorite author names open a catalog author search.
-- Short one-time hints in library, catalog and reading screen.
-- Existing library, EPUB downloads, iCloud Drive folder backup and settings, theme HEX picker, donation screen and app icon retained.
+- EPUB: Readium Swift Toolkit.
+- FB2 and classic DRM-free MOBI (PalmDOC): converted locally to EPUB for Readium. MOBI DRM, HuffDic and KF8-only variants are rejected, not silently imported.
+- ZIP containing EPUB, FB2 or classic MOBI: extract the first supported book, then import.
+- Import from Files / Share Sheet and direct HTTPS link to supported formats.
+- Book covers and descriptions where available from OPDS. Missing descriptions are clearly labeled.
+- A genre-based "For you" shelf from Gutendex where matching public-domain records exist. No fabricated recommendations.
+- Multiple named custom HTTPS OPDS catalogs with editable title, URL and search parameter.
 
-## First launch
+## Audiobooks
 
-The new onboarding appears once on installation or upgrade from the old welcome view. Preferences are saved locally via UserDefaults and included in the app's existing iCloud Drive metadata backup when cloud synchronization is connected.
+Two independently selectable sources:
+1. [LibriVox official audiobooks and audiotracks API](https://librivox.org/api/info)
+2. [Internet Archive advancedsearch and metadata API](https://archive.org/developers/index-apis.html)
 
-## Installing the IPA
+The audio tab has search, sources, chapters and an AVPlayer-based player with background audio, lock-screen controls, position saving, speed control and optional individual chapter downloads for offline playback. Not every Archive item contains MP3 chapters.
 
-Go to **Releases** and download **DarkReader-unsigned.ipa** directly from **Assets**. This is the actual IPA containing \`Payload/DarkReader.app\`, not a renamed ZIP. It requires signing before installation. An Actions artifact download is still an outer ZIP; extract it first.
+Network smoke checks run independently in GitHub Actions. They need to pass before live connectivity can be claimed verified. Network restrictions, content availability and licenses vary. Do not claim every file is downloadable or legally reusable.
 
-## Project structure
+## Text and interface
 
-- \`Sources/\`: app code, SwiftUI screens, Readium reader, OPDS, settings and backup
-- \`Resources/en.lproj/Localizable.strings\`, \`ru.lproj\`: English / Russian interface translations
-- \`Tests/\`: migration, preferences, locale and restore tests
-- \`scripts/generate_icon.swift\`: creates the black-purple book icon in the build
-- \`docs/\`: catalog API and iCloud Drive notes
-- \`.github/workflows/ipa.yml\`: compiles and publishes a directly downloadable IPA
-- \`.github/workflows/cloud-tests.yml\`: builds and tests on an iOS Simulator
+- Russian / English UI, genre preferences, onboarding and concise first-use tips
+- Search cancellation on source switch and a user-initiated Cancel action
+- VPN suggestion after a slow search, without modal interruptions
+- Compact native design; hex/palette appearance controls
+- Donation screen with centered wallet addresses and short currency tickers
+- iCloud Drive folder backup with book state/settings. An iCloud folder write is not proof of remote upload.
 
-## Limits
+## Build and download
 
-This app is not published in the App Store. Audio content discovery/playback and Google Drive sync are not completed in v0.4.0. Background iCloud Drive uploading is managed by iOS; saving a file locally does not prove the cloud has received it. Third-party catalog rights and server availability vary.
+Go to GitHub **Releases**, open the latest version, and download
+**DarkReader-0.5.0-unsigned.ipa** under Assets. Do not rename the GitHub Actions artifact ZIP to IPA. The unsigned IPA must be signed before installing on an iPhone.
+
+The build checks \`Payload/DarkReader.app/Info.plist\` and the application executable. GitHub Actions also runs simulator tests and a separate audiobook API smoke workflow.
+
+## Caveats
+
+- FB2 formatting and legacy MOBI may lose some advanced layout features during conversion.
+- DRM-protected or unsupported Kindle compression is not handled.
+- No rights are granted to redistribute copyrighted book content. Users select the source; only legally available content should be downloaded.
+- Google Drive support is not part of 0.5.0.
+- Cloud synchronization of downloaded audio is not yet included; playback positions are saved locally.
+- Background activity and cloud transfers are controlled by iOS.

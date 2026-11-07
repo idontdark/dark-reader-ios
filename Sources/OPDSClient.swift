@@ -53,6 +53,8 @@ private final class OPDSFeedParser: NSObject, XMLParserDelegate {
     private var epubURL: URL?
     private var navigationURL: URL?
     private var coverURL: URL?
+    private var summary = ""
+    private var downloadFormat: String?
 
     init(baseURL: URL) { self.baseURL = baseURL }
 
@@ -68,10 +70,12 @@ private final class OPDSFeedParser: NSObject, XMLParserDelegate {
             epubURL = nil
             navigationURL = nil
             coverURL = nil
+            summary = ""
+            downloadFormat = nil
         }
         guard currentEntry else { return }
         if name == "author" { inAuthor = true }
-        if name == "title" || name == "id" || (name == "name" && inAuthor) {
+        if name == "title" || name == "id" || name == "summary" || name == "content" || (name == "name" && inAuthor) {
             currentField = name
             textBuffer = ""
         }
@@ -82,8 +86,12 @@ private final class OPDSFeedParser: NSObject, XMLParserDelegate {
             let mime = (attributeDict["type"] ?? "").lowercased()
             if (rel.contains("image") || rel == "x-stanza-cover-image" || rel == "x-stanza-cover-image-thumbnail"), mime.hasPrefix("image/") {
                 if coverURL == nil { coverURL = linkURL }
-            } else if mime.contains("epub+zip") || mime.contains("application/epub") {
-                if epubURL == nil { epubURL = linkURL }
+            } else if mime.contains("epub+zip") || mime.contains("application/epub")
+                        || mime.contains("fb2") || mime.contains("mobipocket") {
+                if epubURL == nil {
+                    epubURL = linkURL
+                    downloadFormat = mime.contains("fb2") ? "fb2" : (mime.contains("mobipocket") ? "mobi" : "epub")
+                }
             } else if mime.contains("atom+xml")
                         && !rel.contains("facet")
                         && rel != "related"
@@ -105,6 +113,7 @@ private final class OPDSFeedParser: NSObject, XMLParserDelegate {
             switch name {
             case "title": title = value
             case "id": identifier = value
+            case "summary", "content": if summary.isEmpty { summary = value }
             case "name": if inAuthor { author = value }
             default: break
             }
@@ -120,7 +129,9 @@ private final class OPDSFeedParser: NSObject, XMLParserDelegate {
                     author: author.isEmpty ? "Автор не указан" : author,
                     epubURL: epubURL,
                     navigationURL: navigationURL,
-                    coverURL: coverURL
+                    coverURL: coverURL,
+                    summary: summary.isEmpty ? nil : summary,
+                    downloadFormat: downloadFormat
                 ))
             }
             currentEntry = false

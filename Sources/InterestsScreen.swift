@@ -46,7 +46,7 @@ struct InterestsScreen: View {
                         }.buttonStyle(.plain)
                     }
                 }
-                Text("Аудиокаталог и плеер будут добавлены отдельным обновлением. Ваш выбор сохранится.")
+                Text("Переключаться между чтением и прослушиванием можно в любой момент.")
                     .font(.footnote)
                     .foregroundStyle(ReaderStyle.secondary)
             }.padding(20)

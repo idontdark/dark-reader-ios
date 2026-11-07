@@ -74,10 +74,10 @@ struct SettingsScreen: View {
                             .buttonStyle(.plain)
                             ReaderDivider()
                             NavigationLink {
-                                OPDSSettingsScreen()
+                                CustomOPDSCatalogsScreen()
                             } label: {
                                 ReaderRow(icon: "network", title: "Каталоги",
-                                          subtitle: "Подключить свой OPDS") {
+                                          subtitle: "Ваши OPDS-библиотеки") {
                                     Image(systemName: "chevron.right").foregroundStyle(ReaderStyle.secondary)
                                 }
                             }
@@ -351,33 +351,3 @@ struct TypographyScreen: View {
     }
 }
 
-struct OPDSSettingsScreen: View {
-    @AppStorage("catalogURL") private var url = "https://flibusta.is/opds/search?searchType=books"
-    @AppStorage("catalogQueryParameter") private var parameter = "searchTerm"
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                ReaderCard {
-                    Text("Свой OPDS-каталог").font(.headline)
-                    Text("Укажите HTTPS-адрес поиска и название параметра. Применится при выборе «Другой OPDS» в каталоге.")
-                        .font(.subheadline).foregroundStyle(ReaderStyle.secondary).padding(.top, 6)
-                    TextField("HTTPS URL", text: $url)
-                        .keyboardType(.URL)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .padding(.vertical, 13)
-                    ReaderDivider()
-                    TextField("Параметр запроса", text: $parameter)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .padding(.vertical, 13)
-                }
-            }
-            .padding(20)
-        }
-        .readerCanvas()
-        .navigationTitle("Каталоги")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-}

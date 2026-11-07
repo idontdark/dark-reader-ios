@@ -4,12 +4,15 @@ options:
 settings:
   base:
     SWIFT_VERSION: 5.9
-    MARKETING_VERSION: 0.4.0
-    CURRENT_PROJECT_VERSION: 4
+    MARKETING_VERSION: 0.5.0
+    CURRENT_PROJECT_VERSION: 5
 packages:
   Readium:
     url: https://github.com/readium/swift-toolkit.git
     from: 3.11.1
+  ZIPFoundation:
+    url: https://github.com/weichsel/ZIPFoundation.git
+    from: 0.9.20
 targets:
   DarkReader:
     type: application
@@ -25,8 +28,8 @@ targets:
       path: BuildSupport/DarkReader-Info.plist
       properties:
         CFBundleDisplayName: Dark Reader
-        CFBundleShortVersionString: "0.4.0"
-        CFBundleVersion: "4"
+        CFBundleShortVersionString: "0.5.0"
+        CFBundleVersion: "5"
         LSSupportsOpeningDocumentsInPlace: true
         UIFileSharingEnabled: true
         UILaunchScreen: {}
@@ -34,6 +37,7 @@ targets:
           - com.ipadark.reader.sync
         UIBackgroundModes:
           - fetch
+          - audio
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ipadark.reader
@@ -49,6 +53,8 @@ targets:
         product: ReadiumStreamer
       - package: Readium
         product: ReadiumNavigator
+      - package: ZIPFoundation
+        product: ZIPFoundation
 
   DarkReaderTests:
     type: bundle.unit-test

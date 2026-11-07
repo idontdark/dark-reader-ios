@@ -114,8 +114,8 @@ struct OnboardingFlow: View {
         case 1: english ? "Choose one or both options." : "Можно выбрать оба варианта."
         case 2: english ? "Pick the genres you enjoy. This step is optional." : "Отметьте интересные жанры. Это необязательно."
         case 3: english ? "Save your authors to find their books faster." : "Сохраняйте авторов, чтобы быстро находить их книги."
-        default: english ? "Your library is ready. Add an EPUB or explore the catalog." :
-            "Ваша библиотека готова. Добавьте EPUB или откройте каталог."
+        default: english ? "All set. Find a book or an audiobook." :
+            "Всё готово. Выберите книгу или аудиозапись."
         }
     }
 
@@ -161,8 +161,8 @@ struct OnboardingFlow: View {
                 wantsBooks.toggle()
             }
             choiceRow(icon: "headphones", title: english ? "Listen to audiobooks" : "Слушать аудиокниги",
-                      caption: english ? "Save listening preferences for upcoming audio features" :
-                            "Предпочтения для будущего аудиокаталога",
+                      caption: english ? "Find and listen to free audiobooks" :
+                            "Каталог, главы и офлайн-прослушивание",
                       selected: wantsAudio) {
                 if wantsAudio && !wantsBooks { return }
                 wantsAudio.toggle()

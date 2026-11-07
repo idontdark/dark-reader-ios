@@ -36,6 +36,8 @@ struct CatalogBook: Identifiable, Hashable, Sendable {
     var epubURL: URL?
     var navigationURL: URL? = nil
     var coverURL: URL? = nil
+    var summary: String? = nil
+    var downloadFormat: String? = nil
 }
 
 enum ReaderError: LocalizedError {
