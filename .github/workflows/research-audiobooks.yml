@@ -1,0 +1,23 @@
+name: Research audiobook API health
+on:
+  push:
+    branches:
+      - research/audiobook-api-check-20261107
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe public audiobook metadata and sample bytes
+        run: python3 research/check_audiobook_apis.py
+      - name: Store test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: audiobook-api-test-results
+          path: audiobook-api-test-results.json
+          if-no-files-found: warn
