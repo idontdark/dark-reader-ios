@@ -231,36 +231,77 @@ struct SettingsScreen: View {
     @AppStorage("readerFont") private var font = "serif"
     @AppStorage("readerScroll") private var scroll = false
 
+    private var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.1.0"
+    }
+
     var body: some View {
         NavigationStack {
             Form {
-                Section("Каталог OPDS") {
-                    TextField("URL поиска", text: $catalogURL)
-                        .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
-                    TextField("Параметр поиска", text: $queryParameter).textInputAutocapitalization(.never)
-                    Text("Для другого OPDS-каталога укажите HTTPS URL поиска и параметр запроса. Настройки применяются при выборе источника «Другой OPDS».")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                Section("Оформление чтения") {
+                Section("Чтение") {
                     Picker("Тема", selection: $theme) {
                         Text("Системная").tag("system")
                         Text("Светлая").tag("light")
                         Text("Тёмная").tag("dark")
                         Text("Сепия").tag("sepia")
-                        Text("OLED").tag("oled")
+                        Text("Чёрная (OLED)").tag("oled")
                     }
+
                     Picker("Шрифт", selection: $font) {
                         Text("С засечками").tag("serif")
                         Text("Без засечек").tag("sans")
                     }
-                    HStack {
-                        Text("Размер шрифта")
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Размер текста")
+                            Spacer()
+                            Text("\(Int(fontSize * 100)) %")
+                                .foregroundStyle(.secondary)
+                                .monospacedDigit()
+                        }
                         Slider(value: $fontSize, in: 0.7...3.0, step: 0.1)
+                            .accessibilityLabel("Размер текста")
                     }
                     Toggle("Вертикальная прокрутка", isOn: $scroll)
                 }
+
+                Section("Каталоги") {
+                    DisclosureGroup("Свой OPDS-каталог") {
+                        TextField("Адрес поиска (HTTPS)", text: $catalogURL)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .keyboardType(.URL)
+                        TextField("Параметр поиска", text: $queryParameter)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                        Text("Используется при выборе «Другой OPDS» в поиске.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
                 Section {
-                    Text("Dark Reader · 0.1.0 · Readium").foregroundStyle(.secondary)
+                    NavigationLink {
+                        SupportProjectScreen()
+                    } label: {
+                        Label("Поддержать проект", systemImage: "heart")
+                    }
+
+                    Link(destination: URL(string: "https://t.me/ipa_dark")!) {
+                        HStack {
+                            Label("Разработчик", systemImage: "paperplane")
+                            Spacer()
+                            Image(systemName: "arrow.up.right")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                        .foregroundStyle(.primary)
+                    }
+                } header: {
+                    Text("О приложении")
+                } footer: {
+                    Text("Dark Reader · версия \(appVersion)")
                 }
             }
             .navigationTitle("Настройки")
