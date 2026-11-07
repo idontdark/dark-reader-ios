@@ -1,0 +1,60 @@
+name: Check audiobook APIs
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'Sources/AudioCatalogService.swift'
+      - '.github/workflows/audio-api-smoke.yml'
+jobs:
+  live-api-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Probe LibriVox and Internet Archive over HTTPS
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, urllib.request, urllib.parse, sys
+          def load(base, params=None):
+              url = base
+              if params:
+                  url += ("&" if "?" in url else "?") + urllib.parse.urlencode(params)
+              req = urllib.request.Request(url, headers={"User-Agent":"DarkReader-iOS/0.5 API smoke"})
+              with urllib.request.urlopen(req, timeout=24) as response:
+                  if response.status != 200:
+                      raise ValueError(f"HTTP {response.status}")
+                  return json.load(response)
+
+          print("Checking LibriVox catalog...")
+          b = load("https://librivox.org/api/feed/audiobooks/",
+                   {"id":"52","format":"json","extended":"1","coverart":"1","limit":"1"})
+          books = b.get("books", [])
+          if not books or not books[0].get("title"):
+              raise ValueError("LibriVox returned no usable books")
+          print("LibriVox OK, title:", books[0]["title"])
+          tracks = load("https://librivox.org/api/feed/audiotracks/",
+                        {"project_id":"52","format":"json"})
+          chapters = tracks.get("sections", [])
+          if not chapters or not chapters[0].get("listen_url"):
+              raise ValueError("LibriVox returned no chapter URLs")
+          print("LibriVox tracks OK:", len(chapters))
+
+          print("Checking Internet Archive search...")
+          result = load("https://archive.org/advancedsearch.php", {
+              "q": "mediatype:audio AND collection:librivoxaudio",
+              "fl[]": "identifier", "rows":"2", "page":"1", "output":"json"
+          })
+          docs = result.get("response", {}).get("docs", [])
+          if not docs:
+              raise ValueError("Internet Archive returned no audiobooks")
+          print("Internet Archive search OK, records:", len(docs))
+          identifier = "in_chancery_0709_librivox"
+          metadata = load("https://archive.org/metadata/" + identifier)
+          audio = [f for f in metadata.get("files", [])
+                   if f.get("name", "").lower().endswith((".mp3", ".m4b"))]
+          if not audio:
+              raise ValueError("Known Internet Archive audiobook has no audio files")
+          print("Internet Archive chapters OK:", len(audio))
+          print("Both catalog API paths checked successfully.")
+          PY

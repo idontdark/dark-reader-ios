@@ -1,0 +1,76 @@
+name: Test cloud library
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'Tests/**'
+      - 'Sources/**'
+      - 'Sources/CloudFolderWorker.swift'
+      - 'Sources/BookshelfStore.swift'
+      - 'Sources/Book.swift'
+      - 'project.yml'
+      - '.github/workflows/cloud-tests.yml'
+permissions:
+  contents: read
+jobs:
+  unit-tests:
+    runs-on: macos-15
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate app icon
+        run: swift scripts/generate_icon.swift
+      - name: Generate Xcode project
+        run: xcodegen generate --spec project.yml
+      - name: Run iOS simulator tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          UDID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next((x["udid"] for group in d["devices"].values() for x in group if x["name"].startswith("iPhone") and x.get("isAvailable", True)), ""))')
+          if [ -z "$UDID" ]; then
+            echo "No available iPhone simulator"
+            exit 1
+          fi
+          xcodebuild test \
+            -project DarkReader.xcodeproj -scheme DarkReader \
+            -destination "platform=iOS Simulator,id=$UDID" \
+            -derivedDataPath "$PWD/test-build" \
+            -resultBundlePath "$PWD/TestResults.xcresult" \
+            -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO
+      - name: Capture Dark Reader simulator screen
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          UDID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next((x["udid"] for group in d["devices"].values() for x in group if x["name"].startswith("iPhone") and x.get("isAvailable", True)), ""))')
+          test -n "$UDID"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          APP="$PWD/test-build/Build/Products/Debug-iphonesimulator/DarkReader.app"
+          test -d "$APP"
+          xcrun simctl install "$UDID" "$APP"
+          xcrun simctl launch "$UDID" com.ipadark.reader
+          sleep 3
+          xcrun simctl io "$UDID" screenshot "$PWD/dark-reader-simulator.png"
+      - name: Upload simulator screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dark-reader-simulator-screen
+          path: dark-reader-simulator.png
+          if-no-files-found: ignore
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloud-sync-xctest
+          path: TestResults.xcresult
+          if-no-files-found: ignore
+          retention-days: 7
