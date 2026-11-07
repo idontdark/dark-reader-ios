@@ -1,8 +1,0 @@
-.DS_Store
-build/
-dist/
-*.xcodeproj
-*.xcworkspace
-.swiftpm/
-DerivedData/
-*.ipa
