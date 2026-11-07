@@ -63,7 +63,16 @@ struct LibraryScreen: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .foregroundStyle(.primary)
-                    .swipeActions {
+                    .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                        Button {
+                            store.toggleFavorite(book)
+                        } label: {
+                            Label(book.isFavorite == true ? "Убрать из избранного" : "В избранное",
+                                  systemImage: book.isFavorite == true ? "heart.slash" : "heart")
+                        }
+                        .tint(.orange)
+                    }
+                    .swipeActions(edge: .trailing) {
                         Button("Удалить", role: .destructive) { store.delete(book) }
                     }
                 }
