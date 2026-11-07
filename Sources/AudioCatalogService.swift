@@ -212,7 +212,7 @@ enum AudioCatalogService {
 
     private static func searchArchive(_ term: String, byAuthor: Bool, language: String?) async throws -> [AudioBook] {
         guard let words = archiveSearchExpression(term, byAuthor: byAuthor) else { return [] }
-        let query = "mediatype:audio AND (subject:audiobooks OR subject:\"audio books\" OR collection:librivoxaudio OR collection:audio_bookspoetry) AND (\(words))" + languageQuery(language)
+        let query = "mediatype:audio AND (subject:audiobooks OR subject:аудиокниги OR subject:\"audio books\" OR collection:librivoxaudio OR collection:audio_bookspoetry) AND (\(words))" + languageQuery(language)
         var components = URLComponents(string: "https://archive.org/advancedsearch.php")!
         components.queryItems = [
             .init(name: "q", value: query),
