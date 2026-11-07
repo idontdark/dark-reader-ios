@@ -132,6 +132,10 @@ private struct RootReaderView: View {
         additionalObservers
             .task {
                 DownloadQueue.shared.attach(library)
+                if bookLanguage == "auto" { bookLanguage = appLanguage }
+                if UserDefaults.standard.object(forKey: "preferredAudioSource") == nil {
+                    UserDefaults.standard.set(appLanguage == "ru" ? AudioSource.archive.rawValue : AudioSource.librivox.rawValue, forKey: "preferredAudioSource")
+                }
                 if sync.automatic { _ = await sync.syncNow() }
             }
             .onOpenURL(perform: handleIncomingURL)

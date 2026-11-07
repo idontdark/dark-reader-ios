@@ -16,6 +16,7 @@ struct AudioBook: Identifiable, Hashable, Sendable, Codable {
     let description: String
     let coverURL: URL?
     let language: String?
+    var genres: [String]? = nil
 }
 
 struct AudioChapter: Identifiable, Hashable, Sendable, Codable {
@@ -84,7 +85,7 @@ enum AudioCatalogService {
         return [term]
     }
 
-    static func featured(source: AudioSource, language: String? = nil) async throws -> [AudioBook] {
+    static func featured(source: AudioSource, language: String? = nil, genres: [String] = []) async throws -> [AudioBook] {
         switch source {
         case .librivox:
             var components = URLComponents(string: "https://librivox.org/api/feed/audiobooks/")!
@@ -92,16 +93,21 @@ enum AudioCatalogService {
                 .init(name: "format", value: "json"),
                 .init(name: "limit", value: "50"),
                 .init(name: "sort_order", value: "desc"),
-                .init(name: "coverart", value: "1")
+                .init(name: "coverart", value: "1"),
+                .init(name: "extended", value: "1")
             ]
+            if let genre = genres.first, let topic = audioGenreQuery(genre, archive: false) {
+                components.queryItems?.append(.init(name: "genre", value: topic))
+            }
             guard let url = components.url else { throw AudioCatalogError.invalidReply }
             let object = try await requestObject(url)
             return parseLibriVox(object).filter { matchesLanguage($0.language, choice: language) }
         case .archive:
             var components = URLComponents(string: "https://archive.org/advancedsearch.php")!
             components.queryItems = [
-                .init(name: "q", value: "mediatype:audio AND collection:librivoxaudio" + languageQuery(language)),
+                .init(name: "q", value: "mediatype:audio AND (collection:librivoxaudio OR collection:audio_bookspoetry OR subject:audiobooks OR subject:аудиокниги)" + languageQuery(language) + (genres.first.flatMap { audioGenreQuery($0, archive: true) } ?? "")),
                 .init(name: "fl[]", value: "language"),
+                .init(name: "fl[]", value: "subject"),
                 .init(name: "fl[]", value: "identifier"),
                 .init(name: "fl[]", value: "title"),
                 .init(name: "fl[]", value: "creator"),
@@ -194,7 +200,8 @@ enum AudioCatalogService {
                 title: title, author: names.joined(separator: ", ").isEmpty ? "Неизвестный автор" : names.joined(separator: ", "),
                 description: string(entry["description"]) ?? "",
                 coverURL: secureURL(string(entry["coverart_thumbnail"]) ?? string(entry["coverart_jpg"]) ?? ""),
-                language: string(entry["language"])
+                language: string(entry["language"]),
+                genres: RecommendationProfile.classify(string(entry["genres"]) ?? ((entry["genres"] as? [[String: Any]]) ?? []).compactMap { string($0["name"]) }.joined(separator: " "))
             )
         }
     }
@@ -212,6 +219,7 @@ enum AudioCatalogService {
             .init(name: "fl[]", value: "creator"),
             .init(name: "fl[]", value: "description"),
             .init(name: "fl[]", value: "language"),
+            .init(name: "fl[]", value: "subject"),
             .init(name: "rows", value: "20"),
             .init(name: "page", value: "1"),
             .init(name: "output", value: "json")
@@ -233,9 +241,19 @@ enum AudioCatalogService {
                 id: "archive:\(id)", source: .archive, sourceID: id,
                 title: title, author: author, description: string(item["description"]) ?? "",
                 coverURL: URL(string: "https://archive.org/services/img/\(id)"),
-                language: string(item["language"])
+                language: string(item["language"]),
+                genres: RecommendationProfile.classify(string(item["subject"]) ?? "")
             )
         }
+    }
+
+    private static func audioGenreQuery(_ genre: String, archive: Bool) -> String? {
+        let topics = ["detective":"mystery", "fantasy":"science fiction", "romance":"romance", "classics":"classics",
+                      "adventure":"adventure", "history":"history", "biography":"biography",
+                      "nonfiction":"non fiction", "children":"children", "thriller":"thriller"]
+        guard let topic = topics[genre] else { return nil }
+        if archive { return " AND subject:\"\(topic)\"" }
+        return topic
     }
 
     private static func languageQuery(_ language: String?) -> String {

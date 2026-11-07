@@ -37,7 +37,7 @@ actor CoverCache {
         pending[url] = task
         defer { pending[url] = nil }
         let data = try await task.value
-        if memory.count >= 60 { memory.removeAll() }
+        if memory.count >= 60 || memory.values.reduce(0, { $0 + $1.count }) + data.count > 24_000_000 { memory.removeAll() }
         memory[url] = data
         return data
     }

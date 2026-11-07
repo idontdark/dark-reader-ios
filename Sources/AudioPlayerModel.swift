@@ -33,8 +33,10 @@ final class AudioPlayerModel: ObservableObject {
     private var endObserver: NSObjectProtocol?
     private var playbackGeneration = UUID()
     private var seeking = false
+    private var seekToken = UUID()
     private var recordedChapter = false
     private var pendingRestore: Double?
+    private var wantsPlayback = false
     private let settings = UserDefaults.standard
     private let downloadKey = "audio.offlineChapters"
 
@@ -82,6 +84,7 @@ final class AudioPlayerModel: ObservableObject {
         canSeek = false
         seeking = false
         recordedChapter = false
+        wantsPlayback = true
         playbackGeneration = UUID()
         let generation = playbackGeneration
         chapterIndex = index
@@ -111,8 +114,10 @@ final class AudioPlayerModel: ObservableObject {
                     self.refreshSeekability()
                     if self.canSeek { self.pendingRestore = nil; self.seek(to: saved) }
                     else if let start = track.startSeconds { self.player?.seek(to: CMTime(seconds: start, preferredTimescale: 600)) }
-                    self.player?.playImmediately(atRate: self.rate)
-                    self.isPlaying = true
+                    if self.wantsPlayback {
+                        self.player?.playImmediately(atRate: self.rate)
+                        self.isPlaying = true
+                    }
                 } else if item.status == .failed {
                     self.error = "Не удалось открыть аудио. Проверьте источник или импортируйте файл."
                     self.isPlaying = false
@@ -136,7 +141,10 @@ final class AudioPlayerModel: ObservableObject {
         timeObserver = player?.addPeriodicTimeObserver(
             forInterval: CMTime(seconds: 1, preferredTimescale: 600), queue: .main
         ) { [weak self] time in
-            Task { @MainActor in self?.didAdvance(to: time.seconds) }
+            Task { @MainActor in
+                guard let self, self.playbackGeneration == generation else { return }
+                self.didAdvance(to: time.seconds)
+            }
         }
         updateNowPlaying()
     }
@@ -144,6 +152,8 @@ final class AudioPlayerModel: ObservableObject {
     func toggle() {
         if isPlaying { pause() }
         else {
+            guard player != nil else { return }
+            wantsPlayback = true
             player?.playImmediately(atRate: rate)
             isPlaying = true
             updateNowPlaying()
@@ -151,6 +161,7 @@ final class AudioPlayerModel: ObservableObject {
     }
 
     func pause() {
+        wantsPlayback = false
         player?.pause()
         isPlaying = false
         saveProgress()
@@ -164,21 +175,24 @@ final class AudioPlayerModel: ObservableObject {
     func seek(to seconds: Double) {
         refreshSeekability()
         guard seconds.isFinite, canSeek, let player else { return }
+        pendingRestore = nil
         let clamped = max(seekLowerBound, min(seconds, seekUpperBound))
         let generation = playbackGeneration
         let resume = isPlaying
+        let token = UUID()
+        seekToken = token
         seeking = true
         player.seek(to: CMTime(seconds: clamped + (chapters[chapterIndex].startSeconds ?? 0), preferredTimescale: 600),
                     toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in
             Task { @MainActor in
-                guard let self, self.playbackGeneration == generation else { return }
+                guard let self, self.playbackGeneration == generation, self.seekToken == token else { return }
                 self.seeking = false
                 guard finished else { return }
                 let actual = player.currentTime().seconds
                 if actual.isFinite { self.position = max(0, actual - (self.chapters[self.chapterIndex].startSeconds ?? 0)) }
                 self.saveProgress()
                 self.updateNowPlaying()
-                if resume { player.playImmediately(atRate: self.rate) }
+                if resume && self.wantsPlayback { player.playImmediately(atRate: self.rate) }
             }
         }
     }
@@ -311,7 +325,7 @@ final class AudioPlayerModel: ObservableObject {
         }
         position = max(0, seconds - (chapters[chapterIndex].startSeconds ?? 0))
         if position >= 10, !recordedChapter, let book {
-            RecommendationProfile.record(title: book.title, author: book.author, weight: 3)
+            RecommendationProfile.record(title: book.title, author: book.author, weight: 3, genre: book.genres?.first)
             recordedChapter = true
         }
         if let seconds = player?.currentItem?.duration.seconds, seconds.isFinite, seconds > 0 {

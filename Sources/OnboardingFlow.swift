@@ -134,6 +134,7 @@ struct OnboardingFlow: View {
         Button {
             language = key
             bookLanguage = key
+            UserDefaults.standard.set(key == "ru" ? AudioSource.archive.rawValue : AudioSource.librivox.rawValue, forKey: "preferredAudioSource")
             // Automatically suggest English or Russian for public-domain catalogs,
             // while keeping catalog language separately adjustable in Settings.
             if catalogProvider == "flibusta" || catalogProvider == "gutendex" {

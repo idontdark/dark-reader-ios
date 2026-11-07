@@ -36,6 +36,15 @@ final class Regression080Tests: XCTestCase {
         XCTAssertTrue(AudioCatalogService.matchesLanguage("rus", choice: "ru"))
         XCTAssertTrue(AudioCatalogService.matchesLanguage(nil, choice: nil))
     }
+    func testSharedProfileRanksAudioGenresAndExcludesReadTitles() {
+        let defaults = UserDefaults(suiteName: UUID().uuidString)!
+        let generic = AudioBook(id:"a",source:.archive,sourceID:"a",title:"A",author:"Someone",description:"",coverURL:nil,language:"Russian",genres:["history"])
+        let preferred = AudioBook(id:"b",source:.archive,sourceID:"b",title:"B",author:"Other",description:"",coverURL:nil,language:"Russian",genres:["detective"])
+        XCTAssertEqual(RecommendationProfile.rankAudio([generic,preferred],genres:["detective"],defaults:defaults).first?.id,"b")
+        RecommendationProfile.record(title:"B",author:"Other",weight:3,genre:"detective",defaults:defaults)
+        XCTAssertEqual(RecommendationProfile.rankAudio([generic,preferred],genres:[],defaults:defaults).map(\.id),["a"])
+    }
+
     func testRequiredSearchAliases() {
         XCTAssertTrue(AudioCatalogService.searchVariants("Богатый папа, бедный папа").contains("Rich Dad Poor Dad"))
         XCTAssertTrue(AudioCatalogService.searchVariants("Анна Каренина").contains("Anna Karenina"))
@@ -115,7 +124,7 @@ final class Regression080Tests: XCTestCase {
         player.open(segmented, tracks:chapters)
         defer { player.pause() }
         for _ in 0..<60 {
-            if player.chapterIndex == 1 { break }
+            if player.chapterIndex == 1 && player.canSeek { break }
             try await Task.sleep(for:.milliseconds(100))
         }
         XCTAssertEqual(player.chapterIndex,1,"Embedded M4B must automatically advance chapters")

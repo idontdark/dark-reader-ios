@@ -46,7 +46,7 @@ struct CatalogHomeScreen: View {
             .readerCanvas()
             .toolbar(.hidden, for: .navigationBar)
             .task(id: genresJSON + language + favoritesJSON + String(library.books.count)) { await loadRecommendations() }
-            .task(id: selection + language) {
+            .task(id: selection + language + genresJSON + favoritesJSON) {
                 if selection == "audio" { await loadFeaturedAudio() }
             }
             .sheet(item: $selectedBook) { item in
@@ -324,9 +324,8 @@ struct CatalogHomeScreen: View {
                 notice = "Включите источник аудиокниг."
                 return
             }
-            let found = try await AudioCatalogService.featured(source: source, language: language)
-            let heard = Set(RecommendationProfile.signals().map { RecommendationProfile.normalized($0.title) })
-            audioBooks = found.filter { !heard.contains(RecommendationProfile.normalized($0.title)) }
+            let found = try await AudioCatalogService.featured(source: source, language: language, genres: RecommendationProfile.genres(ReaderPreferences.array(genresJSON)))
+            audioBooks = RecommendationProfile.rankAudio(found, genres: ReaderPreferences.array(genresJSON))
             notice = nil
         } catch {
             notice = "Каталог аудиокниг не ответил. Попробуйте позднее или включите VPN."
