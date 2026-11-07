@@ -16,6 +16,7 @@ struct AudioSourcesScreen: View {
                         })) {
                             Label(source.title, systemImage: "headphones").font(.headline)
                         }
+                        .accessibilityIdentifier("audio-source-"+source.rawValue)
                         Text(source == .librivox ? "Записи добровольцев, преимущественно классика" : "Архив аудиозаписей; доступность зависит от прав и региона")
                             .font(.caption).foregroundStyle(ReaderStyle.secondary).padding(.vertical, 8)
                         Text(status[source] ?? "Ещё не проверен").font(.caption)

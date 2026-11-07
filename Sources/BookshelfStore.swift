@@ -122,8 +122,10 @@ final class BookshelfStore: ObservableObject {
         var imported = LocalBook(title: book.title, author: book.author, filename: filename)
         imported.coverURL = book.coverURL
         imported.catalogID = book.id
+        imported.isFavorite = CatalogBookmarks.decode(UserDefaults.standard.string(forKey:CatalogBookmarks.favoritesKey) ?? "[]").contains {$0.id == book.id}
         RecommendationProfile.record(title: book.title, author: book.author, weight: 1)
         books.insert(imported, at: 0)
+        CatalogBookmarks.downloaded(book)
         progress?(1.0)
         persist(localChange: true)
     }
@@ -260,7 +262,7 @@ private final class ReaderDownloadDelegate: NSObject, URLSessionDownloadDelegate
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
                     didWriteData bytesWritten: Int64, totalBytesWritten: Int64,
                     totalBytesExpectedToWrite: Int64) {
-        guard totalBytesExpectedToWrite > 0 else { return }
+        guard totalBytesExpectedToWrite > 0 else { if totalBytesWritten>0 { update(0) };return }
         update(min(1, Double(totalBytesWritten) / Double(totalBytesExpectedToWrite)))
     }
 

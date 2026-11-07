@@ -5,6 +5,8 @@ struct ImportScreen: View {
     @EnvironmentObject private var books: BookshelfStore
     @EnvironmentObject private var navigation: ReaderNavigation
     @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
+    @ObservedObject private var downloads=DownloadQueue.shared
+    @State private var queuedID:String?
     @State private var importing = false
     @State private var directURL = ""
     @State private var downloading = false
@@ -68,7 +70,7 @@ struct ImportScreen: View {
 
                             if downloading {
                                 ProgressView(value: progress).tint(Color(hex: accentHex))
-                                Text("Скачиваем \(Int(progress * 100))%")
+                                Text(downloads.items.first(where:{$0.id == queuedID})?.state.title ?? "В очереди")
                                     .font(.caption)
                                     .foregroundStyle(ReaderStyle.secondary)
                                     .padding(.top, 7)
@@ -82,6 +84,7 @@ struct ImportScreen: View {
                         }
                     }
 
+                    NavigationLink("Загрузки") {DownloadsScreen()}.font(.system(size:13))
                     if completed {
                         ReaderCard {
                             HStack(alignment: .top, spacing: 12) {
@@ -137,6 +140,14 @@ struct ImportScreen: View {
                     error = failure.localizedDescription
                 }
             }
+            .onReceive(downloads.$items) {items in
+                guard let id=queuedID else{return}
+                guard let item=items.first(where:{$0.id == id}) else {downloading=false;return}
+                progress=item.progress
+                downloading=[.queued,.connecting,.downloading,.paused].contains(item.state)
+                if item.state == .downloaded {completed=true;directURL="";queuedID=nil}
+                if item.state == .failed {error="Не удалось скачать книгу. Проверьте подключение и повторите попытку."}
+            }
             .alert("Импорт не завершён", isPresented: Binding(
                 get: { error != nil },
                 set: { if !$0 { error = nil } }
@@ -152,21 +163,14 @@ struct ImportScreen: View {
     }
 
     private func downloadURL() async {
-        guard let url = URL(string: directURL.trimmingCharacters(in: .whitespacesAndNewlines)) else { return }
-        downloading = true
-        progress = 0
-        completed = false
-        defer { downloading = false }
-        do {
-            try await books.downloadFromURL(url) { value in
-                progress = value
-            }
-            completed = true
-            directURL = ""
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
-        } catch {
-            self.error = error.localizedDescription
-        }
+        guard let url=URL(string:directURL.trimmingCharacters(in:.whitespacesAndNewlines)),isValidURL else{return}
+        let name=url.deletingPathExtension().lastPathComponent.removingPercentEncoding ?? "Книга"
+        let book=CatalogBook(id:url.absoluteString,title:name.isEmpty ? "Книга":name,author:"Автор не указан",epubURL:url)
+        if books.books.contains(where:{$0.catalogID == book.id}) {completed=true;downloading=false;directURL="";return}
+        completed=false;progress=0;downloading=true
+        if let existing=downloads.items.first(where:{$0.book.epubURL == url && $0.state != .failed}) {
+            queuedID=existing.id
+        } else {queuedID=book.id;downloads.enqueue(book)}
     }
 }
 

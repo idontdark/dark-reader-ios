@@ -3,6 +3,7 @@ import SwiftUI
 struct AudioCatalogScreen: View {
     var showsHeader = true
     @EnvironmentObject private var player: AudioPlayerModel
+    @EnvironmentObject private var navigation: ReaderNavigation
     @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
     @AppStorage("preferredAudioSource") private var source: AudioSource = .librivox
     @AppStorage("disabledAudioSources") private var disabledSources = ""
@@ -163,15 +164,22 @@ struct AudioCatalogScreen: View {
             }
             .readerCanvas()
             .toolbar(.hidden, for: .navigationBar)
-            .sheet(item: $selected) { book in
-                AudioBookDetailScreen(book: book) { showPlayer = true }
+            .fullScreenCover(item: $selected) { book in
+                AudioBookDetailScreen(book: book) {}
                     .environmentObject(player)
             }
-            .sheet(isPresented: $showPlayer) {
+            .fullScreenCover(isPresented: $showPlayer) {
                 AudioPlayerScreen()
                     .environmentObject(player)
             }
-            .onAppear { if bookLanguage == "auto" { bookLanguage = language } }
+            .onAppear {
+                if bookLanguage == "auto" {bookLanguage=language}
+                if let title=navigation.bookToSearch {
+                    navigation.bookToSearch=nil;query=title;byAuthor=false;startSearch()
+                } else if let author=navigation.authorToSearch {
+                    navigation.authorToSearch=nil;query=author;byAuthor=true;startSearch()
+                }
+            }
             .onChange(of: source) { _, _ in
                 cancelSearch()
                 didSearch = false
@@ -233,243 +241,223 @@ struct AudioCatalogScreen: View {
     }
 }
 
-struct AudioBookDetailScreen: View {
-    let book: AudioBook
-    let onPlay: () -> Void
-    @EnvironmentObject private var player: AudioPlayerModel
+struct AudioBookDetailScreen:View {
+    let book:AudioBook
+    let onPlay:()->Void
+    @EnvironmentObject private var player:AudioPlayerModel
+    @EnvironmentObject private var navigation:ReaderNavigation
     @Environment(\.dismiss) private var dismiss
-    @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
-    @State private var chapters: [AudioChapter] = []
-    @State private var loading = true
-    @State private var message: String?
-
-    var body: some View {
+    @AppStorage("accentHex") private var accentHex=ReaderStyle.defaultAccent
+    @AppStorage("audio.historyJSON") private var historyJSON="[]"
+    @AppStorage("audio.favoritesJSON") private var favoritesJSON="[]"
+    @State private var chapters:[AudioChapter]=[]
+    @State private var loading=true
+    @State private var message:String?
+    @State private var format="audio"
+    @State private var showPlayer=false
+    private var favorite:Bool {decode(favoritesJSON).contains {$0.id == book.id}}
+    private var saved:Bool {decode(historyJSON).contains {$0.id == book.id}}
+    var body:some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    HStack(alignment: .top, spacing: 17) {
-                        BookArtwork(title: book.title, author: book.author,
-                                    coverURL: book.coverURL, width: 116, height: 164)
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(book.title)
-                                .font(.system(.title3, weight: .bold))
-                            Text(book.author)
-                                .foregroundStyle(ReaderStyle.secondary)
-                                .font(.subheadline)
-                            Text(book.source.title)
-                                .font(.caption)
-                                .foregroundStyle(Color(hex: accentHex))
-                        }
-                        Spacer(minLength: 0)
+                VStack(alignment:.leading,spacing:16) {
+                    BookDetailHero(title:book.title,author:book.author,coverURL:book.coverURL,
+                                   tags:(book.genres ?? []).prefix(2).map {ReaderPreferences.genreName($0,language:UserDefaults.standard.string(forKey:"appLanguage") ?? "ru")})
+                    ReaderSegmentedControl(items:[("books","Книга"),("audio","Аудиокнига")],selection:$format)
+                    let description=BookDescription.clean(book.description)
+                    if !description.isEmpty {
+                        Text(description).font(.system(size:14)).lineSpacing(4).foregroundStyle(.white.opacity(0.88))
+                    }
+                    if loading {ProgressView().padding(.vertical,10).tint(Color(hex:accentHex))}
+                    if let message {Text(message).font(.system(size:12)).foregroundStyle(ReaderStyle.secondary)}
+                    PurpleAction(title:"Слушать аудиокнигу",icon:"play.fill") {
+                        player.open(book,tracks:chapters);showPlayer=true;onPlay()
+                    }.disabled(chapters.isEmpty || loading)
+                    BookFavoriteButton(favorite:favorite) {
+                        var values=decode(favoritesJSON)
+                        if favorite {values.removeAll {$0.id == book.id}}
+                        else {values.insert(book,at:0);RecommendationProfile.record(title:book.title,author:book.author,weight:4,genre:book.genres?.first)}
+                        favoritesJSON=encode(values)
                     }
                     if book.source == .local {
-                        NavigationLink("Изменить книгу и порядок глав") { AudioEditScreen(book: book) }
+                        NavigationLink("Изменить книгу и порядок глав") {AudioEditScreen(book:book)}
+                            .font(.system(size:12)).foregroundStyle(ReaderStyle.secondary)
                     }
-                    if !book.description.isEmpty {
-                        VStack(alignment: .leading, spacing: 7) {
-                            SectionLabel(text: "О книге")
-                            Text(book.description.replacingOccurrences(of: "<[^>]+>", with: "",
-                                    options: .regularExpression))
-                                .font(.subheadline)
-                                .foregroundStyle(ReaderStyle.secondary)
-                                .lineLimit(9)
-                        }
-                    }
-                    SectionLabel(text: "Главы")
-                    if loading {
-                        ProgressView("Загружаем главы…")
-                    } else if let message {
-                        Text(message).font(.subheadline).foregroundStyle(ReaderStyle.secondary)
-                    } else {
-                        ForEach(chapters.indices, id: \.self) { index in
-                            Button {
-                                player.open(book, tracks: chapters)
-                                player.playChapter(index)
-                                dismiss()
-                                onPlay()
-                            } label: {
-                                ReaderCard {
-                                    HStack(spacing: 13) {
-                                        Image(systemName: "play.circle")
-                                            .foregroundStyle(Color(hex: accentHex))
-                                            .font(.title2)
-                                        Text(chapters[index].title)
-                                            .font(.subheadline)
-                                            .foregroundStyle(.white)
-                                            .lineLimit(2)
+                    if !chapters.isEmpty {
+                        VStack(alignment:.leading,spacing:5) {
+                            Text("Главы").font(.system(size:15,weight:.semibold)).padding(.top,8).padding(.bottom,5)
+                            ForEach(Array(chapters.enumerated()),id:\.element.id) {index,chapter in
+                                Button {
+                                    player.open(book,tracks:chapters);player.playChapter(index);showPlayer=true;onPlay()
+                                } label:{
+                                    HStack {
+                                        Text("\(index+1)").font(.system(size:11)).foregroundStyle(ReaderStyle.secondary).frame(width:20)
+                                        Text(chapter.title).font(.system(size:13)).lineLimit(2).foregroundStyle(.white.opacity(0.87))
                                         Spacer()
-                                        Image(systemName: "chevron.right")
-                                            .foregroundStyle(ReaderStyle.secondary)
-                                    }
-                                }
+                                        Image(systemName:"play").font(.system(size:12)).foregroundStyle(Color(hex:accentHex))
+                                    }.frame(minHeight:40).contentShape(Rectangle())
+                                }.buttonStyle(.plain)
+                                if index != chapters.count-1 {ReaderDivider()}
                             }
-                            .buttonStyle(.plain)
                         }
                     }
+                }.padding(.horizontal,20).padding(.top,10).padding(.bottom,30)
+            }.readerCanvas().navigationTitle("").navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement:.topBarLeading) {
+                        Button {dismiss()} label:{Image(systemName:"chevron.left").font(.system(size:18,weight:.medium))}
+                            .accessibilityLabel("Назад")
+                    }
+                    ToolbarItemGroup(placement:.topBarTrailing) {
+                        if let track=chapters.first,!track.url.isFileURL {
+                            ShareLink(item:track.url) {Image(systemName:"square.and.arrow.up").font(.system(size:17))}
+                        }
+                        Button {
+                            var values=decode(historyJSON)
+                            if saved {values.removeAll {$0.id == book.id}} else {values.insert(book,at:0)}
+                            historyJSON=encode(values)
+                        } label:{Image(systemName:saved ? "bookmark.fill":"bookmark").font(.system(size:17))}
+                            .accessibilityLabel(saved ? "Удалить из библиотеки":"Добавить в библиотеку")
+                    }
+                }.tint(Color(hex:"#D2C5DE"))
+                .task {defer{loading=false};do{chapters=try await AudioCatalogService.chapters(for:book)}catch{message="Не удалось загрузить главы. Проверьте подключение."}}
+                .onChange(of:format) {_,value in
+                    if value == "books" {navigation.bookToSearch=book.title;navigation.searchScope="books";navigation.tab = .search;dismiss()}
                 }
-                .padding(20)
-            }
-            .readerCanvas()
-            .navigationTitle("Аудиокнига")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Закрыть") { dismiss() }
-                }
-            }
-            .task {
-                do {
-                    chapters = try await AudioCatalogService.chapters(for: book)
-                } catch {
-                    message = "Не удалось загрузить главы. Проверьте интернет или попробуйте VPN."
-                }
-                loading = false
-            }
+                .fullScreenCover(isPresented:$showPlayer) {AudioPlayerScreen().environmentObject(player)}
         }
     }
+    private func decode(_ raw:String)->[AudioBook] {raw.data(using:.utf8).flatMap{try? JSONDecoder().decode([AudioBook].self,from:$0)} ?? []}
+    private func encode(_ values:[AudioBook])->String {(try? JSONEncoder().encode(values)).map{String(decoding:$0,as:UTF8.self)} ?? "[]"}
 }
 
-struct AudioPlayerScreen: View {
-    @EnvironmentObject private var player: AudioPlayerModel
+struct AudioPlayerScreen:View {
+    @EnvironmentObject private var player:AudioPlayerModel
     @Environment(\.dismiss) private var dismiss
-    @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
-    @State private var scrubPosition = 0.0
-    @State private var scrubbing = false
-    private var color: Color { Color(hex: accentHex) }
-
-    var body: some View {
-        NavigationStack {
+    @AppStorage("accentHex") private var accentHex=ReaderStyle.defaultAccent
+    @State private var scrubbing=false
+    @State private var scrubPosition=0.0
+    private var color:Color {Color(hex:accentHex)}
+    var body:some View {
+        GeometryReader {geometry in
+            let coverHeight=min(277,max(220,geometry.size.height*0.34))
             ScrollView {
-                VStack(spacing: 22) {
-                    Spacer(minLength: 16)
-                    if let book = player.book {
-                        BookArtwork(title: book.title, author: book.author,
-                                    coverURL: book.coverURL, width: 178, height: 230)
-                        Text(book.title)
-                            .font(.title2.weight(.bold))
-                            .multilineTextAlignment(.center)
-                        Text(book.author)
-                            .font(.subheadline)
-                            .foregroundStyle(ReaderStyle.secondary)
-                        if player.chapters.indices.contains(player.chapterIndex) {
-                            Text(player.chapters[player.chapterIndex].title)
-                                .foregroundStyle(ReaderStyle.secondary)
-                                .multilineTextAlignment(.center)
-                                .font(.subheadline)
-                        }
-                    }
-                    Slider(
-                        value: Binding(
-                            get: { scrubbing ? scrubPosition : max(player.seekLowerBound, min(player.position, max(player.seekUpperBound, player.seekLowerBound + 1))) },
-                            set: { scrubPosition = $0 }
-                        ),
-                        in: player.seekLowerBound...max(player.seekUpperBound, player.seekLowerBound + 1),
-                        onEditingChanged: { editing in
-                            scrubbing = editing
-                            if !editing { player.seek(to: scrubPosition) }
-                        }
-                    )
-                    .disabled(!player.canSeek)
-                    .tint(color)
-                    if !player.canSeek {
-                        Text("Перемотка станет доступна, когда источник предоставит диапазон аудио.")
-                            .font(.caption).foregroundStyle(ReaderStyle.secondary)
-                    }
+                VStack(spacing:0) {
                     HStack {
-                        Text(timeText(player.position))
-                        Spacer()
-                        Text(timeText(player.duration))
-                    }
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(ReaderStyle.secondary)
-                    HStack(spacing: 22) {
-                        Button { player.previous() } label: { Image(systemName: "backward.end.fill") }
-                        Button { player.skip(by: -15) } label: { Image(systemName: "gobackward.15") }
-                        Button { player.toggle() } label: {
-                            Image(systemName: player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                                .font(.system(size: 60))
-                                .foregroundStyle(color)
-                        }
-                        Button { player.skip(by: 30) } label: { Image(systemName: "goforward.30") }
-                        Button { player.next() } label: { Image(systemName: "forward.end.fill") }
-                    }
-                    .font(.title2)
-                    .foregroundStyle(.white)
-                    .buttonStyle(.plain)
-                    Menu {
-                        Button("Добавить закладку", systemImage: "bookmark") { player.addBookmark() }
-                        ForEach(player.bookmarks) { bookmark in
-                            Button("Закладка · \(timeText(bookmark.position))") { player.openBookmark(bookmark) }
-                        }
-                        Divider()
-                        ForEach(Array(player.chapters.enumerated()), id: \.element.id) { index, chapter in
-                            Button(chapter.title) { player.playChapter(index) }
-                        }
-                    } label: {
-                        Label("Главы и закладки", systemImage: "list.bullet")
-                    }.foregroundStyle(color)
-                    HStack(spacing: 14) {
-                        Menu {
-                            ForEach([0.75, 1.0, 1.25, 1.5, 1.75, 2.0], id: \.self) { value in
-                                Button("\(value.formatted())×") { player.setRate(Float(value)) }
-                            }
-                        } label: {
-                            Label("\(Double(player.rate).formatted())×", systemImage: "speedometer")
-                        }
+                        Button {dismiss()} label:{Image(systemName:"chevron.down").font(.system(size:18,weight:.medium))}
+                            .accessibilityLabel("Свернуть плеер")
                         Spacer()
                         Menu {
-                            Button("Выключить таймер", systemImage: "xmark.circle") {
-                                player.setSleepTimer(minutes: nil)
-                            }
-                            ForEach([5, 10, 15, 30, 60], id: \.self) { minutes in
-                                Button("\(minutes) мин") { player.setSleepTimer(minutes: minutes) }
-                            }
-                        } label: {
-                            Label("Таймер", systemImage: "moon.zzz")
-                        }
-                        Spacer()
-                        Button {
-                            Task { await player.downloadCurrentChapter() }
-                        } label: {
-                            if player.downloadingChapter != nil {
-                                ProgressView()
-                            } else {
-                                Label("Сохранить главу", systemImage: "arrow.down.to.line")
-                            }
-                        }
-                        .disabled(player.downloadingChapter != nil)
+                            Button("Сохранить текущую главу",systemImage:"arrow.down.to.line") {Task {await player.downloadCurrentChapter()}}
+                                .disabled(player.downloadingChapter != nil)
+                            Button("Добавить закладку",systemImage:"bookmark") {player.addBookmark()}
+                            if player.chapterIndex>0 {Button("Предыдущая глава") {player.previous()}}
+                            if player.chapterIndex+1<player.chapters.count {Button("Следующая глава") {player.next()}}
+                        } label:{Image(systemName:"ellipsis").font(.system(size:21,weight:.medium))}
+                    }.foregroundStyle(Color(hex:"#C9BDD6")).frame(height:36)
+                    Spacer(minLength:12).frame(maxHeight:30)
+                    if let book=player.book {
+                        ZStack {
+                            AudioWaveBackdrop().frame(height:116).padding(.horizontal,-7)
+                            BookArtwork(title:book.title,author:book.author,coverURL:book.coverURL,width:coverHeight*0.668,height:coverHeight)
+                        }.frame(maxWidth:.infinity).frame(height:coverHeight+5)
+                        Text(book.title).font(.system(size:21,weight:.semibold)).tracking(-0.3).lineLimit(2)
+                            .multilineTextAlignment(.center).padding(.top,15)
+                        Text(book.author).font(.system(size:13)).foregroundStyle(ReaderStyle.secondary)
+                            .multilineTextAlignment(.center).lineLimit(2).padding(.top,6)
+                    } else {
+                        Image("HeroHeadphones").resizable().scaledToFit().frame(height:280)
+                        Text("Выберите аудиокнигу").font(.system(size:20,weight:.semibold)).padding(.top,15)
                     }
-                    .foregroundStyle(color)
-                    .font(.subheadline)
-                    if let error = player.error {
-                        Text(error).font(.footnote).foregroundStyle(ReaderStyle.secondary)
+                    Spacer(minLength:18).frame(maxHeight:34)
+                    timeline
+                    HStack(spacing:47) {
+                        Button {player.skip(by:-15)} label:{Image(systemName:"gobackward.15").font(.system(size:27,weight:.regular))}
+                            .disabled(!player.canSeek).accessibilityLabel("Назад на 15 секунд")
+                        Button {player.toggle()} label:{
+                            Image(systemName:player.isPlaying ? "pause.fill":"play.fill").font(.system(size:30,weight:.semibold))
+                                .offset(x:player.isPlaying ? 0:2).foregroundStyle(.white)
+                                .frame(width:75,height:75).background(ReaderStyle.actionGradient(accentHex),in:Circle())
+                                .overlay(Circle().strokeBorder(Color.white.opacity(0.13),lineWidth:0.7))
+                                .shadow(color:color.opacity(0.22),radius:15,y:4)
+                        }.disabled(player.book == nil).accessibilityLabel(player.isPlaying ? "Пауза":"Воспроизвести")
+                        Button {player.skip(by:30)} label:{Image(systemName:"goforward.30").font(.system(size:27,weight:.regular))}
+                            .disabled(!player.canSeek).accessibilityLabel("Вперёд на 30 секунд")
+                    }.foregroundStyle(Color(hex:"#E4DEEC")).buttonStyle(.plain).padding(.top,24)
+                    Spacer(minLength:22).frame(maxHeight:44)
+                    bottomControls
+                    if let error=player.error {Text(error).font(.system(size:11)).foregroundStyle(ReaderStyle.secondary).padding(.top,14)}
+                    if let remaining=player.sleepTimerRemaining {
+                        Text("До остановки: \(Int(ceil(remaining/60))) мин").font(.system(size:11)).foregroundStyle(ReaderStyle.secondary).padding(.top,12)
                     }
-                    if let remaining = player.sleepTimerRemaining {
-                        Label("До остановки: \(Int(ceil(remaining / 60))) мин", systemImage: "moon.zzz")
-                            .font(.caption)
-                            .foregroundStyle(ReaderStyle.secondary)
-                    }
-                    Text("Продолжим с того же места при следующем запуске.")
-                        .font(.caption)
-                        .foregroundStyle(ReaderStyle.secondary)
-                }
-                .padding(24)
-                .frame(maxWidth: .infinity)
-            }
-            .readerCanvas()
-            .navigationTitle("Сейчас играет")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Готово") { dismiss() }
-                }
+                    Spacer(minLength:10)
+                }.padding(.horizontal,24).padding(.top,2).padding(.bottom,14)
+                    .frame(minHeight:geometry.size.height,alignment:.top).frame(maxWidth:.infinity)
+            }.scrollIndicators(.hidden).readerCanvas()
+        }.preferredColorScheme(.dark)
+    }
+    private var timeline:some View {
+        VStack(spacing:0) {
+            Slider(value:Binding(
+                get:{scrubbing ? scrubPosition:max(player.seekLowerBound,min(player.position,max(player.seekUpperBound,player.seekLowerBound+1)))},
+                set:{scrubPosition=$0}
+            ),in:player.seekLowerBound...max(player.seekUpperBound,player.seekLowerBound+1),
+                   onEditingChanged:{editing in scrubbing=editing;if !editing {player.seek(to:scrubPosition)}})
+                .tint(color).disabled(!player.canSeek).accessibilityLabel("Позиция воспроизведения")
+            HStack {
+                Text(timeText(scrubbing ? scrubPosition:player.position))
+                Spacer()
+                Text(timeText(player.duration))
+            }.font(.system(size:10,weight:.medium,design:.monospaced)).foregroundStyle(ReaderStyle.secondary)
+            if !player.canSeek,player.book != nil {
+                Text("Источник пока не предоставил диапазон перемотки.")
+                    .font(.system(size:10)).foregroundStyle(ReaderStyle.secondary).padding(.top,7)
             }
         }
     }
-
-    private func timeText(_ value: Double) -> String {
-        guard value.isFinite else { return "0:00" }
-        let total = max(0, Int(value))
-        return String(format: "%d:%02d", total / 60, total % 60)
+    private var bottomControls:some View {
+        HStack {
+            Menu {
+                ForEach([0.75,1.0,1.25,1.5,1.75,2.0],id:\.self) {value in
+                    Button(rateText(Float(value))) {player.setRate(Float(value))}
+                }
+            } label:{
+                Text(rateText(player.rate)).font(.system(size:12,weight:.semibold)).foregroundStyle(.white.opacity(0.85))
+                    .padding(.horizontal,12).frame(height:31).background(Color.white.opacity(0.05),in:Capsule())
+            }
+            Spacer()
+            Menu {
+                Button("Добавить закладку",systemImage:"bookmark") {player.addBookmark()}
+                ForEach(player.bookmarks) {bookmark in
+                    Button("Закладка · \(timeText(bookmark.position))") {player.openBookmark(bookmark)}
+                }
+                Divider()
+                ForEach(Array(player.chapters.enumerated()),id:\.element.id) {index,chapter in
+                    Button(chapter.title) {player.playChapter(index)}
+                }
+            } label:{Image(systemName:"list.bullet").font(.system(size:21,weight:.regular)).frame(width:42,height:34)}
+                .accessibilityLabel("Главы и закладки")
+            Spacer()
+            Menu {
+                Button("Отключить таймер") {player.setSleepTimer(minutes:nil)}
+                ForEach([5,10,15,30,60],id:\.self) {minutes in
+                    Button("\(minutes) мин") {player.setSleepTimer(minutes:minutes)}
+                }
+            } label:{
+                Image(systemName:"timer").font(.system(size:23,weight:.light))
+                    .foregroundStyle(player.sleepTimerRemaining == nil ? ReaderStyle.secondary:color).frame(width:42,height:34)
+            }.accessibilityLabel("Таймер сна")
+        }.foregroundStyle(ReaderStyle.secondary)
+    }
+    private func rateText(_ rate:Float)->String {
+        var result=String(format:"%.2f",rate)
+        if result.hasSuffix("0") {result.removeLast()}
+        return result+"×"
+    }
+    private func timeText(_ value:Double)->String {
+        guard value.isFinite else{return "0:00"}
+        let total=max(0,Int(value))
+        return total>=3600 ? String(format:"%02d:%02d:%02d",total/3600,(total%3600)/60,total%60):
+            String(format:"%d:%02d",total/60,total%60)
     }
 }

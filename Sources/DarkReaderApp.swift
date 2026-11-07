@@ -12,11 +12,38 @@ final class ReaderNavigation: ObservableObject {
     @Published var bookToSearch: String?
     @Published var genreToBrowse: String?
     @Published var searchScope = "books"
+    @Published var libraryScope = "books"
+    @Published var catalogScope = "books"
 }
 
 @main
 struct DarkReaderApp: App {
-    init() { CloudBackgroundSync.register() }
+    init() {
+        CloudBackgroundSync.register()
+        let defaults=UserDefaults.standard
+        if defaults.string(forKey:"accentHex")?.uppercased() == "#8755E8" {defaults.set(ReaderStyle.defaultAccent,forKey:"accentHex")}
+        if !["percent","pages"].contains(defaults.string(forKey:"readerProgressDisplay") ?? "") {
+            defaults.set("percent",forKey:"readerProgressDisplay")
+        }
+        let appearance=UITabBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor=UIColor(ReaderStyle.background)
+        appearance.shadowColor=UIColor.white.withAlphaComponent(0.06)
+        for item in [appearance.stackedLayoutAppearance,appearance.inlineLayoutAppearance,appearance.compactInlineLayoutAppearance] {
+            item.normal.iconColor=UIColor(red:0.57,green:0.52,blue:0.62,alpha:1)
+            item.normal.titleTextAttributes=[.font:UIFont.systemFont(ofSize:9,weight:.medium),.foregroundColor:UIColor(red:0.57,green:0.52,blue:0.62,alpha:1)]
+            item.selected.titleTextAttributes=[.font:UIFont.systemFont(ofSize:9,weight:.medium)]
+        }
+        UITabBar.appearance().standardAppearance=appearance
+        UITabBar.appearance().scrollEdgeAppearance=appearance
+        let bar=UINavigationBarAppearance()
+        bar.configureWithOpaqueBackground()
+        bar.backgroundColor=UIColor(ReaderStyle.background)
+        bar.shadowColor = .clear
+        bar.titleTextAttributes=[.font:UIFont.systemFont(ofSize:16,weight:.semibold),.foregroundColor:UIColor.white]
+        UINavigationBar.appearance().standardAppearance=bar
+        UINavigationBar.appearance().scrollEdgeAppearance=bar
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -34,7 +61,7 @@ private struct RootTabs: View {
     var body: some View {
         TabView(selection: $navigation.tab) {
             LibraryScreen()
-                .tabItem { Label("Библиотека", systemImage: "books.vertical.fill") }
+                .tabItem { Label("Библиотека", systemImage: "books.vertical") }
                 .tag(ReaderTab.library)
 
             CatalogHomeScreen()

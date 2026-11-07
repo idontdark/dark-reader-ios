@@ -298,6 +298,7 @@ struct TypographyScreen: View {
     @AppStorage("readerFont") private var font = "serif"
     @AppStorage("readerFontSize") private var fontSize = 1.1
     @AppStorage("readerScroll") private var scroll = false
+    @AppStorage("readerProgressDisplay") private var progressDisplay = "percent"
 
     var body: some View {
         ScrollView {
@@ -337,6 +338,17 @@ struct TypographyScreen: View {
                     Toggle("Вертикальная прокрутка", isOn: $scroll)
                         .padding(.vertical, 12)
                 }
+                ReaderCard {
+                    VStack(alignment:.leading,spacing:11) {
+                        Text("Прогресс чтения").font(.system(size:14,weight:.semibold))
+                        ReaderSegmentedControl(items:[("percent","Процент прочтения"),("pages","Текущая страница")],selection:$progressDisplay)
+                        Text("Выберите, что показывать внизу книги.").font(.system(size:11)).foregroundStyle(ReaderStyle.secondary)
+                        if progressDisplay == "pages" {
+                            Text("В EPUB номера страниц рассчитываются приложением и могут отличаться от печатного издания.")
+                                .font(.system(size:11)).foregroundStyle(ReaderStyle.secondary)
+                        }
+                    }
+                }
                 Text("Настройки применяются при чтении. Скачанные книги остаются в том формате, в котором были добавлены.")
                     .font(.footnote).foregroundStyle(ReaderStyle.secondary)
             }.padding(20)
@@ -344,6 +356,7 @@ struct TypographyScreen: View {
         .readerCanvas()
         .navigationTitle("Чтение")
         .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: progressDisplay) { _,value in sync.settingsChanged(key:"readerProgressDisplay",value:value) }
         .onChange(of: theme) { _, value in sync.settingsChanged(key: "readerTheme", value: value) }
         .onChange(of: font) { _, value in sync.settingsChanged(key: "readerFont", value: value) }
         .onChange(of: fontSize) { _, value in sync.settingsChanged(key: "readerFontSize", value: String(value)) }

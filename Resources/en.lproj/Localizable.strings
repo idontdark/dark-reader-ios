@@ -258,3 +258,21 @@
 "Нет результатов" = "No results";
 "Не удалось загрузить записи. Проверьте интернет или попробуйте VPN." = "Couldn't load recordings. Check your internet connection or try a VPN.";
 "Поддерживаются EPUB, FB2 и MOBI, если каталог отдаёт файл." = "EPUB, FB2 and MOBI are available when the source provides a file.";
+
+"Прогресс чтения" = "Reading progress";
+"Процент прочтения" = "Reading percentage";
+"Текущая страница" = "Current page";
+"Выберите, что показывать внизу книги." = "Choose what to show at the bottom of the book.";
+"В EPUB номера страниц рассчитываются приложением и могут отличаться от печатного издания." = "EPUB page numbers are calculated by the app and may differ from the print edition.";
+"Хочу прочитать" = "Want to read";
+"Добавленные" = "Added";
+"Прослушанные" = "Finished";
+"Продолжить слушать" = "Continue listening";
+"Время слушать" = "Time to listen";
+"Управление источниками" = "Manage sources";
+"Скачать книгу (EPUB)" = "Download book (EPUB)";
+"Слушать аудиокнигу" = "Listen to audiobook";
+"Новинки" = "New releases";
+"Серии" = "Series";
+"Свернуть плеер" = "Minimize player";
+"Таймер сна" = "Sleep timer";

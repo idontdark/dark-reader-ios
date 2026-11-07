@@ -198,7 +198,7 @@ final class CloudSyncManager: ObservableObject {
 
     private func collectSettings() -> [String: String] {
         let keys = [
-            "readerTheme", "readerFont", "readerFontSize", "readerScroll",
+            "readerTheme", "readerFont", "readerFontSize", "readerScroll", "readerProgressDisplay",
             "appTheme", "appAppearance", "accentHex", "readerBackgroundHex", "readerTextHex",
             "appLanguage", "preferredBookLanguage", "preferredGenresJSON",
             "preferredAuthorsJSON", "wantsBooks", "wantsAudiobooks", "savedOPDSCatalogs", "favoriteBooksJSON"
@@ -217,6 +217,8 @@ final class CloudSyncManager: ObservableObject {
         remotelyAppliedUntil = Date(timeIntervalSinceNow: 5)
         for (key, value) in values {
             switch key {
+            case "readerProgressDisplay":
+                if ["percent","pages"].contains(value) { defaults.set(value,forKey:key) }
             case "readerFontSize":
                 if let size = Double(value), size >= 0.7, size <= 3.0 {
                     defaults.set(size, forKey: key)

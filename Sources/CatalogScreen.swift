@@ -279,7 +279,7 @@ struct CatalogScreen: View {
                 hasSearched = false
             }
             .onDisappear { cancelSearch() }
-            .sheet(item: $selectedBook) { book in
+            .fullScreenCover(item: $selectedBook) { book in
                 CatalogBookDetailSheet(book: book) { selectedBook = nil }
                     .environmentObject(library)
             }

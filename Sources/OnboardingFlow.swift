@@ -25,7 +25,8 @@ struct OnboardingFlow: View {
     var body: some View {
         ZStack {
             ReaderStyle.background.ignoresSafeArea()
-            VStack(alignment: .leading, spacing: 0) {
+            if step == 0 { languageLanding }
+            else { VStack(alignment: .leading, spacing: 0) {
                 header
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
@@ -44,12 +45,62 @@ struct OnboardingFlow: View {
                 footer
             }
             .padding(.horizontal, 22)
+            }
         }
         .preferredColorScheme(.dark)
         .environment(\.locale, Locale(identifier: language))
         .task(id: "\(step)-\(genresJSON)-\(language)") {
             if step == 3 { await loadBookSuggestions() }
         }
+    }
+
+    private var languageLanding: some View {
+        ZStack(alignment:.bottom) {
+            RadialGradient(colors:[Color(hex:accentHex).opacity(0.13),.clear],center:UnitPoint(x:0.5,y:0.24),
+                           startRadius:12,endRadius:240).ignoresSafeArea()
+            FooterWaves().frame(height:118).ignoresSafeArea(edges:.bottom)
+            VStack(spacing:0) {
+                Spacer(minLength:22).frame(maxHeight:55)
+                BrandBook(width:150).shadow(color:Color(hex:accentHex).opacity(0.32),radius:18)
+                Text("Dark Reader").font(.system(size:30,weight:.bold)).tracking(-0.8).padding(.top,10)
+                Text(english ? "Books and Audiobooks" : "Книги и Аудиокниги")
+                    .font(.system(size:14,weight:.medium)).foregroundStyle(Color.white.opacity(0.87)).padding(.top,5)
+                VStack(alignment:.leading,spacing:0) {
+                    HStack(spacing:10) {
+                        Image(systemName:"globe").font(.system(size:21,weight:.light)).foregroundStyle(Color(hex:"#C4B2D6"))
+                        Text(english ? "Choose your language" : "Выберите язык").font(.system(size:15,weight:.semibold))
+                    }.padding(.bottom,17)
+                    landingLanguage("ru","🇷🇺","Русский")
+                    landingLanguage("en","🇬🇧","English").padding(.top,8)
+                    Text(english ? "You can change it later in Settings." : "Язык можно изменить в настройках.")
+                        .font(.system(size:10)).foregroundStyle(ReaderStyle.secondary.opacity(0.7)).padding(.top,12)
+                }.padding(15).background(ReaderStyle.cardGradient,in:RoundedRectangle(cornerRadius:14))
+                    .overlay(RoundedRectangle(cornerRadius:14).strokeBorder(Color(hex:"#756085").opacity(0.35),lineWidth:0.8))
+                    .padding(.top,34)
+                Spacer(minLength:30)
+                PurpleAction(title:english ? "Continue" : "Продолжить",icon:"",height:47) {
+                    withAnimation(.easeInOut(duration:0.2)) { step=1 }
+                }.padding(.bottom,19)
+            }.padding(.horizontal,25)
+        }.foregroundStyle(.white)
+    }
+    private func landingLanguage(_ code:String,_ flag:String,_ name:String)->some View {
+        Button {
+            language=code
+            bookLanguage=code
+            catalogProvider=code == "en" ? "gutendex":"flibusta"
+            UserDefaults.standard.set(code == "ru" ? AudioSource.archive.rawValue:AudioSource.librivox.rawValue,forKey:"preferredAudioSource")
+        } label: {
+            HStack(spacing:12) {
+                Text(flag).font(.system(size:26))
+                Text(name).font(.system(size:16,weight:.medium))
+                Spacer()
+                if language == code { Image(systemName:"checkmark").font(.system(size:18,weight:.semibold)) }
+            }.foregroundStyle(.white).padding(.horizontal,12).frame(height:53)
+                .background(Color.white.opacity(language == code ? 0.06:0.025),in:RoundedRectangle(cornerRadius:10))
+                .overlay(RoundedRectangle(cornerRadius:10).strokeBorder(
+                    language == code ? Color(hex:"#C574FF"):Color.white.opacity(0.045),lineWidth:language == code ? 1.5:0.8))
+        }.buttonStyle(.plain)
     }
 
     private var header: some View {
@@ -91,7 +142,7 @@ struct OnboardingFlow: View {
     private var introduction: some View {
         VStack(alignment: .leading, spacing: 9) {
             Text(title)
-                .font(.system(size: 32, weight: .bold, design: .rounded))
+                .font(.system(size: 27, weight: .bold))
                 .tracking(-0.7)
                 .foregroundStyle(.white)
                 .fixedSize(horizontal: false, vertical: true)

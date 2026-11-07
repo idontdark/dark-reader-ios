@@ -42,7 +42,7 @@ enum DiscoveryService {
     }
 
     /// Require a matching edition. A work's default title can be in another language.
-    static func books(genres: [String], language: String, limit: Int = 24) async throws -> [DiscoveryBook] {
+    static func books(genres: [String], language: String, limit: Int = 24, sort: String = "readinglog") async throws -> [DiscoveryBook] {
         let code = language == "en" ? "eng" : "rus"
         let selected = Array((genres.isEmpty ? ["classics", "adventure"] : genres).prefix(3))
         var result: [DiscoveryBook] = []
@@ -54,7 +54,7 @@ enum DiscoveryService {
             components.queryItems = [
                 .init(name: "q", value: "language:\(code) subject:\(slug)"),
                 .init(name: "lang", value: language),
-                .init(name: "sort", value: "readinglog"),
+                .init(name: "sort", value: sort),
                 .init(name: "fields", value: "key,author_name,cover_i,editions,editions.key,editions.title,editions.language,editions.cover_i"),
                 .init(name: "limit", value: "24")
             ]
@@ -129,74 +129,53 @@ struct DiscoveryArtwork: View {
     }
 }
 
-struct DiscoveryBookDetail: View {
-    let book: DiscoveryBook
-    @EnvironmentObject private var navigation: ReaderNavigation
+struct DiscoveryBookDetail:View {
+    let book:DiscoveryBook
+    @EnvironmentObject private var navigation:ReaderNavigation
     @Environment(\.dismiss) private var dismiss
-    @AppStorage("favoriteBooksJSON") private var favoritesJSON = "[]"
-    @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
-
-    private var favorite: Bool { DiscoveryService.saved(favoritesJSON).contains(where: { $0.id == book.id }) }
-
-    var body: some View {
+    @AppStorage("favoriteBooksJSON") private var favoritesJSON="[]"
+    @AppStorage("appLanguage") private var language="ru"
+    @State private var format="books"
+    @State private var summary:String?
+    private var favorite:Bool {DiscoveryService.saved(favoritesJSON).contains {$0.id == book.id}}
+    var body:some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    HStack(alignment: .top, spacing: 16) {
-                        DiscoveryArtwork(book: book, width: 125, height: 174)
-                        VStack(alignment: .leading, spacing: 9) {
-                            Text(book.title)
-                                .font(.title3.weight(.bold))
-                                .foregroundStyle(.white)
-                            Text(book.author)
-                                .font(.subheadline)
-                                .foregroundStyle(ReaderStyle.secondary)
-                        }
+                VStack(alignment:.leading,spacing:16) {
+                    BookDetailHero(title:book.title,author:book.author,coverURL:book.coverURL,
+                                   tags:[ReaderPreferences.genreName(book.genre,language:language)])
+                    ReaderSegmentedControl(items:[("books","Книга"),("audio","Аудиокнига")],selection:$format)
+                    Text(summary ?? "Описание пока недоступно.")
+                        .font(.system(size:14)).lineSpacing(4).foregroundStyle(summary == nil ? ReaderStyle.secondary:.white.opacity(0.88))
+                        .frame(maxWidth:.infinity,alignment:.leading).padding(.vertical,3)
+                    PurpleAction(title:"Найти книгу для скачивания",icon:"arrow.down.to.line") {find("books")}
+                    BookFavoriteButton(favorite:favorite) {toggle()}
+                    Link(destination:book.detailURL) {
+                        Text("Сведения об издании · Open Library").font(.system(size:11)).foregroundStyle(ReaderStyle.secondary)
                     }
-                    ReaderCard {
-                        Text("Книга подобрана по жанру «\(ReaderPreferences.genreName(book.genre, language: "ru"))».")
-                            .font(.subheadline)
-                            .foregroundStyle(ReaderStyle.secondary)
-                        Text("Наличие формата для скачивания зависит от каталога.")
-                            .font(.footnote)
-                            .foregroundStyle(ReaderStyle.secondary)
-                            .padding(.top, 5)
+                }.padding(.horizontal,20).padding(.top,10).padding(.bottom,30)
+            }.readerCanvas().navigationTitle("").navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement:.topBarLeading) {
+                        Button {dismiss()} label:{Image(systemName:"chevron.left").font(.system(size:18,weight:.medium))}
+                            .accessibilityLabel("Назад")
                     }
-                    PurpleAction(title: "Найти книгу для скачивания", icon: "magnifyingglass") {
-                        navigation.bookToSearch = book.title
-                        navigation.tab = .search
-                        dismiss()
+                    ToolbarItemGroup(placement:.topBarTrailing) {
+                        ShareLink(item:book.detailURL) {Image(systemName:"square.and.arrow.up").font(.system(size:17))}
+                        Button {toggle()} label:{Image(systemName:favorite ? "bookmark.fill":"bookmark").font(.system(size:17))}
+                            .accessibilityLabel("Избранное")
                     }
-                    Button {
-                        var values = DiscoveryService.saved(favoritesJSON)
-                        if favorite { values.removeAll { $0.id == book.id } }
-                        else { values.append(book) }
-                        favoritesJSON = DiscoveryService.encode(values)
-                    } label: {
-                        Label(favorite ? "Удалить из избранного" : "Добавить в избранное",
-                              systemImage: favorite ? "bookmark.fill" : "bookmark")
-                            .font(.subheadline.weight(.medium))
-                            .frame(maxWidth: .infinity)
-                            .padding(14)
-                            .overlay(RoundedRectangle(cornerRadius: 13).strokeBorder(ReaderStyle.line))
-                    }
-                    .foregroundStyle(.white)
-                    Link(destination: book.detailURL) {
-                        Label("Сведения об издании · Open Library", systemImage: "arrow.up.right.square")
-                            .font(.footnote)
-                            .foregroundStyle(Color(hex: accentHex))
-                    }
-                }
-                .padding(20)
-            }
-            .readerCanvas()
-            .navigationTitle("О книге")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Закрыть") { dismiss() }
-                }
-            }
+                }.tint(Color(hex:"#D2C5DE"))
+                .task {summary=await BookDescription.discovery(book,language:language)}
+                .onChange(of:format) {_,value in if value == "audio" {find("audio")}}
         }
+    }
+    private func toggle() {
+        var books=DiscoveryService.saved(favoritesJSON)
+        if favorite {books.removeAll {$0.id == book.id}} else {books.append(book)}
+        favoritesJSON=DiscoveryService.encode(books)
+    }
+    private func find(_ scope:String) {
+        navigation.bookToSearch=book.title;navigation.searchScope=scope;navigation.tab = .search;dismiss()
     }
 }

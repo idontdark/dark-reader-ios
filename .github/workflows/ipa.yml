@@ -61,7 +61,7 @@ jobs:
             execFileSync('xcrun',['simctl','install',device.udid,process.cwd()+'/test-build/Build/Products/Debug-iphonesimulator/DarkReader.app']);
             for (const [name, schema] of [['onboarding','0'],['library','3']]) {
               try { execFileSync('xcrun',['simctl','terminate',device.udid,'com.ipadark.reader']); } catch {}
-              execFileSync('xcrun',['simctl','launch',device.udid,'com.ipadark.reader','-onboardingSchemaVersion',schema]);
+              execFileSync('xcrun',['simctl','launch',device.udid,'com.ipadark.reader','-onboardingSchemaVersion',schema,'-hintLibraryShown','YES','-hintCatalogShown','YES']);
               await new Promise(r => setTimeout(r,3000));
               execFileSync('xcrun',['simctl','io',device.udid,'screenshot',name+'.png']);
               const blob = await github.rest.git.createBlob({...context.repo,encoding:'base64',content:fs.readFileSync(name+'.png').toString('base64')});
@@ -75,10 +75,12 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: DarkReader-0.8.0-QA
+          name: DarkReader-0.9.0-QA
           path: |
             RegressionResults.xcresult
             simulator-tests.log
+            onboarding.png
+            library.png
             live-probes.log
             qa-results/live-probes.json
           if-no-files-found: ignore
@@ -98,38 +100,38 @@ jobs:
           test -f "$APP/DarkReader"
           test -f "$APP/Assets.car"
           VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Info.plist")
-          test "$VERSION" = "0.8.0"
+          test "$VERSION" = "0.9.0"
           mkdir -p dist/Payload
           ditto "$APP" "dist/Payload/DarkReader.app"
-          (cd dist && zip -qry ../DarkReader-0.8.0-unsigned.ipa Payload)
-          unzip -tq DarkReader-0.8.0-unsigned.ipa
-          unzip -Z1 DarkReader-0.8.0-unsigned.ipa | grep -qx 'Payload/DarkReader.app/Info.plist'
-          unzip -Z1 DarkReader-0.8.0-unsigned.ipa | grep -qx 'Payload/DarkReader.app/DarkReader'
+          (cd dist && zip -qry ../DarkReader-0.9.0-unsigned.ipa Payload)
+          unzip -tq DarkReader-0.9.0-unsigned.ipa
+          unzip -Z1 DarkReader-0.9.0-unsigned.ipa | grep -qx 'Payload/DarkReader.app/Info.plist'
+          unzip -Z1 DarkReader-0.9.0-unsigned.ipa | grep -qx 'Payload/DarkReader.app/DarkReader'
           echo "Verified Payload/DarkReader.app"
       - name: Upload Actions artifact (ZIP containing IPA)
         uses: actions/upload-artifact@v4
         with:
-          name: DarkReader-0.8.0-IPA
-          path: DarkReader-0.8.0-unsigned.ipa
+          name: DarkReader-0.9.0-IPA
+          path: DarkReader-0.9.0-unsigned.ipa
           if-no-files-found: error
           retention-days: 30
       - name: Publish direct IPA to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.8.0-build-${{ github.run_number }}
-          name: Dark Reader 0.8.0 — Новая глава (build ${{ github.run_number }})
+          tag_name: v0.9.0-build-${{ github.run_number }}
+          name: Dark Reader 0.9.0 — Новый дизайн (build ${{ github.run_number }})
           prerelease: true
           generate_release_notes: false
-          body_path: docs/RELEASE_0.8.0.md
-          files: DarkReader-0.8.0-unsigned.ipa
+          body_path: docs/RELEASE_0.9.0.md
+          files: DarkReader-0.9.0-unsigned.ipa
 
       - name: Remove superseded installation files
         uses: actions/github-script@v7
         with:
           script: |
-            const current = 'v0.8.0-build-' + context.runNumber;
+            const current = 'v0.9.0-build-' + context.runNumber;
             const releases = await github.paginate(github.rest.repos.listReleases, {...context.repo, per_page: 100});
-            const published = releases.find(r => r.tag_name === current && !r.draft && r.assets.some(a => a.name === 'DarkReader-0.8.0-unsigned.ipa' && a.state === 'uploaded' && a.size > 0));
+            const published = releases.find(r => r.tag_name === current && !r.draft && r.assets.some(a => a.name === 'DarkReader-0.9.0-unsigned.ipa' && a.state === 'uploaded' && a.size > 0));
             if (!published) throw new Error('New IPA not confirmed; keep old files');
             for (const release of releases.filter(r => r.id !== published.id)) {
               for (const asset of release.assets.filter(a => /^DarkReader.*\.(ipa|zip)$/i.test(a.name))) {

@@ -4,11 +4,30 @@ import ReadiumStreamer
 import ReadiumNavigator
 
 @MainActor
-final class ReaderSession: ObservableObject {
+final class ReaderSession: ObservableObject, EPUBNavigatorDelegate {
     let navigator: EPUBNavigatorViewController
 
-    private init(navigator: EPUBNavigatorViewController) {
-        self.navigator = navigator
+    let totalPositions:Int
+    @Published private(set) var location:Locator?
+    @Published var errorMessage:String?
+    var onLocationChange:((Locator)->Void)?
+    var fraction:Double? {
+        if let value=location?.locations.totalProgression {return value}
+        guard let position=location?.locations.position,totalPositions>1 else{return nil}
+        return Double(position-1)/Double(totalPositions-1)
+    }
+    private init(navigator:EPUBNavigatorViewController,totalPositions:Int) {
+        self.navigator=navigator
+        self.totalPositions=totalPositions
+        self.location=navigator.currentLocation
+        navigator.delegate=self
+    }
+    func navigator(_ navigator:Navigator,locationDidChange locator:Locator) {
+        location=locator
+        onLocationChange?(locator)
+    }
+    func navigator(_ navigator:Navigator,presentError error:NavigatorError) {
+        errorMessage="Это действие недоступно для данной книги."
     }
 
     static func open(fileURL: URL, previousLocation: String?) async throws -> ReaderSession {
@@ -25,7 +44,8 @@ final class ReaderSession: ObservableObject {
         guard publication.conforms(to: .epub) else { throw ReaderError.unsupportedPublication }
         let locator = previousLocation.flatMap { try? Locator(jsonString: $0) }
         let navigator = try EPUBNavigatorViewController(publication: publication, initialLocation: locator)
-        return ReaderSession(navigator: navigator)
+        let positions=(try? await publication.positions().get()) ?? []
+        return ReaderSession(navigator:navigator,totalPositions:positions.count)
     }
 
     func applyPreferences(fontSize: Double, font: String, theme: String, scroll: Bool) {
@@ -61,6 +81,7 @@ struct ReaderScreen: View {
     @AppStorage("readerFont") private var font = "serif"
     @AppStorage("readerScroll") private var scroll = false
     @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
+    @AppStorage("readerProgressDisplay") private var progressDisplay = "percent"
 
     let bookID: UUID
     @State private var session: ReaderSession?
@@ -76,7 +97,10 @@ struct ReaderScreen: View {
             Group {
                 if let session {
                     ReaderContainer(navigator: session.navigator)
-                        .ignoresSafeArea(edges: .bottom)
+                        .safeAreaInset(edge:.bottom,spacing:0) {
+                            ReadingProgressFooter(session:session,format:progressDisplay,
+                                                  theme:theme == "system" ? (colorScheme == .dark ? "dark":"light"):theme)
+                        }
                 } else if let error {
                     ContentUnavailableView(
                         "Не удалось открыть книгу",
@@ -142,6 +166,7 @@ struct ReaderScreen: View {
         }
         .onDisappear { persist() }
         .onChange(of: scenePhase) { _, phase in if phase != .active { persist() } }
+        .onChange(of: progressDisplay) { _,value in sync.settingsChanged(key:"readerProgressDisplay",value:value) }
         .onChange(of: fontSize) { _, value in
             apply()
             sync.settingsChanged(key: "readerFontSize", value: String(value))
@@ -167,6 +192,12 @@ struct ReaderScreen: View {
             session = try await ReaderSession.open(
                 fileURL: store.fileURL(for: book), previousLocation: book.locatorJSON
             )
+            let id=bookID
+            let store=store
+            session?.onLocationChange={ [weak store] locator in
+                guard let json=try? locator.jsonString() else{return}
+                store?.savePosition(bookID:id,locatorJSON:json)
+            }
             apply()
         } catch { self.error = error.localizedDescription }
     }
@@ -206,6 +237,7 @@ private struct ReaderAppearanceSheet: View {
     @AppStorage("readerFont") private var font = "serif"
     @AppStorage("readerFontSize") private var fontSize = 1.1
     @AppStorage("readerScroll") private var scroll = false
+    @AppStorage("readerProgressDisplay") private var progressDisplay = "percent"
     @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
 
     private let options: [(String, String, SwiftUI.Color, SwiftUI.Color)] = [
@@ -274,6 +306,12 @@ private struct ReaderAppearanceSheet: View {
                         ReaderDivider()
                         Toggle("Вертикальная прокрутка", isOn: $scroll)
                             .padding(.vertical, 10)
+                        ReaderDivider()
+                        VStack(alignment:.leading,spacing:10) {
+                            Text("Прогресс чтения").font(.system(size:14,weight:.semibold))
+                            ReaderSegmentedControl(items:[("percent","Процент прочтения"),("pages","Текущая страница")],selection:$progressDisplay)
+                            Text("Выберите, что показывать внизу книги.").font(.system(size:11)).foregroundStyle(ReaderStyle.secondary)
+                        }.padding(.vertical,12)
                     }
                 }
                 .padding(20)
@@ -288,5 +326,29 @@ private struct ReaderAppearanceSheet: View {
             }
         }
         .preferredColorScheme(.dark)
+    }
+}
+
+private struct ReadingProgressFooter:View {
+    @ObservedObject var session:ReaderSession
+    let format:String
+    let theme:String
+    @AppStorage("appLanguage") private var language="ru"
+    private var dark:Bool {theme == "dark" || theme == "oled"}
+    private var paper:SwiftUI.Color {
+        switch theme {
+        case "sepia":SwiftUI.Color(hex:"#F5EAD1")
+        case "oled":.black
+        case "dark":SwiftUI.Color(hex:"#1C1C1E")
+        default:SwiftUI.Color(hex:"#FAFAF7")
+        }
+    }
+    var body:some View {
+        Text(ReadingProgressDisplay.stored(format).text(fraction:session.fraction,position:session.location?.locations.position,
+                                                      total:session.totalPositions,language:language))
+            .font(.system(size:12,weight:.regular)).italic()
+            .foregroundStyle((dark ? SwiftUI.Color.white:SwiftUI.Color.black).opacity(0.42))
+            .frame(maxWidth:.infinity).frame(height:27).padding(.bottom,2)
+            .background(paper).accessibilityIdentifier("reader-progress")
     }
 }

@@ -89,7 +89,7 @@ enum AudioCatalogService {
         return [term]
     }
 
-    static func featured(source: AudioSource, language: String? = nil, genres: [String] = []) async throws -> [AudioBook] {
+    static func featured(source: AudioSource, language: String? = nil, genres: [String] = [], newest: Bool = false) async throws -> [AudioBook] {
         switch source {
         case .librivox:
             var components = URLComponents(string: "https://librivox.org/api/feed/audiobooks/")!
@@ -116,7 +116,7 @@ enum AudioCatalogService {
                 .init(name: "fl[]", value: "title"),
                 .init(name: "fl[]", value: "creator"),
                 .init(name: "rows", value: "15"),
-                .init(name: "sort[]", value: "downloads desc"),
+                .init(name: "sort[]", value: newest ? "publicdate desc" : "downloads desc"),
                 .init(name: "output", value: "json")
             ]
             guard let url = components.url else { throw AudioCatalogError.invalidReply }

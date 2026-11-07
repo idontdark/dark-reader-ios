@@ -1,367 +1,246 @@
 import SwiftUI
 
-/// The browse experience matches the agreed navigation:
-/// Library | Catalog | Search | Settings. Books and audiobooks share this catalog.
-struct CatalogHomeScreen: View {
-    @EnvironmentObject private var navigation: ReaderNavigation
-    @EnvironmentObject private var player: AudioPlayerModel
-    @EnvironmentObject private var library: BookshelfStore
-
-    @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
-    @AppStorage("preferredGenresJSON") private var genresJSON = "[]"
-    @AppStorage("favoriteBooksJSON") private var favoritesJSON = "[]"
-    @AppStorage("appLanguage") private var language = "ru"
-    @State private var selection = "books"
-    @State private var recommendations: [DiscoveryBook] = []
-    @State private var audioBooks: [AudioBook] = []
-    @State private var loadingBooks = false
-    @State private var loadingAudio = false
-    @State private var notice: String?
-    @State private var selectedBook: DiscoveryBook?
-    @State private var selectedAudio: AudioBook?
-    @State private var focusedGenre: String?
-    @State private var showPlayer = false
-    private let accent = ReaderStyle.defaultAccent
-
-    var body: some View {
+struct CatalogHomeScreen:View {
+    @EnvironmentObject private var navigation:ReaderNavigation
+    @EnvironmentObject private var player:AudioPlayerModel
+    @EnvironmentObject private var library:BookshelfStore
+    @AppStorage("accentHex") private var accentHex=ReaderStyle.defaultAccent
+    @AppStorage("preferredGenresJSON") private var genresJSON="[]"
+    @AppStorage("favoriteBooksJSON") private var favoritesJSON="[]"
+    @AppStorage("appLanguage") private var language="ru"
+    @AppStorage("catalogProvider") private var provider="flibusta"
+    @AppStorage("preferredAudioSource") private var audioSource:AudioSource = .archive
+    @AppStorage("disabledAudioSources") private var disabledSources=""
+    @State private var recommendations:[DiscoveryBook]=[]
+    @State private var audioBooks:[AudioBook]=[]
+    @State private var loading=false
+    @State private var notice:String?
+    @State private var selectedBook:DiscoveryBook?
+    @State private var selectedAudio:AudioBook?
+    @State private var showPlayer=false
+    @State private var showSources=false
+    @State private var showImport=false
+    private var selection:String {navigation.catalogScope}
+    var body:some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
-                    ReaderHeader(title: "Каталог", trailingIcon: "magnifyingglass") {
-                        navigation.searchScope = selection
-                        navigation.tab = .search
+                VStack(alignment:.leading,spacing:13) {
+                    ReaderHeader(title:"Каталог",trailingIcon:"magnifyingglass") {
+                        navigation.searchScope=selection;navigation.tab = .search
                     }
-                    Picker("Каталог", selection: $selection) {
-                        Text("Книги").tag("books")
-                        Text("Аудиокниги").tag("audio")
-                    }
-                    .pickerStyle(.segmented)
-
-                    if selection == "books" { booksContent }
-                    else { audioContent }
+                    ReaderSegmentedControl(items:[("books","Книги"),("audio","Аудиокниги")],selection:$navigation.catalogScope)
+                    CatalogPromoCarousel(audio:selection == "audio",onSearch:{
+                        navigation.searchScope=selection;navigation.tab = .search
+                    },onLibrary:{
+                        navigation.libraryScope=selection;navigation.tab = .library
+                    },onImport:{showImport=true})
+                    sourceChips
+                    categoryRows
+                    recommendationsSection.padding(.top,7)
+                }.padding(.horizontal,18).padding(.bottom,26)
+            }.readerCanvas().toolbar(.hidden,for:.navigationBar)
+                .task(id:selection+language+genresJSON+favoritesJSON) {await refresh()}
+                .navigationDestination(isPresented:$showSources) {AudioSourcesScreen()}
+                .sheet(isPresented:$showImport) {
+                    if selection == "audio" {AudioImportScreen()}
+                    else {ImportScreen().environmentObject(library).environmentObject(navigation)}
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 32)
-            }
-            .readerCanvas()
-            .toolbar(.hidden, for: .navigationBar)
-            .task(id: genresJSON + language + favoritesJSON + String(library.books.count)) { await loadRecommendations() }
-            .task(id: selection + language + genresJSON + favoritesJSON) {
-                if selection == "audio" { await loadFeaturedAudio() }
-            }
-            .sheet(item: $selectedBook) { item in
-                DiscoveryBookDetail(book: item).environmentObject(navigation)
-            }
-            .sheet(item: $selectedAudio) { item in
-                AudioBookDetailScreen(book: item) { showPlayer = true }
-                    .environmentObject(player)
-            }
-            .sheet(isPresented: $showPlayer) {
-                AudioPlayerScreen().environmentObject(player)
-            }
+                .fullScreenCover(item:$selectedBook) {book in DiscoveryBookDetail(book:book).environmentObject(navigation)}
+                .fullScreenCover(item:$selectedAudio) {book in
+                    AudioBookDetailScreen(book:book) {}.environmentObject(player)
+                }
+                .fullScreenCover(isPresented:$showPlayer) {AudioPlayerScreen().environmentObject(player)}
         }
     }
-
-    private var booksContent: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            promo(symbol: "books.vertical.fill",
-                  heading: "Истории, которые вам понравятся",
-                  subheading: "Подборки по любимым жанрам и новые открытия")
-            HStack(spacing: 9) {
-                sourceChip("Флибуста", icon: "books.vertical", provider: "flibusta")
-                sourceChip("Project Gutenberg", icon: "book.closed", provider: "gutendex")
-            }
-            VStack(alignment: .leading, spacing: 11) {
-                HStack {
-                    SectionLabel(text: focusedGenre.map {
-                        ReaderPreferences.genreName($0, language: language)
-                    } ?? "Для вас")
-                    Spacer()
-                    NavigationLink {
-                        GenreSettingsScreen()
-                    } label: {
-                        Text("Изменить жанры")
-                            .font(.caption)
-                            .foregroundStyle(Color(hex: accentHex))
-                    }
+    private var sourceChips:some View {
+        HStack(spacing:8) {
+            Menu {
+                Button("Флибуста") {openBooks("flibusta")}
+                Button("Project Gutenberg") {openBooks("gutendex")}
+                ForEach(OPDSSources.decode(UserDefaults.standard.string(forKey:"savedOPDSCatalogs") ?? "[]")) {source in
+                    Button(source.name) {openBooks("opds:"+source.id.uuidString)}
                 }
-                if loadingBooks && recommendations.isEmpty {
-                    ProgressView("Подбираем книги…").tint(Color(hex: accentHex))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.vertical, 18)
-                } else if recommendations.isEmpty {
-                    ReaderCard {
-                        Text(notice ?? "Книги пока не загрузились. Повторите попытку.")
-                            .font(.subheadline)
-                            .foregroundStyle(ReaderStyle.secondary)
-                        Button("Обновить") { Task { await loadRecommendations() } }
-                            .foregroundStyle(Color(hex: accentHex))
-                            .padding(.top, 10)
-                    }
-                } else {
-                    shelf(recommendations)
-                }
+            } label: {
+                HStack(spacing:7) {
+                    BrandBook(width:22)
+                    Text(provider == "flibusta" ? "Флибуста" : provider == "gutendex" ? "Gutenberg":"OPDS")
+                        .font(.system(size:12,weight:.semibold)).lineLimit(1)
+                    Spacer(minLength:0)
+                }.padding(.horizontal,10).frame(maxWidth:.infinity).frame(height:38)
+                    .background(ReaderStyle.cardGradient,in:RoundedRectangle(cornerRadius:9))
+                    .overlay(RoundedRectangle(cornerRadius:9).strokeBorder(ReaderStyle.line,lineWidth:0.7))
             }
-            if !DiscoveryService.saved(favoritesJSON).isEmpty {
-                VStack(alignment: .leading, spacing: 11) {
-                    SectionLabel(text: "Вы выбрали")
-                    shelf(DiscoveryService.saved(favoritesJSON))
-                }
-            }
-            SectionLabel(text: "Жанры")
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-                ForEach(ReaderPreferences.genres, id: \.id) { genre in
-                    Button {
-                        Task { await loadGenre(genre.id) }
-                    } label: {
-                        HStack {
-                            Image(systemName: genre.icon).foregroundStyle(Color(hex: accentHex))
-                            Text(ReaderPreferences.genreName(genre.id, language: language))
-                                .lineLimit(1)
-                                .font(.subheadline)
-                                .foregroundStyle(.white)
-                            Spacer(minLength: 0)
-                            Image(systemName: "chevron.right")
-                                .foregroundStyle(ReaderStyle.secondary)
-                                .font(.caption)
+            Menu {
+                ForEach(AudioSource.online) {source in
+                    if !disabledSources.components(separatedBy:",").contains(source.rawValue) {
+                        Button(source.title) {
+                            audioSource=source;navigation.searchScope="audio";navigation.tab = .search
                         }
-                        .padding(12)
-                        .background(ReaderStyle.surface, in: RoundedRectangle(cornerRadius: 12))
                     }
                 }
-            }
-        }
+                Button("Управление источниками") {showSources=true}
+            } label: {
+                HStack(spacing:7) {
+                    Image(systemName:"headphones").font(.system(size:17,weight:.medium)).foregroundStyle(Color(hex:"#C4B5D5"))
+                    Text(audioSource.title).font(.system(size:12,weight:.semibold)).lineLimit(1).minimumScaleFactor(0.8)
+                    Spacer(minLength:0)
+                    Image(systemName:"chevron.right").font(.system(size:10,weight:.semibold)).foregroundStyle(ReaderStyle.secondary)
+                }.padding(.horizontal,10).frame(maxWidth:.infinity).frame(height:38)
+                    .background(ReaderStyle.cardGradient,in:RoundedRectangle(cornerRadius:9))
+                    .overlay(RoundedRectangle(cornerRadius:9).strokeBorder(ReaderStyle.line,lineWidth:0.7))
+            }.accessibilityIdentifier("audio-source-menu").accessibilityLabel("Источники аудиокниг")
+        }.foregroundStyle(.white)
     }
-
-    private var audioContent: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            promo(symbol: "headphones",
-                  heading: "Аудиокниги",
-                  subheading: "Слушайте книги и сохраняйте главы на устройстве")
-            HStack(spacing: 10) {
-                audioSourceButton(.librivox)
-                audioSourceButton(.archive)
+    private var categoryRows:some View {
+        ReaderInsetGroup {
+            NavigationLink {
+                if selection == "audio" {AudioCollectionScreen(title:"Популярные",newest:false)}
+                else {DiscoveryCollectionScreen(title:"Популярные",genres:ReaderPreferences.array(genresJSON),sort:"readinglog")}
+            } label:{catalogRow("Популярные",icon:"flame")}
+            ReaderDivider()
+            NavigationLink {
+                if selection == "audio" {AudioCollectionScreen(title:"Новинки",newest:true)}
+                else {DiscoveryCollectionScreen(title:"Новинки",genres:ReaderPreferences.array(genresJSON),sort:"new")}
+            } label:{catalogRow("Новинки",icon:"sparkles.rectangle.stack")}
+            ReaderDivider()
+            NavigationLink {CatalogGenresScreen(audio:selection == "audio")} label:{catalogRow("Жанры",icon:"square.grid.2x2")}
+            ReaderDivider()
+            NavigationLink {CatalogAuthorsScreen(audio:selection == "audio")} label:{catalogRow("Авторы",icon:"person")}
+            ReaderDivider()
+            NavigationLink {CatalogSeriesScreen(audio:selection == "audio")} label:{catalogRow("Серии",icon:"text.book.closed")}
+        }.buttonStyle(.plain)
+    }
+    private func catalogRow(_ title:String,icon:String)->some View {
+        HStack(spacing:11) {
+            Image(systemName:icon).font(.system(size:17,weight:.regular)).frame(width:22)
+            Text(LocalizedStringKey(title)).font(.system(size:14,weight:.medium))
+            Spacer()
+            Image(systemName:"chevron.right").font(.system(size:11,weight:.medium)).foregroundStyle(ReaderStyle.secondary)
+        }.foregroundStyle(.white.opacity(0.91)).frame(minHeight:43).contentShape(Rectangle())
+    }
+    @ViewBuilder private var recommendationsSection:some View {
+        VStack(alignment:.leading,spacing:11) {
+            HStack {
+                Text("Для вас").font(.system(size:16,weight:.semibold))
+                Spacer()
+                NavigationLink {GenreSettingsScreen()} label:{
+                    Text("Мои интересы").font(.system(size:11)).foregroundStyle(ReaderStyle.secondary)
+                }
             }
-            NavigationLink("Источники аудиокниг") { AudioSourcesScreen() }
-            SectionLabel(text: "Для вас")
-            if loadingAudio && audioBooks.isEmpty {
-                ProgressView("Загружаем аудиокниги…").tint(Color(hex: accentHex))
-                    .padding(.vertical, 12)
-            } else if !audioBooks.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(alignment: .top, spacing: 12) {
-                        ForEach(audioBooks.prefix(12)) { item in
-                            Button { selectedAudio = item } label: {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    BookArtwork(title: item.title, author: item.author, coverURL: item.coverURL,
-                                                width: 110, height: 155)
-                                    Text(item.title)
-                                        .font(.caption.weight(.semibold))
-                                        .foregroundStyle(.white)
-                                        .lineLimit(2)
-                                    Text(item.author)
-                                        .font(.caption2)
-                                        .foregroundStyle(ReaderStyle.secondary)
-                                        .lineLimit(1)
-                                }
-                                .frame(width: 110, alignment: .leading)
-                            }
-                            .buttonStyle(.plain)
+            if loading && recommendations.isEmpty && audioBooks.isEmpty {
+                ProgressView().tint(Color(hex:accentHex)).padding(.vertical,15)
+            } else if selection == "books" && !recommendations.isEmpty {
+                ScrollView(.horizontal,showsIndicators:false) {
+                    HStack(alignment:.top,spacing:12) {
+                        ForEach(recommendations) {book in
+                            Button {selectedBook=book} label:{
+                                VStack(alignment:.leading,spacing:6) {
+                                    DiscoveryArtwork(book:book,width:94,height:136)
+                                    Text(book.title).font(.system(size:11,weight:.medium)).lineLimit(2)
+                                    Text(book.author).font(.system(size:10)).foregroundStyle(ReaderStyle.secondary).lineLimit(1)
+                                }.foregroundStyle(.white).frame(width:94,alignment:.leading)
+                            }.buttonStyle(.plain)
+                        }
+                    }
+                }
+            } else if selection == "audio" && !audioBooks.isEmpty {
+                ScrollView(.horizontal,showsIndicators:false) {
+                    HStack(alignment:.top,spacing:12) {
+                        ForEach(audioBooks.prefix(12)) {book in
+                            Button {selectedAudio=book} label:{
+                                VStack(alignment:.leading,spacing:6) {
+                                    BookArtwork(title:book.title,author:book.author,coverURL:book.coverURL,width:94,height:136)
+                                    Text(book.title).font(.system(size:11,weight:.medium)).lineLimit(2)
+                                    Text(book.author).font(.system(size:10)).foregroundStyle(ReaderStyle.secondary).lineLimit(1)
+                                }.foregroundStyle(.white).frame(width:94,alignment:.leading)
+                            }.buttonStyle(.plain)
                         }
                     }
                 }
             } else {
-                ReaderCard {
-                    Text(notice ?? "Не удалось загрузить аудиокниги. Проверьте подключение.")
-                        .font(.subheadline)
-                        .foregroundStyle(ReaderStyle.secondary)
-                    Button("Повторить") { Task { await loadFeaturedAudio() } }
-                        .foregroundStyle(Color(hex: accentHex))
-                        .padding(.top, 10)
-                }
-            }
-            if player.book != nil {
-                Button {
-                    showPlayer = true
-                } label: {
-                    Label("Продолжить прослушивание", systemImage: "play.circle.fill")
-                        .foregroundStyle(Color(hex: accentHex))
-                        .font(.headline)
-                }
+                Text(notice ?? "Подборка на выбранном языке пока недоступна.")
+                    .font(.system(size:12)).foregroundStyle(ReaderStyle.secondary)
             }
         }
     }
-
-    private func promo(symbol: String, heading: String, subheading: String) -> some View {
-        HStack(spacing: 14) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(heading)
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(subheading)
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.7))
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 0)
-            Image(systemName: symbol)
-                .font(.system(size: 44, weight: .thin))
-                .foregroundStyle(Color(hex: accentHex))
-        }
-        .padding(20)
-        .frame(maxWidth: .infinity, minHeight: 128)
-        .background(LinearGradient(colors: [ReaderStyle.surface, Color(hex: accentHex).opacity(0.23)],
-                                   startPoint: .topLeading, endPoint: .bottomTrailing),
-                    in: RoundedRectangle(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color(hex: accentHex).opacity(0.22)))
+    private func openBooks(_ selected:String) {
+        provider=selected;navigation.searchScope="books";navigation.tab = .search
     }
-
-    private func sourceChip(_ title: String, icon: String, provider: String) -> some View {
-        Button {
-            UserDefaults.standard.set(provider, forKey: "catalogProvider")
-            navigation.searchScope = "books"
-            navigation.tab = .search
-        } label: {
-            Label(title, systemImage: icon)
-                .lineLimit(1)
-                .font(.caption.weight(.medium))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 12)
-                .frame(maxWidth: .infinity)
-                .background(ReaderStyle.surface, in: RoundedRectangle(cornerRadius: 12))
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func audioSourceButton(_ source: AudioSource) -> some View {
-        Button {
-            UserDefaults.standard.set(source.rawValue, forKey: "preferredAudioSource")
-            navigation.searchScope = "audio"
-            navigation.tab = .search
-        } label: {
-            HStack(spacing: 7) {
-                Image(systemName: "headphones")
-                Text(source.title).lineLimit(1).minimumScaleFactor(0.85)
-            }
-            .font(.caption.weight(.medium))
-            .foregroundStyle(.white)
-            .padding(.vertical, 12)
-            .frame(maxWidth: .infinity)
-            .background(ReaderStyle.surface, in: RoundedRectangle(cornerRadius: 12))
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func shelf(_ books: [DiscoveryBook]) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(alignment: .top, spacing: 12) {
-                ForEach(books) { book in
-                    Button { selectedBook = book } label: {
-                        VStack(alignment: .leading, spacing: 7) {
-                            DiscoveryArtwork(book: book, width: 105, height: 149)
-                            Text(book.title)
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.white)
-                                .lineLimit(2)
-                            Text(book.author)
-                                .font(.caption2)
-                                .foregroundStyle(ReaderStyle.secondary)
-                                .lineLimit(1)
-                        }
-                        .frame(width: 105, alignment: .leading)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-    }
-
-    private func loadGenre(_ genre: String) async {
-        focusedGenre = genre
-        loadingBooks = true
-        defer { loadingBooks = false }
+    private func refresh() async {
+        loading=true;notice=nil
+        defer {loading=false}
         do {
-            let books = try await DiscoveryService.books(genres: [genre], language: language)
-            if !books.isEmpty {
-                recommendations = books
-                notice = nil
+            let genres=RecommendationProfile.genres(ReaderPreferences.array(genresJSON))
+            if selection == "books" {
+                let found=try await DiscoveryService.books(genres:genres,language:language)
+                try Task.checkCancellation()
+                recommendations=RecommendationProfile.rank(found,excluding:library.books.map(\.title))
             } else {
-                notice = "В этом жанре пока нет подходящих книг с обложками."
-                recommendations = []
+                guard !disabledSources.components(separatedBy:",").contains(audioSource.rawValue) else {
+                    audioBooks=[];notice="Включите источник аудиокниг.";return
+                }
+                let found=try await AudioCatalogService.featured(source:audioSource,language:language,genres:genres)
+                try Task.checkCancellation()
+                audioBooks=RecommendationProfile.rankAudio(found,genres:ReaderPreferences.array(genresJSON))
             }
-        } catch {
-            notice = "Не удалось обновить подборку. Проверьте интернет."
-            recommendations = []
-        }
-    }
-
-    private func loadRecommendations() async {
-        loadingBooks = true
-        defer { loadingBooks = false }
-        do {
-            let found = try await DiscoveryService.books(
-                genres: RecommendationProfile.genres(ReaderPreferences.array(genresJSON)), language: language
-            )
-            recommendations = RecommendationProfile.rank(found, excluding: library.books.map(\.title))
-            notice = nil
-        } catch is CancellationError {
-            return
-        } catch {
-            notice = "Не удалось обновить подборку. Проверьте интернет."
-        }
-    }
-
-    private func loadFeaturedAudio() async {
-        loadingAudio = true
-        defer { loadingAudio = false }
-        do {
-            let disabled = UserDefaults.standard.string(forKey: "disabledAudioSources") ?? ""
-            let source = AudioSource(rawValue: UserDefaults.standard.string(forKey: "preferredAudioSource") ?? "") ?? .archive
-            guard source != .local, !disabled.components(separatedBy: ",").contains(source.rawValue) else {
-                audioBooks = []
-                notice = "Включите источник аудиокниг."
-                return
-            }
-            let found = try await AudioCatalogService.featured(source: source, language: language, genres: RecommendationProfile.genres(ReaderPreferences.array(genresJSON)))
-            audioBooks = RecommendationProfile.rankAudio(found, genres: ReaderPreferences.array(genresJSON))
-            notice = nil
-        } catch {
-            notice = "Каталог аудиокниг не ответил. Попробуйте позднее или включите VPN."
-        }
+        } catch is CancellationError {}
+        catch {notice="Не удалось обновить подборку. Проверьте подключение."}
     }
 }
 
-struct UnifiedSearchScreen: View {
-    @EnvironmentObject private var navigation: ReaderNavigation
-    @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
+struct CatalogPromoCarousel:View {
+    let audio:Bool
+    let onSearch:()->Void
+    let onLibrary:()->Void
+    let onImport:()->Void
+    @State private var index=0
+    @AppStorage("accentHex") private var accentHex=ReaderStyle.defaultAccent
+    var body:some View {
+        VStack(spacing:7) {
+            TabView(selection:$index) {
+                promo(title:audio ? "Аудиокниги":"Электронные книги",
+                      subtitle:audio ? "Слушайте любимые\nкниги в любое время":"Любимые истории —\nвсегда под рукой",action:onSearch).tag(0)
+                promo(title:audio ? "Слушайте офлайн":"Читайте офлайн",
+                      subtitle:"Ваша библиотека\nбез лишних отвлечений",action:onLibrary).tag(1)
+                promo(title:"Свои книги",
+                      subtitle:audio ? "Добавьте аудиокнигу\nиз приложения «Файлы»":"EPUB, FB2 и MOBI\nв вашей библиотеке",action:onImport).tag(2)
+            }.tabViewStyle(.page(indexDisplayMode:.never)).frame(height:142)
+            HStack(spacing:4) {
+                ForEach(0..<3,id:\.self) {i in Circle().fill(index == i ? Color(hex:accentHex):Color.white.opacity(0.20)).frame(width:4,height:4)}
+            }
+        }.padding(.top,1)
+    }
+    private func promo(title:String,subtitle:String,action:@escaping()->Void)->some View {
+        Button(action:action) {
+            HStack(spacing:0) {
+                VStack(alignment:.leading,spacing:7) {
+                    Text(LocalizedStringKey(title)).font(.system(size:20,weight:.bold)).tracking(-0.3)
+                    Text(LocalizedStringKey(subtitle)).font(.system(size:12)).lineSpacing(2).foregroundStyle(.white.opacity(0.8))
+                }.padding(.leading,17).frame(maxWidth:.infinity,alignment:.leading)
+                if audio {Image("HeroHeadphones").resizable().scaledToFit().frame(width:144,height:139).offset(x:5,y:9)}
+                else {BrandBook(width:130).padding(.trailing,8)}
+            }.foregroundStyle(.white).frame(maxWidth:.infinity).frame(height:142)
+                .background {
+                    ZStack(alignment:.bottom) {
+                        LinearGradient(colors:[Color(hex:"#3B1556"),Color(hex:"#261039"),Color(hex:"#110A1C")],
+                                       startPoint:.topLeading,endPoint:.bottomTrailing)
+                        FooterWaves().frame(height:54).opacity(0.8)
+                    }
+                }.clipShape(RoundedRectangle(cornerRadius:13))
+                .overlay(RoundedRectangle(cornerRadius:13).strokeBorder(Color(hex:"#81509E").opacity(0.42),lineWidth:0.8))
+        }.buttonStyle(.plain)
+    }
+}
 
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Поиск")
-                    .font(.title2.bold())
-                Spacer()
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(Color(hex: accentHex))
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 10)
-            Picker("Тип книги", selection: $navigation.searchScope) {
-                Text("Книги").tag("books")
-                Text("Аудиокниги").tag("audio")
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-
-            if navigation.searchScope == "books" {
-                CatalogScreen(showsHeader: false)
-            } else {
-                AudioCatalogScreen(showsHeader: false)
-            }
-        }
-        .readerCanvas()
+struct UnifiedSearchScreen:View {
+    @EnvironmentObject private var navigation:ReaderNavigation
+    var body:some View {
+        VStack(spacing:10) {
+            ReaderHeader(title:"Поиск",trailingIcon:nil,trailingAction:nil).padding(.horizontal,18)
+            ReaderSegmentedControl(items:[("books","Книги"),("audio","Аудиокниги")],selection:$navigation.searchScope)
+                .padding(.horizontal,18)
+            if navigation.searchScope == "books" {CatalogScreen(showsHeader:false)}
+            else {AudioCatalogScreen(showsHeader:false)}
+        }.readerCanvas()
     }
 }

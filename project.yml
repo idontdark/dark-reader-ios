@@ -4,8 +4,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: 5.9
-    MARKETING_VERSION: 0.8.0
-    CURRENT_PROJECT_VERSION: 8
+    MARKETING_VERSION: 0.9.0
+    CURRENT_PROJECT_VERSION: 9
 packages:
   Readium:
     url: https://github.com/readium/swift-toolkit.git
@@ -24,13 +24,14 @@ targets:
     scheme:
       testTargets:
         - DarkReaderTests
+        - DarkReaderVisualTests
     info:
       path: BuildSupport/DarkReader-Info.plist
       properties:
         CFBundleDisplayName: "Dark Reader"
         CFBundleName: "Dark Reader - Books & Audiobooks"
-        CFBundleShortVersionString: "0.8.0"
-        CFBundleVersion: "8"
+        CFBundleShortVersionString: "0.9.0"
+        CFBundleVersion: "9"
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true
         LSSupportsOpeningDocumentsInPlace: true
@@ -82,4 +83,19 @@ targets:
       base:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: com.ipadark.reader.tests
+        CODE_SIGNING_ALLOWED: NO
+
+  DarkReaderVisualTests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - VisualTests
+    dependencies:
+      - target: DarkReader
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.ipadark.reader.visualtests
+        TEST_TARGET_NAME: DarkReader
         CODE_SIGNING_ALLOWED: NO
