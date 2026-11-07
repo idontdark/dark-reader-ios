@@ -45,17 +45,34 @@ final class BookshelfStore: ObservableObject {
         persist(localChange: true)
     }
 
-    func download(_ book: CatalogBook) async throws {
+    func download(_ book: CatalogBook, progress: (@MainActor (Double) -> Void)? = nil) async throws {
         guard let epubURL = book.epubURL, epubURL.scheme == "https" else { throw ReaderError.noEPUB }
-        let (temporaryURL, response) = try await URLSession.shared.download(from: epubURL)
+        let delegate = ReaderDownloadDelegate { value in
+            Task { @MainActor in progress?(value) }
+        }
+        let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
+        defer { session.finishTasksAndInvalidate() }
+        let (temporaryURL, response) = try await session.download(from: epubURL)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw ReaderError.invalidEPUB
         }
         try validateEPUB(temporaryURL)
         let filename = UUID().uuidString + ".epub"
         try fileManager.moveItem(at: temporaryURL, to: directory.appendingPathComponent(filename))
-        books.insert(LocalBook(title: book.title, author: book.author, filename: filename), at: 0)
+        var imported = LocalBook(title: book.title, author: book.author, filename: filename)
+        imported.coverURL = book.coverURL
+        books.insert(imported, at: 0)
+        progress?(1.0)
         persist(localChange: true)
+    }
+
+    /// Import a downloaded EPUB file from a direct HTTPS URL.
+    func downloadFromURL(_ url: URL, progress: (@MainActor (Double) -> Void)? = nil) async throws {
+        guard url.scheme == "https" else { throw ReaderError.invalidCatalogURL }
+        let name = url.deletingPathExtension().lastPathComponent.removingPercentEncoding ?? "Книга"
+        let item = CatalogBook(id: url.absoluteString, title: name.isEmpty ? "Книга" : name,
+                               author: "Неизвестный автор", epubURL: url)
+        try await download(item, progress: progress)
     }
 
     func savePosition(bookID: UUID, locatorJSON: String?) {
@@ -153,4 +170,24 @@ final class BookshelfStore: ObservableObject {
         let magic = try handle.read(upToCount: 4) ?? Data()
         guard magic.starts(with: [0x50, 0x4B]) else { throw ReaderError.invalidEPUB }
     }
+}
+
+
+/// Reports actual bytes received instead of simulating download percentages.
+private final class ReaderDownloadDelegate: NSObject, URLSessionDownloadDelegate {
+    let update: (Double) -> Void
+
+    init(update: @escaping (Double) -> Void) {
+        self.update = update
+    }
+
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
+                    didWriteData bytesWritten: Int64, totalBytesWritten: Int64,
+                    totalBytesExpectedToWrite: Int64) {
+        guard totalBytesExpectedToWrite > 0 else { return }
+        update(min(1, Double(totalBytesWritten) / Double(totalBytesExpectedToWrite)))
+    }
+
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
+                    didFinishDownloadingTo location: URL) {}
 }

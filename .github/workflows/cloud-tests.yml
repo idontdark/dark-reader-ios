@@ -24,6 +24,8 @@ jobs:
           xcode-version: latest-stable
       - name: Install XcodeGen
         run: brew install xcodegen
+      - name: Generate app icon
+        run: swift scripts/generate_icon.swift
       - name: Generate Xcode project
         run: xcodegen generate --spec project.yml
       - name: Run iOS simulator tests

@@ -4,8 +4,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: 5.9
-    MARKETING_VERSION: 0.2.0
-    CURRENT_PROJECT_VERSION: 2
+    MARKETING_VERSION: 0.3.0
+    CURRENT_PROJECT_VERSION: 3
 packages:
   Readium:
     url: https://github.com/readium/swift-toolkit.git
@@ -17,6 +17,7 @@ targets:
     deploymentTarget: "17.0"
     sources:
       - Sources
+      - Resources
     scheme:
       testTargets:
         - DarkReaderTests
@@ -24,10 +25,11 @@ targets:
       path: BuildSupport/DarkReader-Info.plist
       properties:
         CFBundleDisplayName: Dark Reader
-        CFBundleShortVersionString: "0.2.0"
-        CFBundleVersion: "2"
+        CFBundleShortVersionString: "0.3.0"
+        CFBundleVersion: "3"
         LSSupportsOpeningDocumentsInPlace: true
         UIFileSharingEnabled: true
+        UILaunchScreen: {}
         BGTaskSchedulerPermittedIdentifiers:
           - com.ipadark.reader.sync
         UIBackgroundModes:
@@ -38,6 +40,7 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         TARGETED_DEVICE_FAMILY: "1,2"
         CODE_SIGN_STYLE: Automatic
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: NO
     dependencies:
       - package: Readium

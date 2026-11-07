@@ -1,129 +1,164 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Uses the system Files directory picker. The selected directory can be in
-/// iCloud Drive and remains accessible through a persistent security bookmark.
 struct CloudSyncScreen: View {
     @EnvironmentObject private var cloud: CloudSyncManager
+    @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
     @State private var pickingFolder = false
     @State private var confirmDisconnect = false
 
     var body: some View {
-        Form {
-            Section {
-                LabeledContent("Папка", value: cloud.folderName ?? "Не выбрана")
-                Button {
-                    pickingFolder = true
-                } label: {
-                    Label(
-                        cloud.isConnected ? "Изменить папку" : "Выбрать папку",
-                        systemImage: "folder"
-                    )
-                }
-            } header: {
-                Text("iCloud Drive")
-            } footer: {
-                Text("Выберите папку в разделе iCloud Drive приложения «Файлы». Dark Reader создаст внутри неё папку «Dark Reader» и будет хранить там книги и настройки.")
-            }
-
-            Section {
-                Toggle(
-                    "Автоматическая синхронизация",
-                    isOn: Binding(
-                        get: { cloud.automatic },
-                        set: { cloud.setAutomatic($0) }
-                    )
-                )
-                .disabled(!cloud.isConnected)
-
-                HStack(spacing: 10) {
-                    if cloud.isSyncing {
-                        ProgressView().controlSize(.small)
-                    } else {
-                        Image(systemName: cloud.isConnected ? "checkmark.icloud" : "icloud.slash")
-                            .foregroundStyle(.secondary)
-                    }
-                    Text(cloud.status)
-                        .foregroundStyle(.secondary)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 7) {
+                    Text("Синхронизация")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                    Text("Сохраните библиотеку в iCloud Drive и восстановите её после переустановки.")
                         .font(.subheadline)
+                        .foregroundStyle(ReaderStyle.secondary)
                 }
 
-                if let saved = cloud.lastSavedAt {
-                    LabeledContent("Последняя запись") {
-                        Text(saved.formatted(date: .abbreviated, time: .shortened))
-                            .font(.subheadline)
+                VStack(alignment: .leading, spacing: 10) {
+                    SectionLabel(text: "Хранилище")
+                    ReaderCard {
+                        HStack(spacing: 13) {
+                            Image(systemName: "icloud")
+                                .foregroundStyle(Color(hex: accentHex))
+                                .font(.title2)
+                                .frame(width: 35)
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text("iCloud Drive").font(.headline)
+                                Text(cloud.folderName ?? "Папка не подключена")
+                                    .font(.footnote)
+                                    .foregroundStyle(ReaderStyle.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: cloud.isConnected ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(cloud.isConnected ? .green : ReaderStyle.secondary)
+                        }
+                        .padding(.bottom, 15)
+                        PurpleAction(
+                            title: cloud.isConnected ? "Изменить папку" : "Выбрать папку",
+                            icon: "folder"
+                        ) {
+                            pickingFolder = true
+                        }
+                    }
+                    Text("Выберите папку именно в iCloud Drive через приложение «Файлы». Dark Reader создаст в ней собственную папку.")
+                        .font(.footnote)
+                        .foregroundStyle(ReaderStyle.secondary)
+                }
+
+                VStack(alignment: .leading, spacing: 10) {
+                    SectionLabel(text: "Автоматическое сохранение")
+                    ReaderCard {
+                        Toggle("Синхронизировать автоматически", isOn: Binding(
+                            get: { cloud.automatic },
+                            set: { cloud.setAutomatic($0) }
+                        ))
+                        .disabled(!cloud.isConnected)
+                        .padding(.vertical, 8)
+                        ReaderDivider()
+                        HStack(spacing: 10) {
+                            if cloud.isSyncing {
+                                ProgressView().tint(Color(hex: accentHex))
+                            } else {
+                                Image(systemName: cloud.isConnected ? "checkmark.icloud" : "icloud.slash")
+                                    .foregroundStyle(Color(hex: accentHex))
+                            }
+                            Text(cloud.status)
+                                .font(.subheadline)
+                                .foregroundStyle(ReaderStyle.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(.vertical, 14)
+                        if let date = cloud.lastSavedAt {
+                            ReaderDivider()
+                            HStack {
+                                Text("Последнее сохранение")
+                                    .font(.subheadline)
+                                Spacer()
+                                Text(date.formatted(date: .abbreviated, time: .shortened))
+                                    .font(.caption)
+                                    .foregroundStyle(ReaderStyle.secondary)
+                            }
+                            .padding(.vertical, 14)
+                        }
+                        ReaderDivider()
+                        Button {
+                            Task { _ = await cloud.syncNow() }
+                        } label: {
+                            ReaderRow(icon: "arrow.triangle.2.circlepath",
+                                      title: "Синхронизировать сейчас",
+                                      subtitle: nil) {
+                                Image(systemName: "chevron.right")
+                                    .foregroundStyle(ReaderStyle.secondary)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(!cloud.isConnected || cloud.isSyncing)
                     }
                 }
 
-                Button {
-                    Task { await cloud.syncNow() }
-                } label: {
-                    Label("Синхронизировать сейчас", systemImage: "arrow.triangle.2.circlepath")
-                }
-                .disabled(!cloud.isConnected || cloud.isSyncing)
-            } header: {
-                Text("Синхронизация")
-            } footer: {
-                Text("Изменения сохраняются автоматически. iOS самостоятельно отправляет файлы из iCloud Drive в облако, поэтому запись в папку ещё не гарантирует завершение выгрузки.")
-            }
-
-            Section {
-                Button {
-                    if cloud.isConnected {
-                        Task { await cloud.syncNow() }
-                    } else {
-                        pickingFolder = true
+                VStack(alignment: .leading, spacing: 10) {
+                    SectionLabel(text: "Восстановление")
+                    ReaderCard {
+                        Button {
+                            if cloud.isConnected {
+                                Task { _ = await cloud.syncNow() }
+                            } else {
+                                pickingFolder = true
+                            }
+                        } label: {
+                            ReaderRow(icon: "arrow.counterclockwise.icloud",
+                                      title: "Восстановить библиотеку",
+                                      subtitle: cloud.restoredBooks > 0
+                                        ? "Восстановлено книг: \(cloud.restoredBooks)" : nil) {
+                                Image(systemName: "chevron.right")
+                                    .foregroundStyle(ReaderStyle.secondary)
+                            }
+                        }
+                        .buttonStyle(.plain)
                     }
-                } label: {
-                    Label("Восстановить библиотеку", systemImage: "arrow.counterclockwise.icloud")
+                    Text("После переустановки снова выберите ту же папку. Файлы останутся в iCloud Drive, даже если предыдущая IPA перестала запускаться.")
+                        .font(.footnote)
+                        .foregroundStyle(ReaderStyle.secondary)
                 }
 
-                if cloud.restoredBooks > 0 {
-                    Label(
-                        "Восстановлено книг: \(cloud.restoredBooks)",
-                        systemImage: "checkmark.circle.fill"
-                    )
-                    .foregroundStyle(.green)
-                }
-            } footer: {
-                Text("После переустановки приложения снова выберите прежнюю папку в iCloud Drive. Книги, позиции чтения, закладки и настройки будут восстановлены без замены более новых данных.")
-            }
-
-            if cloud.isConnected {
-                Section {
-                    Button("Отключить эту папку", role: .destructive) {
+                if cloud.isConnected {
+                    Button("Отключить папку", role: .destructive) {
                         confirmDisconnect = true
                     }
-                } footer: {
-                    Text("Отключение не удаляет сохранённые книги из iCloud Drive.")
+                    .font(.subheadline)
+                    .padding(.top, 5)
                 }
+
+                Text("Запись файлов в папку не означает, что iOS уже закончила выгрузку в iCloud. Фоновая синхронизация зависит от системы.")
+                    .font(.caption)
+                    .foregroundStyle(ReaderStyle.secondary)
+                    .padding(.bottom, 15)
             }
+            .padding(20)
         }
-        .navigationTitle("Синхронизация")
+        .readerCanvas()
+        .navigationTitle("iCloud")
         .navigationBarTitleDisplayMode(.inline)
-        .fileImporter(
-            isPresented: $pickingFolder,
-            allowedContentTypes: [.folder],
-            allowsMultipleSelection: false
-        ) { result in
+        .fileImporter(isPresented: $pickingFolder, allowedContentTypes: [.folder],
+                      allowsMultipleSelection: false) { result in
             switch result {
-            case .success(let urls):
-                guard let folder = urls.first else { return }
+            case .success(let folders):
+                guard let folder = folders.first else { return }
                 Task { await cloud.chooseFolder(folder) }
             case .failure:
                 break
             }
         }
-        .confirmationDialog(
-            "Отключить синхронизацию?",
-            isPresented: $confirmDisconnect
-        ) {
-            Button("Отключить папку", role: .destructive) {
+        .confirmationDialog("Отключить папку?", isPresented: $confirmDisconnect) {
+            Button("Отключить", role: .destructive) {
                 cloud.forgetFolder()
             }
-            Button("Отмена", role: .cancel) {}
         } message: {
-            Text("Ваши данные останутся в выбранной папке.")
+            Text("Книги, уже сохранённые в iCloud Drive, не удалятся.")
         }
     }
 }

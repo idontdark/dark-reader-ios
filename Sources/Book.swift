@@ -11,6 +11,7 @@ struct LocalBook: Identifiable, Codable, Hashable, Sendable {
     var updatedAt: Date?
     var isFavorite: Bool?
     var bookmarks: [String]?
+    var coverURL: URL?
 
     var changeDate: Date { updatedAt ?? addedAt }
 
@@ -24,6 +25,7 @@ struct LocalBook: Identifiable, Codable, Hashable, Sendable {
         updatedAt = addedAt
         isFavorite = false
         bookmarks = []
+        coverURL = nil
     }
 }
 
@@ -33,6 +35,7 @@ struct CatalogBook: Identifiable, Hashable, Sendable {
     var author: String
     var epubURL: URL?
     var navigationURL: URL? = nil
+    var coverURL: URL? = nil
 }
 
 enum ReaderError: LocalizedError {

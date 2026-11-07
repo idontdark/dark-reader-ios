@@ -199,7 +199,7 @@ final class CloudSyncManager: ObservableObject {
     private func collectSettings() -> [String: String] {
         let keys = [
             "readerTheme", "readerFont", "readerFontSize", "readerScroll",
-            "appTheme", "accentHex", "readerBackgroundHex", "readerTextHex"
+            "appTheme", "appAppearance", "accentHex", "readerBackgroundHex", "readerTextHex"
         ]
         var values: [String: String] = [:]
         for key in keys {
@@ -221,7 +221,7 @@ final class CloudSyncManager: ObservableObject {
                 }
             case "readerScroll":
                 defaults.set(value == "1" || value.lowercased() == "true", forKey: key)
-            case "readerTheme", "readerFont", "appTheme", "accentHex",
+            case "readerTheme", "readerFont", "appTheme", "appAppearance", "accentHex",
                  "readerBackgroundHex", "readerTextHex":
                 defaults.set(value, forKey: key)
             default:

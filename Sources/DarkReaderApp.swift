@@ -1,353 +1,85 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
+enum ReaderTab: Int, CaseIterable, Hashable {
+    case library, catalog, add, settings
+}
+
+@MainActor
+final class ReaderNavigation: ObservableObject {
+    @Published var tab: ReaderTab = .library
+}
+
 @main
 struct DarkReaderApp: App {
-    @StateObject private var bookshelf = DarkReaderAppState.shared.books
+    @StateObject private var library = DarkReaderAppState.shared.books
     @StateObject private var sync = DarkReaderAppState.shared.sync
+    @StateObject private var navigation = ReaderNavigation()
     @Environment(\.scenePhase) private var scenePhase
+    @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
+    @AppStorage("appAppearance") private var appearance = "dark"
+    @AppStorage("didFinishOnboarding") private var didFinishOnboarding = false
+    @State private var importError: String?
 
-    init() {
-        CloudBackgroundSync.register()
-    }
+    init() { CloudBackgroundSync.register() }
 
     var body: some Scene {
         WindowGroup {
-            TabView {
-                LibraryScreen().tabItem { Label("Библиотека", systemImage: "books.vertical") }
-                CatalogScreen().tabItem { Label("Поиск", systemImage: "magnifyingglass") }
-                SettingsScreen().tabItem { Label("Настройки", systemImage: "gearshape") }
+            TabView(selection: $navigation.tab) {
+                LibraryScreen()
+                    .tabItem { Label("Библиотека", systemImage: "books.vertical.fill") }
+                    .tag(ReaderTab.library)
+                CatalogScreen()
+                    .tabItem { Label("Каталог", systemImage: "magnifyingglass") }
+                    .tag(ReaderTab.catalog)
+                ImportScreen()
+                    .tabItem { Label("Добавить", systemImage: "square.and.arrow.down") }
+                    .tag(ReaderTab.add)
+                SettingsScreen()
+                    .tabItem { Label("Настройки", systemImage: "gearshape") }
+                    .tag(ReaderTab.settings)
             }
-            .environmentObject(bookshelf)
+            .tint(Color(hex: accentHex))
+            .toolbarBackground(ReaderStyle.background, for: .tabBar)
+            .toolbarBackground(.visible, for: .tabBar)
+            .preferredColorScheme(appearance == "light" ? .light : appearance == "system" ? nil : .dark)
+            .environmentObject(library)
             .environmentObject(sync)
-            .tint(.indigo)
-            .task {
-                if sync.automatic { await sync.syncNow() }
+            .environmentObject(navigation)
+            .fullScreenCover(isPresented: Binding(
+                get: { !didFinishOnboarding },
+                set: { if !$0 { didFinishOnboarding = true } }
+            )) {
+                WelcomeScreen { didFinishOnboarding = true }
             }
+            .task { if sync.automatic { _ = await sync.syncNow() } }
+            .onOpenURL { url in
+                if url.isFileURL {
+                    do {
+                        try library.addImportedFile(
+                            from: url, title: url.deletingPathExtension().lastPathComponent
+                        )
+                        navigation.tab = .library
+                    } catch {
+                        importError = error.localizedDescription
+                    }
+                }
+            }
+            .alert("Не удалось импортировать", isPresented: Binding(
+                get: { importError != nil },
+                set: { if !$0 { importError = nil } }
+            )) {
+                Button("Понятно", role: .cancel) {}
+            } message: { Text(importError ?? "") }
             .onChange(of: scenePhase) { _, phase in
                 switch phase {
                 case .active:
-                    if sync.automatic { Task { await sync.syncNow() } }
+                    if sync.automatic { Task { _ = await sync.syncNow() } }
                 case .background:
                     if sync.automatic { CloudBackgroundSync.schedule() }
-                default:
-                    break
+                default: break
                 }
             }
-        }
-    }
-}
-
-struct LibraryScreen: View {
-    @EnvironmentObject private var store: BookshelfStore
-    @State private var importing = false
-    @State private var selected: LocalBook?
-    @State private var error: String?
-
-    var body: some View {
-        NavigationStack {
-            List {
-                if store.books.isEmpty {
-                    ContentUnavailableView("Пока нет книг", systemImage: "books.vertical",
-                        description: Text("Найдите книгу или импортируйте EPUB."))
-                }
-                ForEach(store.books) { book in
-                    Button { selected = book } label: {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(book.title).font(.headline)
-                            Text(book.author).font(.subheadline).foregroundStyle(.secondary)
-                            if book.locatorJSON != nil {
-                                Label("Продолжить чтение", systemImage: "bookmark.fill").font(.caption)
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .foregroundStyle(.primary)
-                    .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                        Button {
-                            store.toggleFavorite(book)
-                        } label: {
-                            Label(book.isFavorite == true ? "Убрать из избранного" : "В избранное",
-                                  systemImage: book.isFavorite == true ? "heart.slash" : "heart")
-                        }
-                        .tint(.orange)
-                    }
-                    .swipeActions(edge: .trailing) {
-                        Button("Удалить", role: .destructive) { store.delete(book) }
-                    }
-                }
-            }
-            .navigationTitle("Моя библиотека")
-            .toolbar { Button { importing = true } label: { Image(systemName: "plus") } }
-            .fileImporter(isPresented: $importing, allowedContentTypes: [UTType(filenameExtension: "epub") ?? .data]) { result in
-                do {
-                    let url = try result.get()
-                    try store.addImportedFile(from: url, title: url.deletingPathExtension().lastPathComponent)
-                } catch { self.error = error.localizedDescription }
-            }
-            .sheet(item: $selected) { book in
-                ReaderScreen(bookID: book.id).environmentObject(store)
-            }
-            .alert("Ошибка", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
-                Button("OK", role: .cancel) { error = nil }
-            } message: { Text(error ?? "") }
-        }
-    }
-}
-
-private struct CatalogPage {
-    let title: String
-    let results: [CatalogBook]
-}
-
-struct CatalogScreen: View {
-    @EnvironmentObject private var store: BookshelfStore
-    @AppStorage("catalogProvider") private var provider = "flibusta"
-    @AppStorage("catalogURL") private var catalogURL = "https://flibusta.is/opds/search?searchType=books"
-    @AppStorage("catalogQueryParameter") private var queryParameter = "searchTerm"
-    @State private var query = ""
-    @State private var mode = "title"
-    @State private var results: [CatalogBook] = []
-    @State private var previousPages: [CatalogPage] = []
-    @State private var pageTitle = "Каталог книг"
-    @State private var hasSearched = false
-    @State private var busy = false
-    @State private var downloading: String?
-    @State private var error: String?
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section("Источник") {
-                    Picker("Каталог", selection: $provider) {
-                        Text("Флибуста (OPDS)").tag("flibusta")
-                        Text("Project Gutenberg (OPDS)").tag("gutenberg")
-                        Text("Gutendex (нестабильный)").tag("gutendex")
-                        Text("Другой OPDS").tag("custom")
-                    }
-                    .pickerStyle(.menu)
-                }
-                Section {
-                    TextField("Название книги или автор", text: $query)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .onSubmit { Task { await search() } }
-                    Picker("Искать", selection: $mode) {
-                        Text("По названию").tag("title")
-                        Text("По автору").tag("author")
-                    }
-                    .pickerStyle(.segmented)
-                    Button("Найти книги") { Task { await search() } }
-                        .disabled(query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || busy)
-                }
-
-                if busy { ProgressView("Получаем данные каталога…") }
-
-                if !previousPages.isEmpty {
-                    Section {
-                        Button {
-                            if let previous = previousPages.popLast() {
-                                results = previous.results
-                                pageTitle = previous.title
-                            }
-                        } label: {
-                            Label("Назад к результатам", systemImage: "arrow.left")
-                        }
-                    }
-                }
-
-                Section("Результаты: \(results.count)") {
-                    if hasSearched && results.isEmpty && !busy {
-                        ContentUnavailableView("Нет доступных EPUB", systemImage: "books.vertical",
-                            description: Text("Попробуйте другой запрос или источник."))
-                    }
-                    ForEach(results) { book in
-                        HStack(alignment: .top, spacing: 12) {
-                            VStack(alignment: .leading, spacing: 5) {
-                                Text(book.title).font(.headline)
-                                if book.epubURL != nil {
-                                    Text(book.author).font(.subheadline).foregroundStyle(.secondary)
-                                    Text("EPUB").font(.caption2).foregroundStyle(.tertiary)
-                                } else {
-                                    Label("Открыть раздел", systemImage: "folder")
-                                        .font(.caption).foregroundStyle(.secondary)
-                                }
-                            }
-                            Spacer(minLength: 0)
-                            if book.epubURL != nil {
-                                Button { Task { await download(book) } } label: {
-                                    if downloading == book.id { ProgressView() }
-                                    else { Image(systemName: "arrow.down.circle.fill").font(.title2) }
-                                }
-                                .buttonStyle(.borderless)
-                                .disabled(downloading != nil || busy)
-                                .accessibilityLabel("Скачать EPUB")
-                            } else if book.navigationURL != nil {
-                                Button { Task { await browse(book) } } label: {
-                                    Image(systemName: "chevron.right")
-                                }
-                                .buttonStyle(.borderless)
-                                .disabled(busy)
-                                .accessibilityLabel("Открыть \(book.title)")
-                            }
-                        }
-                    }
-                }
-            }
-            .navigationTitle(pageTitle)
-            .onChange(of: provider) { _, _ in resetResults() }
-            .onChange(of: mode) { _, _ in resetResults() }
-            .alert("Ошибка", isPresented: Binding(
-                get: { error != nil },
-                set: { if !$0 { error = nil } }
-            )) {
-                Button("OK", role: .cancel) { error = nil }
-            } message: { Text(error ?? "") }
-        }
-    }
-
-    private func resetResults() {
-        results = []
-        previousPages = []
-        pageTitle = "Каталог книг"
-        hasSearched = false
-    }
-
-    private func search() async {
-        busy = true
-        defer { busy = false }
-        do {
-            results = try await CatalogProviders.search(
-                query: query, mode: mode, provider: provider,
-                customURL: catalogURL, customParameter: queryParameter
-            )
-            previousPages = []
-            pageTitle = "Результаты поиска"
-            hasSearched = true
-        } catch {
-            results = []
-            previousPages = []
-            self.error = error.localizedDescription
-            hasSearched = true
-        }
-    }
-
-    private func browse(_ book: CatalogBook) async {
-        guard let url = book.navigationURL else { return }
-        busy = true
-        defer { busy = false }
-        do {
-            let next = try await CatalogProviders.browse(url: url)
-            previousPages.append(CatalogPage(title: pageTitle, results: results))
-            results = next
-            pageTitle = book.title
-            hasSearched = true
-        } catch { self.error = error.localizedDescription }
-    }
-
-    private func download(_ book: CatalogBook) async {
-        downloading = book.id
-        defer { downloading = nil }
-        do { try await store.download(book) }
-        catch { self.error = error.localizedDescription }
-    }
-}
-
-struct SettingsScreen: View {
-    @EnvironmentObject private var sync: CloudSyncManager
-    @AppStorage("catalogURL") private var catalogURL = "https://flibusta.is/opds/search?searchType=books"
-    @AppStorage("catalogQueryParameter") private var queryParameter = "searchTerm"
-    @AppStorage("readerFontSize") private var fontSize = 1.1
-    @AppStorage("readerTheme") private var theme = "system"
-    @AppStorage("readerFont") private var font = "serif"
-    @AppStorage("readerScroll") private var scroll = false
-
-    private var appVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.1.0"
-    }
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section("Чтение") {
-                    Picker("Тема", selection: $theme) {
-                        Text("Системная").tag("system")
-                        Text("Светлая").tag("light")
-                        Text("Тёмная").tag("dark")
-                        Text("Сепия").tag("sepia")
-                        Text("Чёрная (OLED)").tag("oled")
-                    }
-
-                    Picker("Шрифт", selection: $font) {
-                        Text("С засечками").tag("serif")
-                        Text("Без засечек").tag("sans")
-                    }
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Размер текста")
-                            Spacer()
-                            Text("\(Int(fontSize * 100)) %")
-                                .foregroundStyle(.secondary)
-                                .monospacedDigit()
-                        }
-                        Slider(value: $fontSize, in: 0.7...3.0, step: 0.1)
-                            .accessibilityLabel("Размер текста")
-                    }
-                    Toggle("Вертикальная прокрутка", isOn: $scroll)
-                }
-
-                Section("Каталоги") {
-                    DisclosureGroup("Свой OPDS-каталог") {
-                        TextField("Адрес поиска (HTTPS)", text: $catalogURL)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                            .keyboardType(.URL)
-                        TextField("Параметр поиска", text: $queryParameter)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                        Text("Используется при выборе «Другой OPDS» в поиске.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Section("Данные") {
-                    NavigationLink {
-                        CloudSyncScreen()
-                    } label: {
-                        Label("Синхронизация iCloud", systemImage: "icloud")
-                    }
-                }
-
-                Section {
-                    NavigationLink {
-                        SupportProjectScreen()
-                    } label: {
-                        Label("Поддержать проект", systemImage: "heart")
-                    }
-
-                    Link(destination: URL(string: "https://t.me/ipa_dark")!) {
-                        HStack {
-                            Label("Разработчик", systemImage: "paperplane")
-                            Spacer()
-                            Image(systemName: "arrow.up.right")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                        }
-                        .foregroundStyle(.primary)
-                    }
-                } header: {
-                    Text("О приложении")
-                } footer: {
-                    Text("Dark Reader · версия \(appVersion)")
-                }
-            }
-            .navigationTitle("Настройки")
-            .onChange(of: theme) { _, value in sync.settingsChanged(key: "readerTheme", value: value) }
-            .onChange(of: font) { _, value in sync.settingsChanged(key: "readerFont", value: value) }
-            .onChange(of: fontSize) { _, value in sync.settingsChanged(key: "readerFontSize", value: String(value)) }
-            .onChange(of: scroll) { _, value in sync.settingsChanged(key: "readerScroll", value: String(value)) }
         }
     }
 }

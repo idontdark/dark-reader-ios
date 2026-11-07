@@ -85,7 +85,8 @@ private struct GutendexClient {
                 title: item.title,
                 author: item.authors.map(\.name).joined(separator: ", ").isEmpty
                     ? "Автор не указан" : item.authors.map(\.name).joined(separator: ", "),
-                epubURL: epubURL
+                epubURL: epubURL,
+                coverURL: URL(string: "https://www.gutenberg.org/cache/epub/\(item.id)/pg\(item.id).cover.medium.jpg")
             )
         }
         let filtered = converted.filter {

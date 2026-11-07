@@ -52,6 +52,7 @@ private final class OPDSFeedParser: NSObject, XMLParserDelegate {
     private var author = ""
     private var epubURL: URL?
     private var navigationURL: URL?
+    private var coverURL: URL?
 
     init(baseURL: URL) { self.baseURL = baseURL }
 
@@ -66,6 +67,7 @@ private final class OPDSFeedParser: NSObject, XMLParserDelegate {
             author = ""
             epubURL = nil
             navigationURL = nil
+            coverURL = nil
         }
         guard currentEntry else { return }
         if name == "author" { inAuthor = true }
@@ -78,7 +80,9 @@ private final class OPDSFeedParser: NSObject, XMLParserDelegate {
            linkURL.scheme == "https" {
             let rel = attributeDict["rel"] ?? ""
             let mime = (attributeDict["type"] ?? "").lowercased()
-            if mime.contains("epub+zip") || mime.contains("application/epub") {
+            if (rel.contains("image") || rel == "x-stanza-cover-image" || rel == "x-stanza-cover-image-thumbnail"), mime.hasPrefix("image/") {
+                if coverURL == nil { coverURL = linkURL }
+            } else if mime.contains("epub+zip") || mime.contains("application/epub") {
                 if epubURL == nil { epubURL = linkURL }
             } else if mime.contains("atom+xml")
                         && !rel.contains("facet")
@@ -115,7 +119,8 @@ private final class OPDSFeedParser: NSObject, XMLParserDelegate {
                     title: title,
                     author: author.isEmpty ? "Автор не указан" : author,
                     epubURL: epubURL,
-                    navigationURL: navigationURL
+                    navigationURL: navigationURL,
+                    coverURL: coverURL
                 ))
             }
             currentEntry = false

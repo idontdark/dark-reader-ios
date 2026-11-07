@@ -60,62 +60,69 @@ struct ReaderScreen: View {
     @AppStorage("readerTheme") private var theme = "system"
     @AppStorage("readerFont") private var font = "serif"
     @AppStorage("readerScroll") private var scroll = false
+    @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
 
     let bookID: UUID
     @State private var session: ReaderSession?
     @State private var error: String?
+    @State private var appearanceOpen = false
 
     private var book: LocalBook? { store.books.first(where: { $0.id == bookID }) }
 
     var body: some View {
         NavigationStack {
             Group {
-                if let session = session {
-                    ReaderContainer(navigator: session.navigator).ignoresSafeArea(edges: .bottom)
-                } else if let error = error {
-                    ContentUnavailableView("Не удалось открыть книгу", systemImage: "exclamationmark.triangle", description: Text(error))
+                if let session {
+                    ReaderContainer(navigator: session.navigator)
+                        .ignoresSafeArea(edges: .bottom)
+                } else if let error {
+                    ContentUnavailableView(
+                        "Не удалось открыть книгу",
+                        systemImage: "exclamationmark.triangle",
+                        description: Text(error)
+                    )
                 } else {
-                    ProgressView("Открываем EPUB…")
+                    ProgressView("Открываем книгу…")
                 }
             }
             .navigationTitle(book?.title ?? "Читалка")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Закрыть") { persist(); dismiss() }
+                    Button { persist(); dismiss() } label: {
+                        Image(systemName: "chevron.down")
+                    }
                 }
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
                     Menu {
                         Button("Добавить закладку", systemImage: "bookmark.fill") {
                             addBookmark()
                         }
-                        if let bookmarks = book?.bookmarks, !bookmarks.isEmpty {
+                        if let marks = book?.bookmarks, !marks.isEmpty {
                             Divider()
-                            ForEach(bookmarks.indices, id: \.self) { index in
-                                Button("Закладка \(index + 1)") {
-                                    Task { await openBookmark(bookmarks[index]) }
+                            ForEach(marks.indices, id: \.self) { i in
+                                Button("Закладка \(i + 1)") {
+                                    Task { await openBookmark(marks[i]) }
                                 }
                             }
                         }
-                    } label: { Image(systemName: "bookmark") }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button("А−") { fontSize = max(0.7, fontSize - 0.15) }
-                        Button("А+") { fontSize = min(3.0, fontSize + 0.15) }
-                        Picker("Тема", selection: $theme) {
-                            Text("Светлая").tag("light")
-                            Text("Тёмная").tag("dark")
-                            Text("Сепия").tag("sepia")
-                            Text("OLED").tag("oled")
-                        }
-                    } label: { Image(systemName: "textformat.size") }
+                    } label: {
+                        Image(systemName: "bookmark")
+                    }
+                    Button { appearanceOpen = true } label: {
+                        Image(systemName: "textformat.size")
+                    }
                 }
             }
+            .tint(Color(hex: accentHex))
+        }
+        .sheet(isPresented: $appearanceOpen) {
+            ReaderAppearanceSheet()
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
         .task {
             await load()
-            // Periodic safety save, also triggered when leaving or backgrounding.
             while !Task.isCancelled {
                 do { try await Task.sleep(nanoseconds: 20_000_000_000) }
                 catch { break }
@@ -130,11 +137,11 @@ struct ReaderScreen: View {
         }
         .onChange(of: font) { _, value in
             apply()
-            sync.settingsChanged(key: "readerFont", value: String(value))
+            sync.settingsChanged(key: "readerFont", value: value)
         }
         .onChange(of: theme) { _, value in
             apply()
-            sync.settingsChanged(key: "readerTheme", value: String(value))
+            sync.settingsChanged(key: "readerTheme", value: value)
         }
         .onChange(of: colorScheme) { _, _ in apply() }
         .onChange(of: scroll) { _, value in
@@ -144,21 +151,29 @@ struct ReaderScreen: View {
     }
 
     private func load() async {
-        guard session == nil, let book = book else { return }
+        guard session == nil, let book else { return }
         do {
-            session = try await ReaderSession.open(fileURL: store.fileURL(for: book), previousLocation: book.locatorJSON)
+            session = try await ReaderSession.open(
+                fileURL: store.fileURL(for: book), previousLocation: book.locatorJSON
+            )
             apply()
         } catch { self.error = error.localizedDescription }
     }
 
     private func apply() {
-        session?.applyPreferences(fontSize: fontSize, font: font, theme: theme == "system" ? (colorScheme == .dark ? "dark" : "light") : theme, scroll: scroll)
+        session?.applyPreferences(
+            fontSize: fontSize,
+            font: font,
+            theme: theme == "system" ? (colorScheme == .dark ? "dark" : "light") : theme,
+            scroll: scroll
+        )
     }
 
     private func addBookmark() {
         guard let locator = session?.navigator.currentLocation,
               let json = try? locator.jsonString() else { return }
         store.saveBookmark(bookID: bookID, locatorJSON: json)
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
 
     private func openBookmark(_ json: String) async {
@@ -171,5 +186,96 @@ struct ReaderScreen: View {
         guard let locator = session?.navigator.currentLocation,
               let locatorJSON = try? locator.jsonString() else { return }
         store.savePosition(bookID: bookID, locatorJSON: locatorJSON)
+    }
+}
+
+private struct ReaderAppearanceSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @AppStorage("readerTheme") private var theme = "system"
+    @AppStorage("readerFont") private var font = "serif"
+    @AppStorage("readerFontSize") private var fontSize = 1.1
+    @AppStorage("readerScroll") private var scroll = false
+    @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
+
+    private let options: [(String, String, Color, Color)] = [
+        ("light", "Светлая", Color(red: 0.97, green: 0.97, blue: 0.95), .black),
+        ("sepia", "Сепия", Color(red: 0.94, green: 0.85, blue: 0.69), .black),
+        ("dark", "Тёмная", Color(red: 0.18, green: 0.18, blue: 0.20), .white),
+        ("oled", "OLED", .black, .white)
+    ]
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 9) {
+                        SectionLabel(text: "Тема чтения")
+                        HStack(spacing: 9) {
+                            ForEach(options, id: \.0) { item in
+                                Button {
+                                    theme = item.0
+                                } label: {
+                                    VStack(spacing: 8) {
+                                        RoundedRectangle(cornerRadius: 11)
+                                            .fill(item.2)
+                                            .frame(height: 50)
+                                            .overlay {
+                                                if theme == item.0 {
+                                                    Image(systemName: "checkmark")
+                                                        .foregroundStyle(item.3)
+                                                }
+                                            }
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 11)
+                                                    .strokeBorder(theme == item.0
+                                                        ? Color(hex: accentHex) : .white.opacity(0.15),
+                                                        lineWidth: theme == item.0 ? 2 : 1)
+                                            )
+                                        Text(item.1)
+                                            .font(.caption)
+                                            .foregroundStyle(.white)
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+
+                    ReaderCard {
+                        HStack {
+                            Text("Шрифт")
+                            Spacer()
+                            Picker("Шрифт", selection: $font) {
+                                Text("С засечками").tag("serif")
+                                Text("Без засечек").tag("sans")
+                            }.tint(.white)
+                        }
+                        ReaderDivider()
+                        HStack {
+                            Text("Размер текста")
+                            Spacer()
+                            Text("\(Int(fontSize * 100))%")
+                                .foregroundStyle(ReaderStyle.secondary)
+                        }
+                        Slider(value: $fontSize, in: 0.7...3.0, step: 0.1)
+                            .tint(Color(hex: accentHex))
+                        ReaderDivider()
+                        Toggle("Вертикальная прокрутка", isOn: $scroll)
+                            .padding(.vertical, 10)
+                    }
+                }
+                .padding(20)
+            }
+            .readerCanvas()
+            .navigationTitle("Оформление чтения")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Готово") { dismiss() }
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
     }
 }
