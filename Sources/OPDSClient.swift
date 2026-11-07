@@ -1,4 +1,5 @@
 import Foundation
+import FoundationXML
 
 /// Basic OPDS 1.x Atom feed search client. Endpoint URL is user-configurable.
 struct OPDSClient {
