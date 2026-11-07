@@ -1,23 +1,33 @@
 import Foundation
 
-struct LocalBook: Identifiable, Codable, Hashable {
+/// The optional synchronization fields keep books.json from older app versions readable.
+struct LocalBook: Identifiable, Codable, Hashable, Sendable {
     var id: UUID
     var title: String
     var author: String
     var filename: String
     var locatorJSON: String?
     var addedAt: Date
+    var updatedAt: Date?
+    var isFavorite: Bool?
+    var bookmarks: [String]?
+
+    var changeDate: Date { updatedAt ?? addedAt }
 
     init(title: String, author: String, filename: String) {
-        self.id = UUID()
+        id = UUID()
         self.title = title
         self.author = author
         self.filename = filename
-        self.addedAt = Date()
+        locatorJSON = nil
+        addedAt = Date()
+        updatedAt = addedAt
+        isFavorite = false
+        bookmarks = []
     }
 }
 
-struct CatalogBook: Identifiable, Hashable {
+struct CatalogBook: Identifiable, Hashable, Sendable {
     var id: String
     var title: String
     var author: String
