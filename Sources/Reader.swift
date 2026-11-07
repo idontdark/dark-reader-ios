@@ -114,7 +114,7 @@ struct ReaderScreen: View {
                     }
                 }
             }
-            .tint(Color(hex: accentHex))
+            .tint(SwiftUI.Color(hex: accentHex))
         }
         .sheet(isPresented: $appearanceOpen) {
             ReaderAppearanceSheet()
@@ -197,10 +197,10 @@ private struct ReaderAppearanceSheet: View {
     @AppStorage("readerScroll") private var scroll = false
     @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
 
-    private let options: [(String, String, Color, Color)] = [
-        ("light", "Светлая", Color(red: 0.97, green: 0.97, blue: 0.95), .black),
-        ("sepia", "Сепия", Color(red: 0.94, green: 0.85, blue: 0.69), .black),
-        ("dark", "Тёмная", Color(red: 0.18, green: 0.18, blue: 0.20), .white),
+    private let options: [(String, String, SwiftUI.Color, SwiftUI.Color)] = [
+        ("light", "Светлая", SwiftUI.Color(red: 0.97, green: 0.97, blue: 0.95), .black),
+        ("sepia", "Сепия", SwiftUI.Color(red: 0.94, green: 0.85, blue: 0.69), .black),
+        ("dark", "Тёмная", SwiftUI.Color(red: 0.18, green: 0.18, blue: 0.20), .white),
         ("oled", "OLED", .black, .white)
     ]
 
@@ -228,7 +228,7 @@ private struct ReaderAppearanceSheet: View {
                                             .overlay(
                                                 RoundedRectangle(cornerRadius: 11)
                                                     .strokeBorder(theme == item.0
-                                                        ? Color(hex: accentHex) : .white.opacity(0.15),
+                                                        ? SwiftUI.Color(hex: accentHex) : .white.opacity(0.15),
                                                         lineWidth: theme == item.0 ? 2 : 1)
                                             )
                                         Text(item.1)
@@ -259,7 +259,7 @@ private struct ReaderAppearanceSheet: View {
                                 .foregroundStyle(ReaderStyle.secondary)
                         }
                         Slider(value: $fontSize, in: 0.7...3.0, step: 0.1)
-                            .tint(Color(hex: accentHex))
+                            .tint(SwiftUI.Color(hex: accentHex))
                         ReaderDivider()
                         Toggle("Вертикальная прокрутка", isOn: $scroll)
                             .padding(.vertical, 10)
