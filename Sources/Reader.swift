@@ -120,7 +120,8 @@ struct ReaderScreen: View {
     }
 
     private func persist() {
-        guard let locatorJSON = session?.navigator.currentLocation?.jsonString() else { return }
+        guard let locator = session?.navigator.currentLocation,
+              let locatorJSON = try? locator.jsonString() else { return }
         store.savePosition(bookID: bookID, locatorJSON: locatorJSON)
     }
 }
