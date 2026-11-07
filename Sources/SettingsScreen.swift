@@ -66,7 +66,7 @@ struct SettingsScreen: View {
                             NavigationLink {
                                 CloudSyncScreen()
                             } label: {
-                                ReaderRow(icon: "icloud", title: "Синхронизация iCloud",
+                                ReaderRow(icon: "icloud", title: "Резервное копирование",
                                           subtitle: "Книги, закладки и прогресс") {
                                     Image(systemName: "chevron.right").foregroundStyle(ReaderStyle.secondary)
                                 }

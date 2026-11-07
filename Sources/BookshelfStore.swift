@@ -45,14 +45,26 @@ final class BookshelfStore: ObservableObject {
         persist(localChange: true)
     }
 
-    func download(_ book: CatalogBook, progress: (@MainActor (Double) -> Void)? = nil) async throws {
-        guard let epubURL = book.epubURL, epubURL.scheme == "https" else { throw ReaderError.noEPUB }
+    func download(_ book: CatalogBook, progress: (@MainActor (Double) -> Void)? = nil, resumeData: Data? = nil) async throws {
+        guard !books.contains(where: { $0.catalogID == book.id }) else { return }
+        guard let epubURL = book.epubURL, ["http", "https"].contains(epubURL.scheme ?? "") else { throw ReaderError.noEPUB }
         let delegate = ReaderDownloadDelegate { value in
             Task { @MainActor in progress?(value) }
         }
-        let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
+        let configuration = URLSessionConfiguration.default
+        configuration.timeoutIntervalForRequest = 30
+        configuration.timeoutIntervalForResource = 180
+        configuration.waitsForConnectivity = false
+        let session = URLSession(configuration: configuration, delegate: delegate, delegateQueue: nil)
         defer { session.finishTasksAndInvalidate() }
-        let (temporaryURL, response) = try await session.download(from: epubURL)
+        let temporaryURL: URL
+        let response: URLResponse
+        if let resumeData {
+            (temporaryURL, response) = try await session.download(resumeFrom: resumeData)
+        } else {
+            (temporaryURL, response) = try await session.download(from: epubURL)
+        }
+        try Task.checkCancellation()
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw ReaderError.invalidEPUB
         }
@@ -100,6 +112,8 @@ final class BookshelfStore: ObservableObject {
         try fileManager.copyItem(at: prepared, to: directory.appendingPathComponent(filename))
         var imported = LocalBook(title: book.title, author: book.author, filename: filename)
         imported.coverURL = book.coverURL
+        imported.catalogID = book.id
+        RecommendationProfile.record(title: book.title, author: book.author, weight: 1)
         books.insert(imported, at: 0)
         progress?(1.0)
         persist(localChange: true)
@@ -107,7 +121,7 @@ final class BookshelfStore: ObservableObject {
 
     /// Import supported books from a direct HTTPS URL, including extensionless links.
     func downloadFromURL(_ url: URL, progress: (@MainActor (Double) -> Void)? = nil) async throws {
-        guard url.scheme == "https", url.host != nil else { throw ReaderError.invalidCatalogURL }
+        guard ["http", "https"].contains(url.scheme ?? ""), url.host != nil else { throw ReaderError.invalidCatalogURL }
         let name = url.deletingPathExtension().lastPathComponent.removingPercentEncoding ?? "Книга"
         let item = CatalogBook(id: url.absoluteString, title: name.isEmpty ? "Книга" : name,
                                author: "Неизвестный автор", epubURL: url)
@@ -117,6 +131,7 @@ final class BookshelfStore: ObservableObject {
     func savePosition(bookID: UUID, locatorJSON: String?) {
         guard let i = books.firstIndex(where: { $0.id == bookID }),
               books[i].locatorJSON != locatorJSON else { return }
+        RecommendationProfile.record(title: books[i].title, author: books[i].author, weight: 3)
         books[i].locatorJSON = locatorJSON
         books[i].updatedAt = Date()
         persist(localChange: true)
@@ -125,6 +140,7 @@ final class BookshelfStore: ObservableObject {
     func toggleFavorite(_ book: LocalBook) {
         guard let i = books.firstIndex(where: { $0.id == book.id }) else { return }
         books[i].isFavorite = !(books[i].isFavorite ?? false)
+        if books[i].isFavorite == true { RecommendationProfile.record(title: book.title, author: book.author, weight: 4) }
         books[i].updatedAt = Date()
         persist(localChange: true)
     }

@@ -4,8 +4,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: 5.9
-    MARKETING_VERSION: 0.7.0
-    CURRENT_PROJECT_VERSION: 7
+    MARKETING_VERSION: 0.8.0
+    CURRENT_PROJECT_VERSION: 8
 packages:
   Readium:
     url: https://github.com/readium/swift-toolkit.git
@@ -29,10 +29,23 @@ targets:
       properties:
         CFBundleDisplayName: "Dark Reader"
         CFBundleName: "Dark Reader - Books & Audiobooks"
-        CFBundleShortVersionString: "0.7.0"
-        CFBundleVersion: "7"
+        CFBundleShortVersionString: "0.8.0"
+        CFBundleVersion: "8"
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
         LSSupportsOpeningDocumentsInPlace: true
         UIFileSharingEnabled: true
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Books and Audiobooks
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes:
+              - public.audio
+              - public.mp3
+              - public.mpeg-4-audio
+              - public.zip-archive
+              - org.idpf.epub-container
+              - public.data
         UILaunchScreen: {}
         BGTaskSchedulerPermittedIdentifiers:
           - com.ipadark.reader.sync

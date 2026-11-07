@@ -5,6 +5,9 @@ struct AudioCatalogScreen: View {
     @EnvironmentObject private var player: AudioPlayerModel
     @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
     @AppStorage("preferredAudioSource") private var source: AudioSource = .librivox
+    @AppStorage("disabledAudioSources") private var disabledSources = ""
+    @AppStorage("preferredBookLanguage") private var bookLanguage = "auto"
+    @AppStorage("appLanguage") private var language = "ru"
     @State private var query = ""
     @State private var byAuthor = false
     @State private var books: [AudioBook] = []
@@ -27,9 +30,10 @@ struct AudioCatalogScreen: View {
                         ReaderHeader(title: "Аудиокниги", trailingIcon: nil, trailingAction: nil)
                     }
                     VStack(alignment: .leading, spacing: 13) {
+                        NavigationLink("Источники аудиокниг") { AudioSourcesScreen() }
                         SectionLabel(text: "Источник")
                         Picker("Источник", selection: $source) {
-                            ForEach(AudioSource.allCases) { item in
+                            ForEach(AudioSource.online.filter { !disabledSources.components(separatedBy: ",").contains($0.rawValue) }) { item in
                                 Text(item.title).tag(item)
                             }
                         }
@@ -56,6 +60,12 @@ struct AudioCatalogScreen: View {
                             Text("По автору").tag(true)
                         }
                         .pickerStyle(.segmented)
+
+                        Picker("Язык книг", selection: $bookLanguage) {
+                            Text("Русский").tag("ru")
+                            Text("English").tag("en")
+                            Text("Все").tag("all")
+                        }.pickerStyle(.segmented)
 
                         PurpleAction(title: searching ? "Отменить поиск" : "Найти аудиокниги",
                                      icon: searching ? "xmark" : "magnifyingglass") {
@@ -161,6 +171,7 @@ struct AudioCatalogScreen: View {
                 AudioPlayerScreen()
                     .environmentObject(player)
             }
+            .onAppear { if bookLanguage == "auto" { bookLanguage = language } }
             .onChange(of: source) { _, _ in
                 cancelSearch()
                 didSearch = false
@@ -183,6 +194,10 @@ struct AudioCatalogScreen: View {
 
     private func startSearch() {
         cancelSearch()
+        guard !disabledSources.components(separatedBy: ",").contains(source.rawValue), source != .local else {
+            message = "Включите выбранный источник в настройках источников."
+            return
+        }
         didSearch = true
         books = []
         message = nil
@@ -199,7 +214,7 @@ struct AudioCatalogScreen: View {
         searchTask = Task {
             do {
                 let result = try await AudioCatalogService.search(
-                    source: chosenSource, query: term, byAuthor: authorMode
+                    source: chosenSource, query: term, byAuthor: authorMode, language: ReaderPreferences.effectiveLanguage(bookLanguage, appLanguage: language)
                 )
                 try Task.checkCancellation()
                 guard source == chosenSource && searchID == token else { return }
@@ -246,6 +261,9 @@ struct AudioBookDetailScreen: View {
                                 .foregroundStyle(Color(hex: accentHex))
                         }
                         Spacer(minLength: 0)
+                    }
+                    if book.source == .local {
+                        NavigationLink("Изменить книгу и порядок глав") { AudioEditScreen(book: book) }
                     }
                     if !book.description.isEmpty {
                         VStack(alignment: .leading, spacing: 7) {
@@ -315,6 +333,8 @@ struct AudioPlayerScreen: View {
     @EnvironmentObject private var player: AudioPlayerModel
     @Environment(\.dismiss) private var dismiss
     @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
+    @State private var scrubPosition = 0.0
+    @State private var scrubbing = false
     private var color: Color { Color(hex: accentHex) }
 
     var body: some View {
@@ -340,12 +360,21 @@ struct AudioPlayerScreen: View {
                     }
                     Slider(
                         value: Binding(
-                            get: { max(0, min(player.position, max(player.duration, 1))) },
-                            set: { player.seek(to: $0) }
+                            get: { scrubbing ? scrubPosition : max(player.seekLowerBound, min(player.position, max(player.seekUpperBound, player.seekLowerBound + 1))) },
+                            set: { scrubPosition = $0 }
                         ),
-                        in: 0...max(player.duration, 1)
+                        in: player.seekLowerBound...max(player.seekUpperBound, player.seekLowerBound + 1),
+                        onEditingChanged: { editing in
+                            scrubbing = editing
+                            if !editing { player.seek(to: scrubPosition) }
+                        }
                     )
+                    .disabled(!player.canSeek)
                     .tint(color)
+                    if !player.canSeek {
+                        Text("Перемотка станет доступна, когда источник предоставит диапазон аудио.")
+                            .font(.caption).foregroundStyle(ReaderStyle.secondary)
+                    }
                     HStack {
                         Text(timeText(player.position))
                         Spacer()
@@ -369,7 +398,7 @@ struct AudioPlayerScreen: View {
                     .buttonStyle(.plain)
                     HStack(spacing: 14) {
                         Menu {
-                            ForEach([0.75, 1.0, 1.25, 1.5, 2.0], id: \.self) { value in
+                            ForEach([0.75, 1.0, 1.25, 1.5, 1.75, 2.0], id: \.self) { value in
                                 Button("\(value.formatted())×") { player.setRate(Float(value)) }
                             }
                         } label: {

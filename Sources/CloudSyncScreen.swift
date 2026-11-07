@@ -11,7 +11,7 @@ struct CloudSyncScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 7) {
-                    Text("Синхронизация")
+                    Text("Резервное копирование")
                         .font(.system(size: 28, weight: .bold, design: .rounded))
                     Text("Сохраните библиотеку в iCloud Drive и восстановите её после переустановки.")
                         .font(.subheadline)
@@ -47,6 +47,12 @@ struct CloudSyncScreen: View {
                     Text("Книги и прогресс будут сохраняться в выбранном хранилище.")
                         .font(.footnote)
                         .foregroundStyle(ReaderStyle.secondary)
+                }
+
+                ReaderCard {
+                    Label("Google Drive", systemImage: "externaldrive.badge.icloud").font(.headline)
+                    Text("Подключение пока недоступно: для этого приложения ещё не настроен вход Google. Копии в Google Drive не создаются.")
+                        .font(.footnote).foregroundStyle(ReaderStyle.secondary).padding(.top, 8)
                 }
 
                 VStack(alignment: .leading, spacing: 10) {

@@ -12,6 +12,7 @@ struct LocalBook: Identifiable, Codable, Hashable, Sendable {
     var isFavorite: Bool?
     var bookmarks: [String]?
     var coverURL: URL?
+    var catalogID: String?
 
     var changeDate: Date { updatedAt ?? addedAt }
 
@@ -29,7 +30,7 @@ struct LocalBook: Identifiable, Codable, Hashable, Sendable {
     }
 }
 
-struct CatalogBook: Identifiable, Hashable, Sendable {
+struct CatalogBook: Identifiable, Hashable, Sendable, Codable {
     var id: String
     var title: String
     var author: String

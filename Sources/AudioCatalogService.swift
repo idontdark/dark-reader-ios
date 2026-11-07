@@ -1,9 +1,10 @@
 import Foundation
 
 enum AudioSource: String, CaseIterable, Identifiable, Codable {
-    case librivox, archive
+    case librivox, archive, local
     var id: String { rawValue }
-    var title: String { self == .librivox ? "LibriVox" : "Internet Archive" }
+    var title: String { switch self { case .librivox: "LibriVox"; case .archive: "Internet Archive"; case .local: "Импортированные" } }
+    static var online: [AudioSource] { [.librivox, .archive] }
 }
 
 struct AudioBook: Identifiable, Hashable, Sendable, Codable {
@@ -17,11 +18,12 @@ struct AudioBook: Identifiable, Hashable, Sendable, Codable {
     let language: String?
 }
 
-struct AudioChapter: Identifiable, Hashable, Sendable {
+struct AudioChapter: Identifiable, Hashable, Sendable, Codable {
     let id: String
     let title: String
     let url: URL
     let durationSeconds: Double?
+    var startSeconds: Double? = nil
 }
 
 enum AudioCatalogError: LocalizedError {
@@ -42,46 +44,64 @@ enum AudioCatalogError: LocalizedError {
 
 /// Two independent public catalog APIs. Results are never synthesized.
 enum AudioCatalogService {
-    static func search(source: AudioSource, query: String, byAuthor: Bool = false) async throws -> [AudioBook] {
+    static func search(source: AudioSource, query: String, byAuthor: Bool = false, language: String? = nil) async throws -> [AudioBook] {
         let term = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !term.isEmpty else { throw AudioCatalogError.invalidSearch }
-        switch source {
-        case .librivox:
-            do {
-                let found = try await searchLibriVox(term, byAuthor: byAuthor)
-                if !found.isEmpty { return found }
-            } catch is CancellationError {
-                throw CancellationError()
-            } catch {
-                // LibriVox currently returns HTTP 404 for many ordinary title
-                // substrings. Its author lookup remains functional.
-                if byAuthor { throw error }
+        let variants = searchVariants(term)
+        for variant in variants {
+            let found: [AudioBook]
+            switch source {
+            case .librivox: found = try await searchLibriVox(variant, byAuthor: byAuthor)
+            case .archive: found = try await searchArchive(variant, byAuthor: byAuthor, language: language)
+            case .local: return []
             }
-            // Internet Archive also hosts LibriVox recordings and searches
-            // words in title/subject more reliably. Keep its source label.
-            return try await searchArchive(term, byAuthor: byAuthor)
-        case .archive:
-            return try await searchArchive(term, byAuthor: byAuthor)
+            let filtered = found.filter { matchesLanguage($0.language, choice: language) }
+            if !filtered.isEmpty { return filtered }
         }
+        return []
     }
 
-    static func featured(source: AudioSource) async throws -> [AudioBook] {
+    static func matchesLanguage(_ value: String?, choice: String?) -> Bool {
+        guard let choice, choice != "all" else { return true }
+        let tokens = (value ?? "").lowercased().components(separatedBy: CharacterSet.letters.inverted)
+        return choice == "ru" ? tokens.contains(where: { ["ru", "rus", "russian", "русский"].contains($0) })
+            : tokens.contains(where: { ["en", "eng", "english"].contains($0) })
+    }
+
+    static func searchVariants(_ term: String) -> [String] {
+        let aliases = [
+            "богатый папа": "Rich Dad Poor Dad",
+            "богатый папа бедный папа": "Rich Dad Poor Dad",
+            "мастер и маргарита": "Master and Margarita",
+            "преступление и наказание": "Crime and Punishment",
+            "война и мир": "War and Peace",
+            "анна каренина": "Anna Karenina",
+            "достоевский": "Dostoyevsky", "толстой": "Tolstoy",
+            "булгаков": "Bulgakov", "кийосаки": "Kiyosaki"
+        ]
+        let normalized = RecommendationProfile.normalized(term)
+        if let alias = aliases[normalized] { return [term, alias] }
+        return [term]
+    }
+
+    static func featured(source: AudioSource, language: String? = nil) async throws -> [AudioBook] {
         switch source {
         case .librivox:
             var components = URLComponents(string: "https://librivox.org/api/feed/audiobooks/")!
             components.queryItems = [
                 .init(name: "format", value: "json"),
-                .init(name: "limit", value: "15"),
+                .init(name: "limit", value: "50"),
                 .init(name: "sort_order", value: "desc"),
                 .init(name: "coverart", value: "1")
             ]
             guard let url = components.url else { throw AudioCatalogError.invalidReply }
             let object = try await requestObject(url)
-            return parseLibriVox(object)
+            return parseLibriVox(object).filter { matchesLanguage($0.language, choice: language) }
         case .archive:
             var components = URLComponents(string: "https://archive.org/advancedsearch.php")!
             components.queryItems = [
-                .init(name: "q", value: "mediatype:audio AND collection:librivoxaudio"),
+                .init(name: "q", value: "mediatype:audio AND collection:librivoxaudio" + languageQuery(language)),
+                .init(name: "fl[]", value: "language"),
                 .init(name: "fl[]", value: "identifier"),
                 .init(name: "fl[]", value: "title"),
                 .init(name: "fl[]", value: "creator"),
@@ -92,12 +112,14 @@ enum AudioCatalogService {
             guard let url = components.url else { throw AudioCatalogError.invalidReply }
             let object = try await requestObject(url)
             return parseArchive(object)
+        case .local: return []
         }
     }
 
     static func chapters(for book: AudioBook) async throws -> [AudioChapter] {
         let found: [AudioChapter]
         switch book.source {
+        case .local: return try AudioImportStore.chapters(for: book)
         case .librivox:
             let url = URL(string: "https://librivox.org/api/feed/audiotracks/?project_id=\(book.sourceID)&format=json")!
             let object = try await requestObject(url)
@@ -173,12 +195,12 @@ enum AudioCatalogService {
         }
     }
 
-    private static func searchArchive(_ term: String, byAuthor: Bool) async throws -> [AudioBook] {
+    private static func searchArchive(_ term: String, byAuthor: Bool, language: String?) async throws -> [AudioBook] {
         // Filter out the LibriVox collection so the second source provides separate recordings.
-        let safeTerm = term.replacingOccurrences(of: "\"", with: " ")
-            .replacingOccurrences(of: ":", with: " ")
+        let safeTerm = RecommendationProfile.normalized(term)
         let field = byAuthor ? "creator" : "title"
-        let query = "mediatype:audio AND (subject:audiobooks OR subject:\"audio books\" OR collection:librivoxaudio OR collection:audio_bookspoetry) AND (\(field):\"\(safeTerm)\" OR subject:\"\(safeTerm)\") "
+        let words = safeTerm.split(separator: " ").map { "\(field):\($0)*" }.joined(separator: " AND ")
+        let query = "mediatype:audio AND (subject:audiobooks OR subject:\"audio books\" OR collection:librivoxaudio OR collection:audio_bookspoetry) AND (\(words))" + languageQuery(language)
         var components = URLComponents(string: "https://archive.org/advancedsearch.php")!
         components.queryItems = [
             .init(name: "q", value: query),
@@ -186,6 +208,7 @@ enum AudioCatalogService {
             .init(name: "fl[]", value: "title"),
             .init(name: "fl[]", value: "creator"),
             .init(name: "fl[]", value: "description"),
+            .init(name: "fl[]", value: "language"),
             .init(name: "rows", value: "20"),
             .init(name: "page", value: "1"),
             .init(name: "output", value: "json")
@@ -207,8 +230,16 @@ enum AudioCatalogService {
                 id: "archive:\(id)", source: .archive, sourceID: id,
                 title: title, author: author, description: string(item["description"]) ?? "",
                 coverURL: URL(string: "https://archive.org/services/img/\(id)"),
-                language: nil
+                language: string(item["language"])
             )
+        }
+    }
+
+    private static func languageQuery(_ language: String?) -> String {
+        switch language {
+        case "ru": return " AND language:(rus OR ru OR Russian)"
+        case "en": return " AND language:(eng OR en OR English)"
+        default: return ""
         }
     }
 

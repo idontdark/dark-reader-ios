@@ -20,6 +20,7 @@ struct CatalogScreen: View {
     @State private var heading = "Результаты"
     @State private var hasSearched = false
     @State private var searching = false
+    @ObservedObject private var downloads = DownloadQueue.shared
     @State private var downloadingID: String?
     @State private var downloadProgress = 0.0
     @State private var completedTitle: String?
@@ -119,7 +120,6 @@ struct CatalogScreen: View {
                             Text("Язык книг")
                             Spacer()
                             Menu {
-                                Button("Автоматически") { bookLanguage = "auto" }
                                 Button("Русский") { bookLanguage = "ru" }
                                 Button("English") { bookLanguage = "en" }
                                 Button("Все языки") { bookLanguage = "all" }
@@ -192,6 +192,7 @@ struct CatalogScreen: View {
                         }
                     }
 
+                    NavigationLink("Загрузки") { DownloadsScreen() }
                     VStack(alignment: .leading, spacing: 13) {
                         HStack {
                             SectionLabel(text: heading)
@@ -255,6 +256,7 @@ struct CatalogScreen: View {
             .readerCanvas()
             .toolbar(.hidden, for: .navigationBar)
             .onAppear {
+                if bookLanguage == "auto" { bookLanguage = language }
                 handlePendingAuthor()
                 handlePendingBook()
                 if !hintCatalogShown {
@@ -317,12 +319,10 @@ struct CatalogScreen: View {
                         .font(.footnote)
                         .foregroundStyle(ReaderStyle.secondary)
                         .lineLimit(1)
-                    if downloadingID == book.id {
-                        ProgressView(value: downloadProgress)
+                    if let task = downloads.items.first(where: { $0.id == book.id }) {
+                        ProgressView(value: task.progress)
                             .tint(Color(hex: accentHex))
-                        Text(downloadProgress > 0
-                             ? "Скачивание \(Int(downloadProgress * 100))%"
-                             : "Подключаемся…")
+                        Text(task.state.title)
                             .font(.caption2)
                             .foregroundStyle(ReaderStyle.secondary)
                     } else {
@@ -332,8 +332,8 @@ struct CatalogScreen: View {
                     }
                 }
                 Spacer(minLength: 1)
-                if let epubURL = book.epubURL, epubURL.scheme == "https" {
-                    Button { Task { await download(book) } } label: {
+                if let epubURL = book.epubURL, ["http", "https"].contains(epubURL.scheme ?? "") {
+                    Button { downloads.enqueue(book) } label: {
                         if downloadingID == book.id {
                             ProgressView().tint(Color(hex: accentHex))
                         } else {
@@ -342,7 +342,7 @@ struct CatalogScreen: View {
                                 .foregroundStyle(Color(hex: accentHex))
                         }
                     }
-                    .disabled(downloadingID != nil)
+                    .disabled(downloads.items.contains { $0.id == book.id && $0.state != .failed })
                     .accessibilityLabel("Скачать \(book.title)")
                 } else if book.navigationURL != nil {
                     Button { Task { await browse(book) } } label: {
@@ -360,7 +360,7 @@ struct CatalogScreen: View {
         switch bookLanguage {
         case "en": return "English"
         case "ru": return "Русский"
-        case "all": return "Все языки"
+        case "all": return "Все"
         default: return language == "en" ? "English" : "Русский"
         }
     }

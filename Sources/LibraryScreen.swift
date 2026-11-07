@@ -10,6 +10,8 @@ struct LibraryScreen: View {
     @State private var selectedDiscovery: DiscoveryBook?
     @State private var showPlayer = false
     @State private var showingImport = false
+    @State private var showingAudioImport = false
+    @State private var audioFilter = "all"
     @State private var libraryKind = "books"
     @State private var query = ""
     @State private var filter = 0
@@ -43,7 +45,7 @@ struct LibraryScreen: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 25) {
                     ReaderHeader(title: "Моя библиотека", trailingIcon: "plus") {
-                        showingImport = true
+                        if libraryKind == "audio" { showingAudioImport = true } else { showingImport = true }
                     }
                     Picker("Моя библиотека", selection: $libraryKind) {
                         Text("Книги").tag("books")
@@ -208,6 +210,7 @@ struct LibraryScreen: View {
                 AudioBookDetailScreen(book: book) { showPlayer = true }
                     .environmentObject(audioPlayer)
             }
+            .sheet(isPresented: $showingAudioImport) { AudioImportScreen() }
             .sheet(isPresented: $showPlayer) {
                 AudioPlayerScreen().environmentObject(audioPlayer)
             }
@@ -219,8 +222,32 @@ struct LibraryScreen: View {
         return (try? JSONDecoder().decode([AudioBook].self, from: data)) ?? []
     }
 
+    private var filteredAudioBooks: [AudioBook] {
+        savedAudioBooks.filter {
+            switch audioFilter {
+            case "finished": return UserDefaults.standard.bool(forKey: "audio.finished.\($0.id)")
+            case "offline":
+                let book = $0
+                return book.source == .local || audioPlayer.downloaded.contains(where: { $0.hasPrefix(book.id + ":") })
+            default: return true
+            }
+        }
+    }
     private var audioHistorySection: some View {
         VStack(alignment: .leading, spacing: 14) {
+            ReaderCard {
+                HStack(alignment: .top, spacing: 14) {
+                    Image(systemName: "headphones").font(.system(size: 30))
+                        .frame(width: 60, height: 70).foregroundStyle(Color(hex: accentHex))
+                        .background(Color(hex: accentHex).opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("Время слушать").font(.headline)
+                        Text("Продолжите любимую историю или добавьте новую аудиокнигу.")
+                            .font(.subheadline).foregroundStyle(ReaderStyle.secondary)
+                    }
+                }
+            }
+            NavigationLink("Загрузки") { DownloadsScreen() }
             if let currentlyPlaying = audioPlayer.book {
                 ReaderCard {
                     Label("Продолжить прослушивание", systemImage: "headphones")
@@ -236,6 +263,11 @@ struct LibraryScreen: View {
                     .padding(.top, 12)
                 }
             }
+            Picker("Аудиобиблиотека", selection: $audioFilter) {
+                Text("Добавленные").tag("all")
+                Text("Загруженные").tag("offline")
+                Text("Прослушанные").tag("finished")
+            }.pickerStyle(.segmented)
             SectionLabel(text: "Мои аудиокниги")
             if savedAudioBooks.isEmpty {
                 ReaderCard {
@@ -243,6 +275,8 @@ struct LibraryScreen: View {
                         Text("Здесь появятся книги, которые вы слушали.")
                             .font(.subheadline)
                             .foregroundStyle(ReaderStyle.secondary)
+                        Button("Импортировать аудиокнигу") { showingAudioImport = true }
+                            .foregroundStyle(Color(hex: accentHex))
                         Button("Найти аудиокнигу") {
                             navigation.searchScope = "audio"
                             navigation.tab = .search
@@ -252,7 +286,7 @@ struct LibraryScreen: View {
                     }
                 }
             } else {
-                ForEach(savedAudioBooks) { book in
+                ForEach(filteredAudioBooks) { book in
                     Button { selectedAudio = book } label: {
                         ReaderCard {
                             HStack(spacing: 12) {

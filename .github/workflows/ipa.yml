@@ -8,6 +8,7 @@ concurrency:
   cancel-in-progress: true
 permissions:
   contents: write
+  actions: write
 jobs:
   build:
     runs-on: macos-15
@@ -23,6 +24,27 @@ jobs:
         run: swift scripts/generate_icon.swift
       - name: Generate Xcode project
         run: xcodegen generate --spec project.yml
+      - name: Run simulator regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          UDID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for group in d["devices"].values() for x in group if x["name"].startswith("iPhone") and x.get("isAvailable", True)))')
+          xcodebuild test -project DarkReader.xcodeproj -scheme DarkReader -destination "platform=iOS Simulator,id=$UDID" -derivedDataPath "$PWD/test-build" -resultBundlePath "$PWD/RegressionResults.xcresult" -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO > simulator-tests.log 2>&1 || { tail -180 simulator-tests.log; exit 1; }
+      - name: Probe live sources and real EPUB downloads
+        continue-on-error: true
+        run: python3 scripts/qa_080.py > live-probes.log 2>&1
+      - name: Upload QA evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DarkReader-0.8.0-QA
+          path: |
+            RegressionResults.xcresult
+            simulator-tests.log
+            live-probes.log
+            qa-results/live-probes.json
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Build application
         shell: bash
         run: |
@@ -38,29 +60,45 @@ jobs:
           test -f "$APP/DarkReader"
           test -f "$APP/Assets.car"
           VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Info.plist")
-          test "$VERSION" = "0.7.0"
+          test "$VERSION" = "0.8.0"
           mkdir -p dist/Payload
           ditto "$APP" "dist/Payload/DarkReader.app"
-          (cd dist && zip -qry ../DarkReader-0.7.0-unsigned.ipa Payload)
-          unzip -tq DarkReader-0.7.0-unsigned.ipa
-          unzip -Z1 DarkReader-0.7.0-unsigned.ipa | grep -qx 'Payload/DarkReader.app/Info.plist'
-          unzip -Z1 DarkReader-0.7.0-unsigned.ipa | grep -qx 'Payload/DarkReader.app/DarkReader'
+          (cd dist && zip -qry ../DarkReader-0.8.0-unsigned.ipa Payload)
+          unzip -tq DarkReader-0.8.0-unsigned.ipa
+          unzip -Z1 DarkReader-0.8.0-unsigned.ipa | grep -qx 'Payload/DarkReader.app/Info.plist'
+          unzip -Z1 DarkReader-0.8.0-unsigned.ipa | grep -qx 'Payload/DarkReader.app/DarkReader'
           echo "Verified Payload/DarkReader.app"
       - name: Upload Actions artifact (ZIP containing IPA)
         uses: actions/upload-artifact@v4
         with:
-          name: DarkReader-0.7.0-IPA
-          path: DarkReader-0.7.0-unsigned.ipa
+          name: DarkReader-0.8.0-IPA
+          path: DarkReader-0.8.0-unsigned.ipa
           if-no-files-found: error
           retention-days: 30
       - name: Publish direct IPA to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: build-${{ github.run_number }}
-          name: Dark Reader 0.7.0 build ${{ github.run_number }}
+          tag_name: v0.8.0-build-${{ github.run_number }}
+          name: Dark Reader 0.8.0 — Новая глава (build ${{ github.run_number }})
           prerelease: true
           generate_release_notes: false
-          body: |
-            Download the actual DarkReader-0.7.0-unsigned.ipa in the Assets section.
-            Do not rename the Actions artifact ZIP to IPA. Unsigned IPA requires signing before installation.
-          files: DarkReader-0.7.0-unsigned.ipa
+          body_path: docs/RELEASE_0.8.0.md
+          files: DarkReader-0.8.0-unsigned.ipa
+
+      - name: Remove superseded installation files
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const current = 'v0.8.0-build-' + context.runNumber;
+            const releases = await github.paginate(github.rest.repos.listReleases, {...context.repo, per_page: 100});
+            const published = releases.find(r => r.tag_name === current && !r.draft && r.assets.some(a => a.name === 'DarkReader-0.8.0-unsigned.ipa' && a.state === 'uploaded' && a.size > 0));
+            if (!published) throw new Error('New IPA not confirmed; keep old files');
+            for (const release of releases.filter(r => r.id !== published.id)) {
+              for (const asset of release.assets.filter(a => /^DarkReader.*\.(ipa|zip)$/i.test(a.name))) {
+                await github.rest.repos.deleteReleaseAsset({...context.repo, asset_id: asset.id});
+              }
+            }
+            const artifacts = await github.paginate(github.rest.actions.listArtifactsForRepo, {...context.repo, per_page: 100});
+            for (const artifact of artifacts.filter(a => /^DarkReader.*IPA$/i.test(a.name) && a.workflow_run?.id !== context.runId)) {
+              await github.rest.actions.deleteArtifact({...context.repo, artifact_id: artifact.id});
+            }

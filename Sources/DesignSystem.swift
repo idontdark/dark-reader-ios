@@ -112,7 +112,7 @@ struct BookArtwork: View {
     var body: some View {
         Group {
             if let coverURL {
-                AsyncImage(url: coverURL) { image in
+                CachedCover(url: CoverSize.url(coverURL, detailed: width > 115)) { image in
                     image.resizable().scaledToFill()
                 } placeholder: {
                     fallback

@@ -1,16 +1,6 @@
 name: Test cloud library
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - 'Tests/**'
-      - 'Sources/**'
-      - 'Sources/CloudFolderWorker.swift'
-      - 'Sources/BookshelfStore.swift'
-      - 'Sources/Book.swift'
-      - 'project.yml'
-      - '.github/workflows/cloud-tests.yml'
 permissions:
   contents: read
 jobs:

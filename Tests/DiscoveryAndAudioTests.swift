@@ -29,6 +29,6 @@ final class DiscoveryAndAudioTests: XCTestCase {
     }
 
     func testExactlyTwoBuiltInAudioSources() {
-        XCTAssertEqual(Set(AudioSource.allCases.map(\.rawValue)), Set(["librivox","archive"]))
+        XCTAssertEqual(Set(AudioSource.online.map(\.rawValue)), Set(["librivox","archive"]))
     }
 }

@@ -131,6 +131,7 @@ private struct RootReaderView: View {
     var body: some View {
         additionalObservers
             .task {
+                DownloadQueue.shared.attach(library)
                 if sync.automatic { _ = await sync.syncNow() }
             }
             .onOpenURL(perform: handleIncomingURL)
@@ -157,6 +158,15 @@ private struct RootReaderView: View {
         guard url.isFileURL else { return }
         Task { @MainActor in
             do {
+                if AudioImportStore.extensions.contains(url.pathExtension.lowercased()) {
+                    do {
+                        _ = try await AudioImportStore.importFiles([url])
+                        navigation.tab = .library
+                        return
+                    } catch {
+                        if url.pathExtension.lowercased() != "zip" { throw error }
+                    }
+                }
                 try await library.addImportedFile(
                     from: url, title: url.deletingPathExtension().lastPathComponent
                 )

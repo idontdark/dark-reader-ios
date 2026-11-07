@@ -26,66 +26,60 @@ enum DiscoveryService {
         "thriller": "thrillers"
     ]
 
-    private struct SubjectFeed: Decodable {
-        let works: [Work]
-    }
-
-    private struct Work: Decodable {
+    private struct SearchFeed: Decodable { let docs: [Work] }
+    private struct Editions: Decodable { let docs: [Edition] }
+    private struct Edition: Decodable {
         let key: String
         let title: String
-        let cover_id: Int?
-        let authors: [Person]?
+        let language: [String]?
+        let cover_i: Int?
+    }
+    private struct Work: Decodable {
+        let key: String
+        let author_name: [String]?
+        let cover_i: Int?
+        let editions: Editions?
     }
 
-    private struct Person: Decodable {
-        let name: String?
-    }
-
-    /// Fetches books by *actual* genre classification with cover ids and author metadata.
-    /// Requests are bounded to at most 3 genres and 16 works each to be respectful of the public API.
+    /// Require a matching edition. A work's default title can be in another language.
     static func books(genres: [String], language: String, limit: Int = 24) async throws -> [DiscoveryBook] {
-        let selected = Array((genres.isEmpty ? ["fantasy", "detective"] : genres).prefix(3))
+        let code = language == "en" ? "eng" : "rus"
+        let selected = Array((genres.isEmpty ? ["classics", "adventure"] : genres).prefix(3))
         var result: [DiscoveryBook] = []
         var lastError: Error?
         for genre in selected {
             try Task.checkCancellation()
             guard let slug = genreSlugs[genre] else { continue }
-            var components = URLComponents(string: "https://openlibrary.org/subjects/\(slug).json")!
-            components.queryItems = [.init(name: "limit", value: "16")]
-            guard let url = components.url else { continue }
-            var request = URLRequest(url: url)
-            request.timeoutInterval = 14
-            request.setValue("DarkReader/0.7 (iOS; genre discovery)", forHTTPHeaderField: "User-Agent")
-            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            var components = URLComponents(string: "https://openlibrary.org/search.json")!
+            components.queryItems = [
+                .init(name: "q", value: "language:\(code) subject:\(slug)"),
+                .init(name: "lang", value: language),
+                .init(name: "fields", value: "key,author_name,cover_i,editions,editions.key,editions.title,editions.language,editions.cover_i"),
+                .init(name: "limit", value: "24")
+            ]
+            var request = URLRequest(url: components.url!)
+            request.timeoutInterval = 18
             do {
                 let (data, response) = try await URLSession.shared.data(for: request)
                 try Task.checkCancellation()
-                guard let http = response as? HTTPURLResponse,
-                      (200..<300).contains(http.statusCode),
-                      data.count < 3_000_000 else { continue }
-                let feed = try JSONDecoder().decode(SubjectFeed.self, from: data)
-                for item in feed.works {
-                    guard let cover = item.cover_id, cover > 0, item.key.hasPrefix("/works/"),
-                          let coverURL = URL(string: "https://covers.openlibrary.org/b/id/\(cover)-M.jpg"),
-                          let detailURL = URL(string: "https://openlibrary.org\(item.key)") else { continue }
-                    let authors = (item.authors ?? []).compactMap(\.name)
+                guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
+                      data.count < 3_000_000 else { throw ReaderError.noResults }
+                let feed = try JSONDecoder().decode(SearchFeed.self, from: data)
+                for item in feed.docs {
+                    guard let edition = item.editions?.docs.first(where: { $0.language?.contains(code) == true }),
+                          let cover = edition.cover_i ?? item.cover_i, cover > 0 else { continue }
                     result.append(DiscoveryBook(
-                        id: "openlibrary:\(item.key)",
-                        title: item.title,
-                        author: authors.isEmpty ? (language == "en" ? "Author not listed" : "Автор не указан") : authors.joined(separator: ", "),
-                        coverURL: coverURL,
-                        detailURL: detailURL,
-                        genre: genre
+                        id: "openlibrary:\(item.key)", title: edition.title,
+                        author: (item.author_name ?? []).joined(separator: ", "),
+                        coverURL: URL(string: "https://covers.openlibrary.org/b/id/\(cover)-M.jpg")!,
+                        detailURL: URL(string: "https://openlibrary.org\(edition.key)")!, genre: genre
                     ))
                 }
-            } catch is CancellationError {
-                throw CancellationError()
-            } catch {
-                lastError = error
-            }
+            } catch is CancellationError { throw CancellationError() }
+            catch { lastError = error }
         }
-        let unique = Array(Dictionary(grouping: result, by: \.id).values.compactMap(\.first))
-            .sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+        var seen = Set<String>()
+        let unique = result.filter { seen.insert($0.id).inserted }
         if unique.isEmpty, let lastError { throw lastError }
         return Array(unique.prefix(limit))
     }
@@ -107,7 +101,7 @@ struct DiscoveryArtwork: View {
     var height: CGFloat = 148
 
     var body: some View {
-        AsyncImage(url: book.coverURL) { image in
+        CachedCover(url: CoverSize.url(book.coverURL, detailed: width > 115)) { image in
             image.resizable().scaledToFill()
         } placeholder: {
             ZStack {

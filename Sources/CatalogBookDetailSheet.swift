@@ -5,6 +5,7 @@ struct CatalogBookDetailSheet: View {
     let onClose: () -> Void
     @EnvironmentObject private var library: BookshelfStore
     @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
+    @ObservedObject private var downloads = DownloadQueue.shared
     @State private var downloading = false
     @State private var fraction = 0.0
     @State private var downloaded = false
@@ -58,7 +59,8 @@ struct CatalogBookDetailSheet: View {
                     } else if book.epubURL != nil {
                         PurpleAction(title: downloading ? "Загружаем…" : "Скачать книгу",
                                      icon: "arrow.down.to.line") {
-                            Task { await download() }
+                            downloads.enqueue(book)
+                            onClose()
                         }
                         .disabled(downloading)
                     } else {

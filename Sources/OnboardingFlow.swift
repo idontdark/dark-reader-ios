@@ -133,6 +133,7 @@ struct OnboardingFlow: View {
     private func languageRow(_ key: String, _ emoji: String, _ name: String) -> some View {
         Button {
             language = key
+            bookLanguage = key
             // Automatically suggest English or Russian for public-domain catalogs,
             // while keeping catalog language separately adjustable in Settings.
             if catalogProvider == "flibusta" || catalogProvider == "gutendex" {
@@ -377,11 +378,6 @@ struct OnboardingFlow: View {
                         withAnimation(.easeInOut(duration: 0.18)) { step += 1 }
                     }
                 }
-            }
-            if step == 0 {
-                Text(english ? "Language can be changed in Settings." : "Язык можно изменить в настройках.")
-                    .font(.caption)
-                    .foregroundStyle(ReaderStyle.secondary)
             }
         }
         .padding(.vertical, 15)

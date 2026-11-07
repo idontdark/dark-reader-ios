@@ -30,7 +30,7 @@ enum OPDSSources {
 
     static func isValid(_ source: NamedOPDSCatalog) -> Bool {
         guard let url = URLComponents(string: source.url),
-              url.scheme?.lowercased() == "https",
+              ["http", "https"].contains(url.scheme?.lowercased() ?? ""),
               url.host != nil, !source.name.trimmingCharacters(in: .whitespaces).isEmpty else {
             return false
         }
@@ -55,7 +55,7 @@ struct CustomOPDSCatalogsScreen: View {
                 VStack(alignment: .leading, spacing: 7) {
                     Text("OPDS-каталоги")
                         .font(.system(size: 29, weight: .bold, design: .rounded))
-                    Text("Добавьте название и HTTPS-ссылку. Можно подключить несколько каталогов.")
+                    Text("Добавьте название и ссылку HTTP или HTTPS. Можно подключить несколько каталогов.")
                         .font(.subheadline)
                         .foregroundStyle(ReaderStyle.secondary)
                 }
@@ -107,11 +107,6 @@ struct CustomOPDSCatalogsScreen: View {
                         .keyboardType(.URL)
                         .autocorrectionDisabled()
                         .padding(.vertical, 13)
-                    ReaderDivider()
-                    TextField("Параметр поиска (searchTerm)", text: $parameter)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .padding(.vertical, 13)
                 }
                 if let error {
                     Text(error)
@@ -128,7 +123,7 @@ struct CustomOPDSCatalogsScreen: View {
                     }
                     .font(.subheadline)
                 }
-                Text("Если книги не находятся, проверьте адрес OPDS и параметр поиска.")
+                Text("Если книги не находятся, проверьте адрес OPDS-каталога.")
                     .font(.footnote)
                     .foregroundStyle(ReaderStyle.secondary)
             }
@@ -148,7 +143,7 @@ struct CustomOPDSCatalogsScreen: View {
                 ? "searchTerm" : parameter.trimmingCharacters(in: .whitespacesAndNewlines)
         )
         guard OPDSSources.isValid(item) else {
-            error = "Укажите название и HTTPS-ссылку на каталог."
+            error = "Укажите название и ссылку HTTP или HTTPS на каталог."
             return
         }
         var list = saved

@@ -11,8 +11,8 @@ final class ImportAndSourceTests: XCTestCase {
         let restored = OPDSSources.decode(OPDSSources.encode(entries))
         XCTAssertEqual(restored, entries)
         XCTAssertTrue(restored.allSatisfy(OPDSSources.isValid))
-        XCTAssertFalse(OPDSSources.isValid(NamedOPDSCatalog(
-            name: "Небезопасный каталог", url: "http://example.org/opds"
+        XCTAssertTrue(OPDSSources.isValid(NamedOPDSCatalog(
+            name: "HTTP каталог", url: "http://example.org/opds"
         )))
     }
 
@@ -48,7 +48,7 @@ final class ImportAndSourceTests: XCTestCase {
     }
 
     func testBothAudioSourcesConfigured() {
-        XCTAssertEqual(Set(AudioSource.allCases.map(\.rawValue)),
+        XCTAssertEqual(Set(AudioSource.online.map(\.rawValue)),
                        Set(["librivox", "archive"]))
     }
 }

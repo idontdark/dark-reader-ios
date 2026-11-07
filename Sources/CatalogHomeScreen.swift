@@ -5,6 +5,7 @@ import SwiftUI
 struct CatalogHomeScreen: View {
     @EnvironmentObject private var navigation: ReaderNavigation
     @EnvironmentObject private var player: AudioPlayerModel
+    @EnvironmentObject private var library: BookshelfStore
 
     @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
     @AppStorage("preferredGenresJSON") private var genresJSON = "[]"
@@ -44,9 +45,9 @@ struct CatalogHomeScreen: View {
             }
             .readerCanvas()
             .toolbar(.hidden, for: .navigationBar)
-            .task(id: genresJSON + language) { await loadRecommendations() }
-            .task(id: selection) {
-                if selection == "audio" && audioBooks.isEmpty { await loadFeaturedAudio() }
+            .task(id: genresJSON + language + favoritesJSON + String(library.books.count)) { await loadRecommendations() }
+            .task(id: selection + language) {
+                if selection == "audio" { await loadFeaturedAudio() }
             }
             .sheet(item: $selectedBook) { item in
                 DiscoveryBookDetail(book: item).environmentObject(navigation)
@@ -141,7 +142,8 @@ struct CatalogHomeScreen: View {
                 audioSourceButton(.librivox)
                 audioSourceButton(.archive)
             }
-            SectionLabel(text: "Бесплатные аудиокниги")
+            NavigationLink("Источники аудиокниг") { AudioSourcesScreen() }
+            SectionLabel(text: "Для вас")
             if loadingAudio && audioBooks.isEmpty {
                 ProgressView("Загружаем аудиокниги…").tint(Color(hex: accentHex))
                     .padding(.vertical, 12)
@@ -300,9 +302,9 @@ struct CatalogHomeScreen: View {
         defer { loadingBooks = false }
         do {
             let found = try await DiscoveryService.books(
-                genres: ReaderPreferences.array(genresJSON), language: language
+                genres: RecommendationProfile.genres(ReaderPreferences.array(genresJSON)), language: language
             )
-            recommendations = found
+            recommendations = RecommendationProfile.rank(found, excluding: library.books.map(\.title))
             notice = nil
         } catch is CancellationError {
             return
@@ -315,7 +317,16 @@ struct CatalogHomeScreen: View {
         loadingAudio = true
         defer { loadingAudio = false }
         do {
-            audioBooks = try await AudioCatalogService.featured(source: .librivox)
+            let disabled = UserDefaults.standard.string(forKey: "disabledAudioSources") ?? ""
+            let source = AudioSource(rawValue: UserDefaults.standard.string(forKey: "preferredAudioSource") ?? "") ?? .archive
+            guard source != .local, !disabled.components(separatedBy: ",").contains(source.rawValue) else {
+                audioBooks = []
+                notice = "Включите источник аудиокниг."
+                return
+            }
+            let found = try await AudioCatalogService.featured(source: source, language: language)
+            let heard = Set(RecommendationProfile.signals().map { RecommendationProfile.normalized($0.title) })
+            audioBooks = found.filter { !heard.contains(RecommendationProfile.normalized($0.title)) }
             notice = nil
         } catch {
             notice = "Каталог аудиокниг не ответил. Попробуйте позднее или включите VPN."

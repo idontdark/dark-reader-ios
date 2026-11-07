@@ -11,6 +11,9 @@ final class AudioPlayerModel: ObservableObject {
     @Published private(set) var isPlaying = false
     @Published private(set) var position: Double = 0
     @Published private(set) var duration: Double = 0
+    @Published private(set) var canSeek = false
+    @Published private(set) var seekLowerBound: Double = 0
+    @Published private(set) var seekUpperBound: Double = 0
     @Published var rate: Float = 1
     @Published var error: String?
     @Published private(set) var sleepTimerRemaining: TimeInterval?
@@ -20,6 +23,12 @@ final class AudioPlayerModel: ObservableObject {
 
     private var player: AVPlayer?
     private var timeObserver: Any?
+    private var statusObserver: NSKeyValueObservation?
+    private var endObserver: NSObjectProtocol?
+    private var playbackGeneration = UUID()
+    private var seeking = false
+    private var recordedChapter = false
+    private var pendingRestore: Double?
     private let settings = UserDefaults.standard
     private let downloadKey = "audio.offlineChapters"
 
@@ -30,6 +39,7 @@ final class AudioPlayerModel: ObservableObject {
 
     func open(_ selected: AudioBook, tracks: [AudioChapter]) {
         pause()
+        guard !tracks.isEmpty else { error = AudioCatalogError.noTracks.localizedDescription; return }
         book = selected
         saveToHistory(selected)
         chapters = tracks
@@ -54,8 +64,15 @@ final class AudioPlayerModel: ObservableObject {
 
     func playChapter(_ index: Int) {
         guard let book, chapters.indices.contains(index) else { return }
+        saveProgress()
         stopObserver()
         player?.pause()
+        error = nil
+        canSeek = false
+        seeking = false
+        recordedChapter = false
+        playbackGeneration = UUID()
+        let generation = playbackGeneration
         chapterIndex = index
         let track = chapters[index]
         settings.set(index, forKey: "audio.chapter.\(book.id)")
@@ -73,17 +90,41 @@ final class AudioPlayerModel: ObservableObject {
             self.error = "Не удалось включить воспроизведение звука."
         }
         let saved = settings.double(forKey: "audio.position.\(book.id).\(index)")
-        if saved > 0 {
-            player?.seek(to: CMTime(seconds: saved, preferredTimescale: 600))
-            position = saved
+        pendingRestore = saved
+        statusObserver = item.observe(\.status, options: [.initial, .new]) { [weak self] item, _ in
+            Task { @MainActor in
+                guard let self, self.playbackGeneration == generation else { return }
+                if item.status == .readyToPlay {
+                    self.refreshSeekability()
+                    if self.canSeek { self.pendingRestore = nil; self.seek(to: saved) }
+                    else if let start = track.startSeconds { self.player?.seek(to: CMTime(seconds: start, preferredTimescale: 600)) }
+                    self.player?.playImmediately(atRate: self.rate)
+                    self.isPlaying = true
+                } else if item.status == .failed {
+                    self.error = "Не удалось открыть аудио. Проверьте источник или импортируйте файл."
+                    self.isPlaying = false
+                    self.canSeek = false
+                }
+            }
+        }
+        endObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, self.playbackGeneration == generation else { return }
+                self.settings.removeObject(forKey: "audio.position.\(book.id).\(index)")
+                if index + 1 < self.chapters.count { self.playChapter(index + 1) }
+                else {
+                    self.settings.set(true, forKey: "audio.finished.\(book.id)")
+                    self.pause()
+                }
+            }
         }
         timeObserver = player?.addPeriodicTimeObserver(
             forInterval: CMTime(seconds: 1, preferredTimescale: 600), queue: .main
         ) { [weak self] time in
             Task { @MainActor in self?.didAdvance(to: time.seconds) }
         }
-        player?.playImmediately(atRate: rate)
-        isPlaying = true
         updateNowPlaying()
     }
 
@@ -108,15 +149,52 @@ final class AudioPlayerModel: ObservableObject {
     }
 
     func seek(to seconds: Double) {
-        guard seconds.isFinite else { return }
-        let clamped = max(0, duration > 0 ? min(seconds, duration) : seconds)
-        player?.seek(to: CMTime(seconds: clamped, preferredTimescale: 600))
-        position = clamped
-        saveProgress()
-        updateNowPlaying()
+        refreshSeekability()
+        guard seconds.isFinite, canSeek, let player else { return }
+        let clamped = max(seekLowerBound, min(seconds, seekUpperBound))
+        let generation = playbackGeneration
+        let resume = isPlaying
+        seeking = true
+        player.seek(to: CMTime(seconds: clamped + (chapters[chapterIndex].startSeconds ?? 0), preferredTimescale: 600),
+                    toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in
+            Task { @MainActor in
+                guard let self, self.playbackGeneration == generation else { return }
+                self.seeking = false
+                guard finished else { return }
+                let actual = player.currentTime().seconds
+                if actual.isFinite { self.position = max(0, actual - (self.chapters[self.chapterIndex].startSeconds ?? 0)) }
+                self.saveProgress()
+                self.updateNowPlaying()
+                if resume { player.playImmediately(atRate: self.rate) }
+            }
+        }
     }
 
-    func next() { playChapter(min(chapterIndex + 1, max(0, chapters.count - 1))) }
+    private func refreshSeekability() {
+        guard let item = player?.currentItem, item.status == .readyToPlay else {
+            canSeek = false
+            return
+        }
+        let length = item.duration.seconds
+        let start = chapters.indices.contains(chapterIndex) ? (chapters[chapterIndex].startSeconds ?? 0) : 0
+        if length.isFinite, length > 0 { duration = chapters[chapterIndex].startSeconds == nil ? length : (chapters[chapterIndex].durationSeconds ?? length) }
+        let ranges = item.seekableTimeRanges.map(\.timeRangeValue).filter {
+            $0.start.seconds.isFinite && $0.duration.seconds.isFinite && $0.duration.seconds > 0
+        }
+        // A finite duration alone does not prove that a remote stream is seekable.
+        if let range = ranges.first {
+            seekLowerBound = max(0, range.start.seconds - start)
+            seekUpperBound = min(duration > 0 ? duration : Double.greatestFiniteMagnitude, CMTimeRangeGetEnd(range).seconds - start)
+            canSeek = seekUpperBound > seekLowerBound
+        } else if let asset = item.asset as? AVURLAsset, asset.url.isFileURL, duration > 0 {
+            seekLowerBound = 0
+            seekUpperBound = duration
+            canSeek = true
+        } else { canSeek = false }
+        MPRemoteCommandCenter.shared().changePlaybackPositionCommand.isEnabled = canSeek
+    }
+
+    func next() { if chapterIndex + 1 < chapters.count { playChapter(chapterIndex + 1) } }
     func previous() { playChapter(max(0, chapterIndex - 1)) }
 
     func setRate(_ newValue: Float) {
@@ -178,6 +256,7 @@ final class AudioPlayerModel: ObservableObject {
     }
 
     func localURL(for track: AudioChapter) -> URL? {
+        if track.url.isFileURL { return track.url }
         guard downloaded.contains(track.id),
               let base = try? audioFolder() else { return nil }
         let file = base.appendingPathComponent(safeFilename(for: track))
@@ -201,16 +280,27 @@ final class AudioPlayerModel: ObservableObject {
     }
 
     private func didAdvance(to seconds: Double) {
-        guard seconds.isFinite, seconds >= 0 else { return }
-        position = seconds
+        guard seconds.isFinite, seconds >= 0, !seeking else { return }
+        refreshSeekability()
+        if canSeek, let restore = pendingRestore {
+            pendingRestore = nil
+            seek(to: restore)
+            return
+        }
+        position = max(0, seconds - (chapters[chapterIndex].startSeconds ?? 0))
+        if position >= 10, !recordedChapter, let book {
+            RecommendationProfile.record(title: book.title, author: book.author, weight: 3)
+            recordedChapter = true
+        }
         if let seconds = player?.currentItem?.duration.seconds, seconds.isFinite, seconds > 0 {
-            duration = seconds
+            if chapters[chapterIndex].startSeconds == nil { duration = seconds }
+        }
+        if chapters[chapterIndex].startSeconds != nil, duration > 0, position >= duration {
+            if chapterIndex + 1 < chapters.count { playChapter(chapterIndex + 1) } else { pause() }
+            return
         }
         saveProgress()
         updateNowPlaying()
-        if duration > 0, seconds >= duration - 0.3, chapterIndex + 1 < chapters.count {
-            playChapter(chapterIndex + 1)
-        }
     }
 
     private func saveProgress() {
@@ -223,6 +313,9 @@ final class AudioPlayerModel: ObservableObject {
             player.removeTimeObserver(timeObserver)
         }
         timeObserver = nil
+        statusObserver = nil
+        if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
+        endObserver = nil
     }
 
     private func updateNowPlaying() {
@@ -239,6 +332,22 @@ final class AudioPlayerModel: ObservableObject {
 
     private func setUpRemoteCommands() {
         let remote = MPRemoteCommandCenter.shared()
+        remote.skipBackwardCommand.preferredIntervals = [15]
+        remote.skipForwardCommand.preferredIntervals = [30]
+        remote.skipBackwardCommand.addTarget { [weak self] _ in
+            Task { @MainActor in self?.skip(by: -15) }
+            return .success
+        }
+        remote.skipForwardCommand.addTarget { [weak self] _ in
+            Task { @MainActor in self?.skip(by: 30) }
+            return .success
+        }
+        remote.changePlaybackPositionCommand.addTarget { [weak self] event in
+            guard let event = event as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
+            let position = event.positionTime
+            Task { @MainActor in self?.seek(to: position) }
+            return .success
+        }
         remote.playCommand.addTarget { [weak self] _ in
             Task { @MainActor in
                 if self?.isPlaying == false { self?.toggle() }
