@@ -160,7 +160,11 @@ struct PurpleAction: View {
 
     var body: some View {
         Button(action: action) {
-            Label(title, systemImage: icon)
+            Label {
+                Text(LocalizedStringKey(title))
+            } icon: {
+                Image(systemName: icon)
+            }
                 .font(.system(.subheadline, design: .rounded, weight: .semibold))
                 .frame(maxWidth: .infinity)
                 .frame(height: 49)
@@ -174,7 +178,8 @@ struct PurpleAction: View {
 struct SectionLabel: View {
     let text: String
     var body: some View {
-        Text(LocalizedStringKey(text.uppercased()))
+        Text(LocalizedStringKey(text))
+            .textCase(.uppercase)
             .font(.system(size: 11, weight: .semibold))
             .tracking(1)
             .foregroundStyle(ReaderStyle.secondary)
