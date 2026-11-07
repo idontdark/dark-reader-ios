@@ -4,7 +4,8 @@ import Foundation
 enum CatalogProviders {
     static func search(
         query: String, mode: String, provider: String,
-        customURL: String, customParameter: String
+        customURL: String, customParameter: String,
+        language: String? = nil
     ) async throws -> [CatalogBook] {
         switch provider {
         case "flibusta":
@@ -16,7 +17,7 @@ enum CatalogProviders {
             )
             return try await client.search(query)
         case "gutendex":
-            return try await GutendexClient().search(query, mode: mode)
+            return try await GutendexClient().search(query, mode: mode, language: language)
         case "gutenberg":
             return try await OPDSClient(
                 searchEndpoint: "https://www.gutenberg.org/ebooks/search.opds/",
@@ -51,10 +52,10 @@ private struct GutendexClient {
         let name: String
     }
 
-    func search(_ query: String, mode: String) async throws -> [CatalogBook] {
+    func search(_ query: String, mode: String, language: String?) async throws -> [CatalogBook] {
         var lastError: Error = ReaderError.invalidCatalogURL
         for attempt in 0..<2 {
-            do { return try await fetch(query, mode: mode) }
+            do { return try await fetch(query, mode: mode, language: language) }
             catch {
                 lastError = error
                 if attempt == 0 { try? await Task.sleep(nanoseconds: 400_000_000) }
@@ -63,11 +64,14 @@ private struct GutendexClient {
         throw lastError
     }
 
-    private func fetch(_ query: String, mode: String) async throws -> [CatalogBook] {
+    private func fetch(_ query: String, mode: String, language: String?) async throws -> [CatalogBook] {
         var components = URLComponents(string: "https://gutendex.com/books/")!
         components.queryItems = [
             URLQueryItem(name: "search", value: query.trimmingCharacters(in: .whitespacesAndNewlines))
         ]
+        if let language, language == "ru" || language == "en" {
+            components.queryItems?.append(URLQueryItem(name: "languages", value: language))
+        }
         guard let url = components.url else { throw ReaderError.invalidCatalogURL }
         var request = URLRequest(url: url)
         request.timeoutInterval = 25

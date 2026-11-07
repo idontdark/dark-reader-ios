@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsScreen: View {
     @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
+    @AppStorage("appLanguage") private var language = "ru"
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -30,6 +31,32 @@ struct SettingsScreen: View {
                                 }
                             }
                             .buttonStyle(.plain)
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 9) {
+                        SectionLabel(text: "Предпочтения")
+                        ReaderCard {
+                            NavigationLink { LanguageSettingsScreen() } label: {
+                                ReaderRow(icon: "globe", title: "Язык приложения",
+                                          subtitle: language == "en" ? "English" : "Русский") {
+                                    Image(systemName: "chevron.right").foregroundStyle(ReaderStyle.secondary)
+                                }
+                            }.buttonStyle(.plain)
+                            ReaderDivider()
+                            NavigationLink { InterestsScreen() } label: {
+                                ReaderRow(icon: "slider.horizontal.3", title: "Мои интересы",
+                                          subtitle: "Жанры, книги и аудиокниги") {
+                                    Image(systemName: "chevron.right").foregroundStyle(ReaderStyle.secondary)
+                                }
+                            }.buttonStyle(.plain)
+                            ReaderDivider()
+                            NavigationLink { FavoriteAuthorsScreen() } label: {
+                                ReaderRow(icon: "person.2", title: "Любимые авторы",
+                                          subtitle: nil) {
+                                    Image(systemName: "chevron.right").foregroundStyle(ReaderStyle.secondary)
+                                }
+                            }.buttonStyle(.plain)
                         }
                     }
 
@@ -75,7 +102,7 @@ struct SettingsScreen: View {
                                 SupportProjectScreen()
                             } label: {
                                 ReaderRow(icon: "heart", title: "Поддержать проект",
-                                          subtitle: "Пожертвования в криптовалюте") {
+                                          subtitle: nil) {
                                     Image(systemName: "chevron.right").foregroundStyle(ReaderStyle.secondary)
                                 }
                             }

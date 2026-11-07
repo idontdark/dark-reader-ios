@@ -66,6 +66,8 @@ struct ReaderScreen: View {
     @State private var session: ReaderSession?
     @State private var error: String?
     @State private var appearanceOpen = false
+    @AppStorage("hintReaderShown") private var hintReaderShown = false
+    @State private var showReaderTip = false
 
     private var book: LocalBook? { store.books.first(where: { $0.id == bookID }) }
 
@@ -116,6 +118,11 @@ struct ReaderScreen: View {
             }
             .tint(SwiftUI.Color(hex: accentHex))
         }
+        .alert("Удобное чтение", isPresented: $showReaderTip) {
+            Button("Понятно") {}
+        } message: {
+            Text("Нажмите Aa для темы и шрифта, а закладку можно добавить в верхнем меню.")
+        }
         .sheet(isPresented: $appearanceOpen) {
             ReaderAppearanceSheet()
                 .presentationDetents([.medium, .large])
@@ -123,6 +130,10 @@ struct ReaderScreen: View {
         }
         .task {
             await load()
+            if session != nil && !hintReaderShown {
+                hintReaderShown = true
+                showReaderTip = true
+            }
             while !Task.isCancelled {
                 do { try await Task.sleep(nanoseconds: 20_000_000_000) }
                 catch { break }

@@ -1,63 +1,36 @@
-# Dark Reader for iOS
+# Dark Reader - Books & Audiobooks
 
-A SwiftUI ebook reader styled in the ipa_dark palette. Built with Readium Swift Toolkit 3.11.1. iOS 17+, iPhone and iPad.
+iOS SwiftUI reader built with Readium Swift Toolkit 3.11.1. The current release supports EPUB reading and an OPDS book catalog. Audiobook source integration and playback remain planned, not yet implemented.
 
-## Features
+## What's new in 0.4.0
 
-- EPUB library with covers (when available from catalog), favorites, bookmarks and reading progress.
-- Flibusta OPDS, Project Gutenberg, Gutendex and configurable HTTPS OPDS catalogs.
-- Real EPUB download progress, completion card and button to open the library.
-- Import from Files, iCloud Drive, Safari Share Sheet and direct HTTPS EPUB link.
-- Native iOS first-launch guide and import instructions.
-- Reader customization: system/light/sepia/dark/OLED, font, size and vertical scroll.
-- Theme accent color presets, system color picker and six-digit HEX entry.
-- Optional automatic backup to a user-selected iCloud Drive folder, independent of the signing team. Requires the user to select the folder again after reinstalling the app.
-- Separate donations page with network-aware USDT and wallet copy. Developer: https://t.me/ipa_dark
-- App icon created during the build from a native vector drawing.
+- A five-step first-launch guide (language, reading/listening preference, genres, authors, ready). Each step is skippable.
+- Russian and English interface localization, selectable again in Settings > App language.
+- Independent book-language preference, defaulting to the chosen app language.
+- Actual Gutendex API language filtering using the documented \`languages=ru\` or \`languages=en\` parameter.
+- The Flibusta and OPDS sources cannot guarantee language filtering; the app explains the limitation instead of inventing a filter.
+- Favorite authors and genres remain editable in Settings and favorite author names open a catalog author search.
+- Short one-time hints in library, catalog and reading screen.
+- Existing library, EPUB downloads, iCloud Drive folder backup and settings, theme HEX picker, donation screen and app icon retained.
 
-## How to download an actual IPA
+## First launch
 
-**Easiest:** open the repository's **Releases** tab and download the file
-**DarkReader-unsigned.ipa** directly from **Assets**.
+The new onboarding appears once on installation or upgrade from the old welcome view. Preferences are saved locally via UserDefaults and included in the app's existing iCloud Drive metadata backup when cloud synchronization is connected.
 
-**GitHub Actions:** the "Download artifact" button always returns an outer
-**ZIP archive**. You must **extract** it and then use the \`.ipa\` file inside.
-Never rename the outer ZIP to \`.ipa\`, because it contains an IPA file, not
-the required \`Payload/DarkReader.app\` folder.
+## Installing the IPA
 
-Each IPA is validated during the workflow to contain
-\`Payload/DarkReader.app/Info.plist\`, \`Payload/DarkReader.app/DarkReader\`,
-and \`Assets.car\`.
+Go to **Releases** and download **DarkReader-unsigned.ipa** directly from **Assets**. This is the actual IPA containing \`Payload/DarkReader.app\`, not a renamed ZIP. It requires signing before installation. An Actions artifact download is still an outer ZIP; extract it first.
 
-The IPA is **unsigned** and must be signed with a valid certificate/profile
-before installing on an iPhone or iPad.
+## Project structure
 
-## Build
+- \`Sources/\`: app code, SwiftUI screens, Readium reader, OPDS, settings and backup
+- \`Resources/en.lproj/Localizable.strings\`, \`ru.lproj\`: English / Russian interface translations
+- \`Tests/\`: migration, preferences, locale and restore tests
+- \`scripts/generate_icon.swift\`: creates the black-purple book icon in the build
+- \`docs/\`: catalog API and iCloud Drive notes
+- \`.github/workflows/ipa.yml\`: compiles and publishes a directly downloadable IPA
+- \`.github/workflows/cloud-tests.yml\`: builds and tests on an iOS Simulator
 
-GitHub Actions on \`main\` runs:
+## Limits
 
-1. \`swift scripts/generate_icon.swift\`
-2. \`xcodegen generate --spec project.yml\`
-3. \`xcodebuild ... CODE_SIGNING_ALLOWED=NO build\`
-4. Package IPA and validate its payload.
-5. Publish the real IPA in GitHub Releases.
-
-On a Mac, run \`swift scripts/generate_icon.swift\` and
-\`xcodegen generate\`, then open \`DarkReader.xcodeproj\`.
-
-## Known limits
-
-- EPUB is the supported format; FB2/PDF conversion is not part of this release.
-- Real iCloud Drive transfer, permissions across different signing identities
-  and device-to-device conflict resolution require testing on physical devices.
-- Background upload scheduling is best effort and managed by iOS.
-- Books from online catalogs may be restricted by source availability and
-  local copyright rules.
-- Some catalog links may not return downloadable EPUB files.
-- The crypto addresses on the donation screen are supplied by the developer.
-
-## Notes
-
-- \`Sources/\`: all app logic is Swift/SwiftUI.
-- \`Tests/\`: simulator regression tests.
-- \`docs/ICLOUD_SYNC.md\`: restore and device-test checklist.
+This app is not published in the App Store. Audio content discovery/playback and Google Drive sync are not completed in v0.4.0. Background iCloud Drive uploading is managed by iOS; saving a file locally does not prove the cloud has received it. Third-party catalog rights and server availability vary.

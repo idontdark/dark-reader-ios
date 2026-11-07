@@ -92,7 +92,7 @@ struct ReaderHeader: View {
             }
             .foregroundStyle(.white)
             .padding(.top, 10)
-            Text(title)
+            Text(LocalizedStringKey(title))
                 .font(.system(size: 31, weight: .bold, design: .rounded))
                 .tracking(-0.7)
                 .foregroundStyle(.white)
@@ -174,7 +174,7 @@ struct PurpleAction: View {
 struct SectionLabel: View {
     let text: String
     var body: some View {
-        Text(text.uppercased())
+        Text(LocalizedStringKey(text.uppercased()))
             .font(.system(size: 11, weight: .semibold))
             .tracking(1)
             .foregroundStyle(ReaderStyle.secondary)
@@ -195,9 +195,9 @@ struct ReaderRow<Content: View>: View {
                 .foregroundStyle(Color(hex: accentHex))
                 .frame(width: 29)
             VStack(alignment: .leading, spacing: 3) {
-                Text(title).foregroundStyle(.white)
+                Text(LocalizedStringKey(title)).foregroundStyle(.white)
                 if let subtitle {
-                    Text(subtitle).font(.footnote).foregroundStyle(ReaderStyle.secondary)
+                    Text(LocalizedStringKey(subtitle)).font(.footnote).foregroundStyle(ReaderStyle.secondary)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

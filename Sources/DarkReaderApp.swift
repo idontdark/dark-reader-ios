@@ -8,6 +8,7 @@ enum ReaderTab: Int, CaseIterable, Hashable {
 @MainActor
 final class ReaderNavigation: ObservableObject {
     @Published var tab: ReaderTab = .library
+    @Published var authorToSearch: String?
 }
 
 @main
@@ -19,6 +20,13 @@ struct DarkReaderApp: App {
     @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
     @AppStorage("appAppearance") private var appearance = "dark"
     @AppStorage("didFinishOnboarding") private var didFinishOnboarding = false
+    @AppStorage("onboardingSchemaVersion") private var onboardingSchemaVersion = 0
+    @AppStorage("appLanguage") private var appLanguage = "ru"
+    @AppStorage("preferredBookLanguage") private var bookLanguage = "auto"
+    @AppStorage("preferredGenresJSON") private var genresJSON = "[]"
+    @AppStorage("preferredAuthorsJSON") private var authorsJSON = "[]"
+    @AppStorage("wantsBooks") private var wantsBooks = true
+    @AppStorage("wantsAudiobooks") private var wantsAudio = false
     @State private var importError: String?
 
     init() { CloudBackgroundSync.register() }
@@ -46,13 +54,38 @@ struct DarkReaderApp: App {
             .environmentObject(library)
             .environmentObject(sync)
             .environmentObject(navigation)
+            .environment(\.locale, Locale(identifier: appLanguage))
             .fullScreenCover(isPresented: Binding(
-                get: { !didFinishOnboarding },
-                set: { if !$0 { didFinishOnboarding = true } }
+                get: { onboardingSchemaVersion < 2 },
+                set: { if !$0 {
+                    onboardingSchemaVersion = 2
+                    didFinishOnboarding = true
+                } }
             )) {
-                WelcomeScreen { didFinishOnboarding = true }
+                OnboardingFlow {
+                    onboardingSchemaVersion = 2
+                    didFinishOnboarding = true
+                }
             }
             .task { if sync.automatic { _ = await sync.syncNow() } }
+            .onChange(of: appLanguage) { _, value in
+                sync.settingsChanged(key: "appLanguage", value: value)
+            }
+            .onChange(of: bookLanguage) { _, value in
+                sync.settingsChanged(key: "preferredBookLanguage", value: value)
+            }
+            .onChange(of: genresJSON) { _, value in
+                sync.settingsChanged(key: "preferredGenresJSON", value: value)
+            }
+            .onChange(of: authorsJSON) { _, value in
+                sync.settingsChanged(key: "preferredAuthorsJSON", value: value)
+            }
+            .onChange(of: wantsBooks) { _, value in
+                sync.settingsChanged(key: "wantsBooks", value: String(value))
+            }
+            .onChange(of: wantsAudio) { _, value in
+                sync.settingsChanged(key: "wantsAudiobooks", value: String(value))
+            }
             .onOpenURL { url in
                 if url.isFileURL {
                     do {

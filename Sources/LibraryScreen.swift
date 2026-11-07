@@ -8,6 +8,10 @@ struct LibraryScreen: View {
     @State private var query = ""
     @State private var filter = 0
     @State private var showSearch = false
+    @AppStorage("preferredAuthorsJSON") private var authorsJSON = "[]"
+    @AppStorage("hintLibraryShown") private var hintLibraryShown = false
+    @AppStorage("onboardingSchemaVersion") private var onboardingVersion = 0
+    @State private var showLibraryTip = false
 
     private var sortedBooks: [LocalBook] {
         let all = books.books.sorted { $0.addedAt > $1.addedAt }
@@ -39,6 +43,39 @@ struct LibraryScreen: View {
                         featuredBook(currentBook)
                     } else if books.books.isEmpty {
                         welcomeCard
+                    }
+
+                    if !ReaderPreferences.array(authorsJSON).isEmpty {
+                        VStack(alignment: .leading, spacing: 11) {
+                            HStack {
+                                SectionLabel(text: "Любимые авторы")
+                                Spacer()
+                                NavigationLink {
+                                    FavoriteAuthorsScreen()
+                                } label: {
+                                    Text("Изменить")
+                                        .font(.subheadline)
+                                        .foregroundStyle(Color(hex: accentHex))
+                                }
+                            }
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 9) {
+                                    ForEach(ReaderPreferences.array(authorsJSON), id: \.self) { author in
+                                        Button {
+                                            navigation.authorToSearch = author
+                                            navigation.tab = .catalog
+                                        } label: {
+                                            Label(author, systemImage: "person.crop.circle")
+                                                .font(.subheadline)
+                                                .foregroundStyle(.white)
+                                                .padding(.horizontal, 13)
+                                                .padding(.vertical, 10)
+                                                .background(ReaderStyle.surface, in: Capsule())
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     VStack(alignment: .leading, spacing: 14) {
@@ -142,10 +179,23 @@ struct LibraryScreen: View {
             }
             .readerCanvas()
             .toolbar(.hidden, for: .navigationBar)
+            .onAppear { offerLibraryHint() }
+            .onChange(of: onboardingVersion) { _, _ in offerLibraryHint() }
+            .alert("Ваша библиотека", isPresented: $showLibraryTip) {
+                Button("Понятно") { hintLibraryShown = true }
+            } message: {
+                Text("Скачанные книги и прогресс чтения находятся здесь. Добавить книгу можно кнопкой +.")
+            }
             .sheet(item: $selected) { book in
                 ReaderScreen(bookID: book.id)
             }
         }
+    }
+
+    private func offerLibraryHint() {
+        guard onboardingVersion >= 2, !hintLibraryShown else { return }
+        hintLibraryShown = true
+        showLibraryTip = true
     }
 
     private var welcomeCard: some View {

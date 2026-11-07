@@ -204,8 +204,8 @@ struct ImportTutorialScreen: View {
                                 .frame(width: 29, height: 29)
                                 .background(Color(hex: ReaderStyle.defaultAccent), in: Circle())
                             VStack(alignment: .leading, spacing: 3) {
-                                Text(step.1).font(.subheadline.weight(.semibold))
-                                Text(step.2)
+                                Text(LocalizedStringKey(step.1)).font(.subheadline.weight(.semibold))
+                                Text(LocalizedStringKey(step.2))
                                     .font(.subheadline)
                                     .foregroundStyle(ReaderStyle.secondary)
                             }
@@ -242,60 +242,3 @@ struct ImportTutorialScreen: View {
     }
 }
 
-struct WelcomeScreen: View {
-    let finish: () -> Void
-    @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
-
-    var body: some View {
-        ZStack {
-            ReaderStyle.background.ignoresSafeArea()
-            VStack(spacing: 22) {
-                Spacer(minLength: 28)
-                Image(systemName: "books.vertical.fill")
-                    .font(.system(size: 58, weight: .thin))
-                    .foregroundStyle(Color(hex: accentHex))
-                    .frame(width: 106, height: 106)
-                    .background(ReaderStyle.surface, in: RoundedRectangle(cornerRadius: 25))
-                VStack(spacing: 8) {
-                    Text("Dark Reader")
-                        .font(.system(size: 35, weight: .bold, design: .rounded))
-                    Text("Книги всегда под рукой")
-                        .font(.subheadline)
-                        .foregroundStyle(ReaderStyle.secondary)
-                }
-                VStack(spacing: 0) {
-                    tip("magnifyingglass", "Поиск книг", "Находите книги по названию и автору.")
-                    ReaderDivider()
-                    tip("arrow.down.to.line", "Офлайн-чтение", "Скачивайте EPUB и читайте без сети.")
-                    ReaderDivider()
-                    tip("textformat.size", "Ваше оформление", "Настройте шрифт, фон и размер текста.")
-                    ReaderDivider()
-                    tip("icloud", "Сохранение прогресса", "Подключите папку iCloud Drive для резервного копирования.")
-                }
-                .padding(.horizontal, 18)
-                .background(ReaderStyle.surface, in: RoundedRectangle(cornerRadius: 17))
-                Spacer()
-                PurpleAction(title: "Начать", icon: "arrow.right") { finish() }
-                Text("Добавить книгу можно в любое время")
-                    .font(.caption)
-                    .foregroundStyle(ReaderStyle.secondary)
-            }
-            .padding(24)
-        }
-        .preferredColorScheme(.dark)
-    }
-
-    private func tip(_ icon: String, _ title: String, _ detail: String) -> some View {
-        HStack(spacing: 13) {
-            Image(systemName: icon)
-                .frame(width: 27)
-                .foregroundStyle(Color(hex: accentHex))
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.subheadline.weight(.semibold))
-                Text(detail).font(.footnote).foregroundStyle(ReaderStyle.secondary)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(.vertical, 15)
-    }
-}

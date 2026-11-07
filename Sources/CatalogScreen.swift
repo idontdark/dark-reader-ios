@@ -23,6 +23,10 @@ struct CatalogScreen: View {
     @State private var downloadProgress = 0.0
     @State private var completedTitle: String?
     @State private var error: String?
+    @AppStorage("appLanguage") private var language = "ru"
+    @AppStorage("preferredBookLanguage") private var bookLanguage = "auto"
+    @AppStorage("hintCatalogShown") private var hintCatalogShown = false
+    @State private var showCatalogTip = false
 
     private var providerName: String {
         switch provider {
@@ -85,6 +89,23 @@ struct CatalogScreen: View {
                         }
                         .pickerStyle(.segmented)
 
+                        HStack(spacing: 8) {
+                            Image(systemName: "globe")
+                            Text("Язык книг")
+                            Spacer()
+                            Menu {
+                                Button("Автоматически") { bookLanguage = "auto" }
+                                Button("Русский") { bookLanguage = "ru" }
+                                Button("English") { bookLanguage = "en" }
+                                Button("Все языки") { bookLanguage = "all" }
+                            } label: {
+                                Text(languageName)
+                                    .foregroundStyle(Color(hex: accentHex))
+                            }
+                        }
+                        .font(.footnote)
+                        .foregroundStyle(ReaderStyle.secondary)
+
                         PurpleAction(title: searching ? "Ищем…" : "Найти книги", icon: "magnifyingglass") {
                             Task { await search() }
                         }
@@ -127,6 +148,11 @@ struct CatalogScreen: View {
                                     .foregroundStyle(ReaderStyle.secondary)
                             }
                         }
+                        if !supportsLanguageFiltering && hasSearched {
+                            Text("Этот каталог не поддерживает точную фильтрацию по языку.")
+                                .font(.caption)
+                                .foregroundStyle(ReaderStyle.secondary)
+                        }
                         if !history.isEmpty {
                             Button {
                                 if let previous = history.popLast() {
@@ -167,6 +193,19 @@ struct CatalogScreen: View {
             }
             .readerCanvas()
             .toolbar(.hidden, for: .navigationBar)
+            .onAppear {
+                handlePendingAuthor()
+                if !hintCatalogShown {
+                    hintCatalogShown = true
+                    showCatalogTip = true
+                }
+            }
+            .onChange(of: navigation.authorToSearch) { _, _ in handlePendingAuthor() }
+            .alert("Поиск книг", isPresented: $showCatalogTip) {
+                Button("Понятно") {}
+            } message: {
+                Text("Найдите книгу по названию или автору и скачайте EPUB. Он появится в библиотеке.")
+            }
             .onChange(of: provider) { _, _ in
                 history = []
                 results = []
@@ -245,6 +284,25 @@ struct CatalogScreen: View {
         }
     }
 
+    private var languageName: String {
+        switch bookLanguage {
+        case "en": return "English"
+        case "ru": return "Русский"
+        case "all": return "Все языки"
+        default: return language == "en" ? "English" : "Русский"
+        }
+    }
+
+    private var supportsLanguageFiltering: Bool { provider == "gutendex" }
+
+    private func handlePendingAuthor() {
+        guard let author = navigation.authorToSearch, !author.isEmpty else { return }
+        navigation.authorToSearch = nil
+        query = author
+        mode = "author"
+        Task { await search() }
+    }
+
     private func search() async {
         guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         searching = true
@@ -252,7 +310,8 @@ struct CatalogScreen: View {
         do {
             results = try await CatalogProviders.search(
                 query: query, mode: mode, provider: provider,
-                customURL: customURL, customParameter: customParameter
+                customURL: customURL, customParameter: customParameter,
+                language: ReaderPreferences.effectiveLanguage(bookLanguage, appLanguage: language)
             )
             hasSearched = true
             heading = "Результаты"
