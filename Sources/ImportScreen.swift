@@ -52,8 +52,8 @@ struct ImportScreen: View {
                         SectionLabel(text: "По прямой ссылке")
                         ReaderCard {
                             Text("Вставьте ссылку на книгу")
-                                .font(.subheadline.weight(.medium))
-                                .foregroundStyle(Color(hex: accentHex))
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(Color(red: 0.32, green: 0.67, blue: 1.0))
                             HStack {
                                 Image(systemName: "link")
                                     .foregroundStyle(ReaderStyle.secondary)
@@ -89,7 +89,7 @@ struct ImportScreen: View {
                                     .font(.title2)
                                 VStack(alignment: .leading, spacing: 5) {
                                     Text("Книга добавлена").font(.headline)
-                                    Text("Книга готова. Она появится в библиотеке и будет доступна без интернета.")
+                                    Text("Книга уже в библиотеке. Приятного чтения!")
                                         .font(.subheadline)
                                         .foregroundStyle(ReaderStyle.secondary)
                                 }
@@ -147,7 +147,7 @@ struct ImportScreen: View {
 
     private var isValidURL: Bool {
         guard let url = URL(string: directURL.trimmingCharacters(in: .whitespacesAndNewlines)) else { return false }
-        return url.scheme == "https" && url.host != nil && ["epub", "fb2", "mobi", "zip"].contains(url.pathExtension.lowercased())
+        return url.scheme == "https" && url.host != nil
     }
 
     private func downloadURL() async {
@@ -171,8 +171,8 @@ struct ImportScreen: View {
 
 struct ImportTutorialScreen: View {
     private let steps: [(String, String, String)] = [
-        ("1", "Загрузите файл", "Скачайте книгу в формате EPUB через Safari или другой браузер."),
-        ("2", "Откройте приложение «Файлы»", "Найдите EPUB в папке «Загрузки» или в iCloud Drive."),
+        ("1", "Скачайте книгу", "Подойдут EPUB, FB2, MOBI и ZIP с книгой внутри."),
+        ("2", "Откройте «Файлы»", "Найдите скачанную книгу в «Загрузках» или iCloud Drive."),
         ("3", "Поделитесь книгой", "Удерживайте файл, выберите «Поделиться», затем Dark Reader."),
         ("4", "Продолжайте чтение", "Книга появится в библиотеке и будет доступна без интернета.")
     ]
@@ -191,7 +191,7 @@ struct ImportTutorialScreen: View {
                 ReaderCard {
                     Label("Из «Файлов»", systemImage: "folder")
                         .font(.headline)
-                    Text("Нажмите «Добавить книгу» → «Из приложения Файлы» и выберите EPUB. Можно выбрать сразу несколько.")
+                    Text("Выберите «Из приложения Файлы», затем одну или несколько книг. Поддерживаются EPUB, FB2, MOBI и ZIP.")
                         .font(.subheadline)
                         .foregroundStyle(ReaderStyle.secondary)
                         .padding(.top, 7)

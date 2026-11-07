@@ -13,6 +13,8 @@ final class AudioPlayerModel: ObservableObject {
     @Published private(set) var duration: Double = 0
     @Published var rate: Float = 1
     @Published var error: String?
+    @Published private(set) var sleepTimerRemaining: TimeInterval?
+    private var sleepTask: Task<Void, Never>?
     @Published private(set) var downloadingChapter: String?
     @Published private(set) var downloaded: Set<String> = []
 
@@ -107,6 +109,31 @@ final class AudioPlayerModel: ObservableObject {
         rate = newValue
         if isPlaying { player?.rate = newValue }
         updateNowPlaying()
+    }
+
+    /// Best-effort timer, evaluated against real clock time.
+    func setSleepTimer(minutes: Int?) {
+        sleepTask?.cancel()
+        sleepTask = nil
+        sleepTimerRemaining = nil
+        guard let minutes, minutes > 0 else { return }
+        let deadline = Date().addingTimeInterval(TimeInterval(minutes * 60))
+        sleepTimerRemaining = deadline.timeIntervalSinceNow
+        sleepTask = Task { [weak self] in
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: .seconds(5)) }
+                catch { return }
+                guard let self else { return }
+                let remaining = deadline.timeIntervalSinceNow
+                if remaining <= 0 {
+                    self.pause()
+                    self.sleepTimerRemaining = nil
+                    self.sleepTask = nil
+                    return
+                }
+                self.sleepTimerRemaining = remaining
+            }
+        }
     }
 
     func downloadCurrentChapter() async {

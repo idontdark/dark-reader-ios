@@ -38,29 +38,29 @@ jobs:
           test -f "$APP/DarkReader"
           test -f "$APP/Assets.car"
           VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Info.plist")
-          test "$VERSION" = "0.5.0"
+          test "$VERSION" = "0.6.0"
           mkdir -p dist/Payload
           ditto "$APP" "dist/Payload/DarkReader.app"
-          (cd dist && zip -qry ../DarkReader-0.5.0-unsigned.ipa Payload)
-          unzip -tq DarkReader-0.5.0-unsigned.ipa
-          unzip -Z1 DarkReader-0.5.0-unsigned.ipa | grep -qx 'Payload/DarkReader.app/Info.plist'
-          unzip -Z1 DarkReader-0.5.0-unsigned.ipa | grep -qx 'Payload/DarkReader.app/DarkReader'
+          (cd dist && zip -qry ../DarkReader-0.6.0-unsigned.ipa Payload)
+          unzip -tq DarkReader-0.6.0-unsigned.ipa
+          unzip -Z1 DarkReader-0.6.0-unsigned.ipa | grep -qx 'Payload/DarkReader.app/Info.plist'
+          unzip -Z1 DarkReader-0.6.0-unsigned.ipa | grep -qx 'Payload/DarkReader.app/DarkReader'
           echo "Verified Payload/DarkReader.app"
       - name: Upload Actions artifact (ZIP containing IPA)
         uses: actions/upload-artifact@v4
         with:
-          name: DarkReader-IPA
-          path: DarkReader-0.5.0-unsigned.ipa
+          name: DarkReader-0.6.0-IPA
+          path: DarkReader-0.6.0-unsigned.ipa
           if-no-files-found: error
           retention-days: 30
       - name: Publish direct IPA to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
-          name: Dark Reader 0.5.0 build ${{ github.run_number }}
+          name: Dark Reader 0.6.0 build ${{ github.run_number }}
           prerelease: true
           generate_release_notes: false
           body: |
-            Download the actual DarkReader-0.5.0-unsigned.ipa in the Assets section.
+            Download the actual DarkReader-0.6.0-unsigned.ipa in the Assets section.
             Do not rename the Actions artifact ZIP to IPA. Unsigned IPA requires signing before installation.
-          files: DarkReader-0.5.0-unsigned.ipa
+          files: DarkReader-0.6.0-unsigned.ipa

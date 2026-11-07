@@ -9,7 +9,7 @@ on:
 jobs:
   live-api-check:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 12
     steps:
       - name: Probe LibriVox and Internet Archive over HTTPS
         shell: bash
@@ -20,7 +20,7 @@ jobs:
               url = base
               if params:
                   url += ("&" if "?" in url else "?") + urllib.parse.urlencode(params)
-              req = urllib.request.Request(url, headers={"User-Agent":"DarkReader-iOS/0.5 API smoke"})
+              req = urllib.request.Request(url, headers={"User-Agent":"DarkReader-iOS/0.6 API smoke"})
               with urllib.request.urlopen(req, timeout=24) as response:
                   if response.status != 200:
                       raise ValueError(f"HTTP {response.status}")
@@ -56,5 +56,26 @@ jobs:
           if not audio:
               raise ValueError("Known Internet Archive audiobook has no audio files")
           print("Internet Archive chapters OK:", len(audio))
-          print("Both catalog API paths checked successfully.")
+          def probe_audio(address):
+              if address.startswith("http://"):
+                  address = "https://" + address[len("http://"):]
+              req = urllib.request.Request(address, headers={
+                  "User-Agent": "DarkReader-iOS/0.6 playback smoke",
+                  "Range": "bytes=0-1023"
+              })
+              with urllib.request.urlopen(req, timeout=35) as resp:
+                  if resp.status not in (200, 206):
+                      raise ValueError(f"Audio GET returned HTTP {resp.status}")
+                  mime = (resp.headers.get("Content-Type") or "").lower()
+                  prefix = resp.read(512)
+                  if len(prefix) < 32 or "text/html" in mime or prefix.lstrip().startswith(b"<html"):
+                      raise ValueError("Audio URL served HTML or an empty body")
+                  return len(prefix), mime
+
+          track_url = chapters[0]["listen_url"]
+          print("LibriVox audio stream:", probe_audio(track_url))
+          mp3 = next(f for f in audio if f["name"].lower().endswith(".mp3"))
+          stream_url = "https://archive.org/download/" + identifier + "/" + urllib.parse.quote(mp3["name"])
+          print("Internet Archive audio stream:", probe_audio(stream_url))
+          print("Both catalog APIs and byte-range audio streams verified.")
           PY

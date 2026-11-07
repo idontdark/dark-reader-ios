@@ -215,3 +215,14 @@
 "Книги и прогресс будут сохраняться в выбранном хранилище." = "Books and reading progress will be saved to the selected storage.";
 "Здесь хранятся ваши книги. Чтобы добавить новую, нажмите +." = "Your books are here. Tap + to add another.";
 "Больше времени обычного" = "Longer than usual";
+"Таймер" = "Sleep timer";
+"Выключить таймер" = "Turn off sleep timer";
+"Книга уже в библиотеке. Приятного чтения!" = "Book added to your library. Happy reading!";
+"Продолжим с того же места при следующем запуске." = "We'll pick up where you left off.";
+"Подойдут EPUB, FB2, MOBI и ZIP с книгой внутри." = "EPUB, FB2, MOBI or ZIP containing a book.";
+"Найдите скачанную книгу в «Загрузках» или iCloud Drive." = "Find your book in Downloads or iCloud Drive.";
+"Выберите «Из приложения Файлы», затем одну или несколько книг. Поддерживаются EPUB, FB2, MOBI и ZIP." = "Choose From Files and select one or more EPUB, FB2, MOBI or ZIP files.";
+"Добавьте название и HTTPS-ссылку. Можно подключить несколько каталогов." = "Add a name and an HTTPS link. Connect as many catalogs as you need.";
+"Если книги не находятся, проверьте адрес OPDS и параметр поиска." = "No results? Check the OPDS URL and search parameter.";
+"До остановки:" = "Stopping in";
+"Скачивание главы" = "Downloading chapter";

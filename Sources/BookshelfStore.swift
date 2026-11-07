@@ -56,9 +56,41 @@ final class BookshelfStore: ObservableObject {
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw ReaderError.invalidEPUB
         }
-        let fileType = book.downloadFormat ?? epubURL.pathExtension.lowercased()
+        // Some OPDS and direct links don't include a file extension.
+        // Detect a supported format using the response and a short file signature.
+        let accepted = ["epub", "fb2", "mobi", "zip"]
+        let declared = (book.downloadFormat ?? epubURL.pathExtension).lowercased()
+        let mime = http.mimeType?.lowercased() ?? ""
+        let type: String
+        if accepted.contains(declared) {
+            type = declared
+        } else if mime.contains("epub") {
+            type = "epub"
+        } else if mime.contains("fictionbook") || mime.contains("fb2") {
+            type = "fb2"
+        } else if mime.contains("mobipocket") {
+            type = "mobi"
+        } else if mime == "application/zip" {
+            type = "zip"
+        } else {
+            let handle = try FileHandle(forReadingFrom: temporaryURL)
+            defer { try? handle.close() }
+            let first = try handle.read(upToCount: 256) ?? Data()
+            let header = String(decoding: first, as: UTF8.self).lowercased()
+            if first.count >= 68 && String(decoding: first[60..<68], as: UTF8.self) == "BOOKMOBI" {
+                type = "mobi"
+            } else if first.starts(with: [0x50, 0x4B]) {
+                type = header.contains("application/epub+zip") ? "epub" : "zip"
+            } else if header.contains("fictionbook") {
+                type = "fb2"
+            } else {
+                throw ImportFormatError.unsupported
+            }
+        }
+        let length = (try fileManager.attributesOfItem(atPath: temporaryURL.path)[.size] as? NSNumber)?.int64Value ?? 0
+        guard length > 0 && length <= 50 * 1024 * 1024 else { throw ImportFormatError.oversized }
         let staging = fileManager.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString + "." + (["fb2", "mobi", "zip"].contains(fileType) ? fileType : "epub")
+            UUID().uuidString + "." + type
         )
         try fileManager.moveItem(at: temporaryURL, to: staging)
         defer { try? fileManager.removeItem(at: staging) }
@@ -73,12 +105,9 @@ final class BookshelfStore: ObservableObject {
         persist(localChange: true)
     }
 
-    /// Import a downloaded EPUB file from a direct HTTPS URL.
+    /// Import supported books from a direct HTTPS URL, including extensionless links.
     func downloadFromURL(_ url: URL, progress: (@MainActor (Double) -> Void)? = nil) async throws {
         guard url.scheme == "https", url.host != nil else { throw ReaderError.invalidCatalogURL }
-        guard ["epub", "fb2", "mobi", "zip"].contains(url.pathExtension.lowercased()) else {
-            throw ImportFormatError.unsupported
-        }
         let name = url.deletingPathExtension().lastPathComponent.removingPercentEncoding ?? "Книга"
         let item = CatalogBook(id: url.absoluteString, title: name.isEmpty ? "Книга" : name,
                                author: "Неизвестный автор", epubURL: url)

@@ -163,7 +163,7 @@ enum AudioCatalogService {
     private static func requestObject(_ url: URL) async throws -> [String: Any] {
         var request = URLRequest(url: url)
         request.timeoutInterval = 18
-        request.setValue("DarkReader/0.5 (iOS; audio catalog search)", forHTTPHeaderField: "User-Agent")
+        request.setValue("DarkReader/0.6 (iOS; audio catalog search)", forHTTPHeaderField: "User-Agent")
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             try Task.checkCancellation()

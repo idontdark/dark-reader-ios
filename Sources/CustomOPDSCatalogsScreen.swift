@@ -55,7 +55,7 @@ struct CustomOPDSCatalogsScreen: View {
                 VStack(alignment: .leading, spacing: 7) {
                     Text("OPDS-каталоги")
                         .font(.system(size: 29, weight: .bold, design: .rounded))
-                    Text("Добавьте свои библиотеки по названию и ссылке. Каталоги сохранятся в приложении.")
+                    Text("Добавьте название и HTTPS-ссылку. Можно подключить несколько каталогов.")
                         .font(.subheadline)
                         .foregroundStyle(ReaderStyle.secondary)
                 }
@@ -128,7 +128,7 @@ struct CustomOPDSCatalogsScreen: View {
                     }
                     .font(.subheadline)
                 }
-                Text("Поддерживаются каталоги OPDS с HTTPS. Если поиск не открывается, проверьте ссылку и параметр поиска.")
+                Text("Если книги не находятся, проверьте адрес OPDS и параметр поиска.")
                     .font(.footnote)
                     .foregroundStyle(ReaderStyle.secondary)
             }

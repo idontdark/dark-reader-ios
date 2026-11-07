@@ -368,6 +368,17 @@ struct AudioPlayerScreen: View {
                             Label("\(Double(player.rate).formatted())×", systemImage: "speedometer")
                         }
                         Spacer()
+                        Menu {
+                            Button("Выключить таймер", systemImage: "xmark.circle") {
+                                player.setSleepTimer(minutes: nil)
+                            }
+                            ForEach([5, 10, 15, 30, 60], id: \.self) { minutes in
+                                Button("\(minutes) мин") { player.setSleepTimer(minutes: minutes) }
+                            }
+                        } label: {
+                            Label("Таймер", systemImage: "moon.zzz")
+                        }
+                        Spacer()
                         Button {
                             Task { await player.downloadCurrentChapter() }
                         } label: {
@@ -384,7 +395,12 @@ struct AudioPlayerScreen: View {
                     if let error = player.error {
                         Text(error).font(.footnote).foregroundStyle(ReaderStyle.secondary)
                     }
-                    Text("Позиция воспроизведения сохраняется автоматически.")
+                    if let remaining = player.sleepTimerRemaining {
+                        Label("До остановки: \(Int(ceil(remaining / 60))) мин", systemImage: "moon.zzz")
+                            .font(.caption)
+                            .foregroundStyle(ReaderStyle.secondary)
+                    }
+                    Text("Продолжим с того же места при следующем запуске.")
                         .font(.caption)
                         .foregroundStyle(ReaderStyle.secondary)
                 }
