@@ -335,10 +335,10 @@ struct SettingsScreen: View {
                 }
             }
             .navigationTitle("Настройки")
-            .onChange(of: theme) { _, _ in sync.settingsChanged() }
-            .onChange(of: font) { _, _ in sync.settingsChanged() }
-            .onChange(of: fontSize) { _, _ in sync.settingsChanged() }
-            .onChange(of: scroll) { _, _ in sync.settingsChanged() }
+            .onChange(of: theme) { _, value in sync.settingsChanged(key: "readerTheme", value: value) }
+            .onChange(of: font) { _, value in sync.settingsChanged(key: "readerFont", value: value) }
+            .onChange(of: fontSize) { _, value in sync.settingsChanged(key: "readerFontSize", value: String(value)) }
+            .onChange(of: scroll) { _, value in sync.settingsChanged(key: "readerScroll", value: String(value)) }
         }
     }
 }
