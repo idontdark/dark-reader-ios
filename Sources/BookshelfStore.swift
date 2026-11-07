@@ -40,8 +40,8 @@ final class BookshelfStore: ObservableObject {
     }
 
     func download(_ book: CatalogBook) async throws {
-        guard book.epubURL.scheme == "https" else { throw ReaderError.invalidCatalogURL }
-        let (temporaryURL, response) = try await URLSession.shared.download(from: book.epubURL)
+        guard let epubURL = book.epubURL, epubURL.scheme == "https" else { throw ReaderError.noEPUB }
+        let (temporaryURL, response) = try await URLSession.shared.download(from: epubURL)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw ReaderError.invalidEPUB
         }
