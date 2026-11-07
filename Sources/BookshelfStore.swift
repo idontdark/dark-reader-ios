@@ -9,6 +9,7 @@ final class BookshelfStore: ObservableObject {
     var onLocalChange: (() -> Void)?
 
     private let fileManager = FileManager.default
+    private var downloadSessions: [String: URLSession] = [:]
 
     private var directory: URL {
         fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -57,7 +58,8 @@ final class BookshelfStore: ObservableObject {
         configuration.timeoutIntervalForResource = 180
         configuration.waitsForConnectivity = false
         let session = URLSession(configuration: configuration, delegate: delegate, delegateQueue: nil)
-        defer { session.finishTasksAndInvalidate() }
+        downloadSessions[book.id] = session
+        defer { downloadSessions[book.id] = nil; session.finishTasksAndInvalidate() }
         let temporaryURL: URL
         let response: URLResponse
         if let resumeData {
@@ -101,8 +103,11 @@ final class BookshelfStore: ObservableObject {
             }
         }
         let length = (try fileManager.attributesOfItem(atPath: temporaryURL.path)[.size] as? NSNumber)?.int64Value ?? 0
-        if response.expectedContentLength > 0, http.value(forHTTPHeaderField: "Content-Encoding") == nil,
-           length != response.expectedContentLength { throw ReaderError.invalidEPUB }
+        let totalLength = http.statusCode == 206
+            ? http.value(forHTTPHeaderField: "Content-Range")?.split(separator: "/").last.flatMap { Int64($0) }
+            : (response.expectedContentLength > 0 ? response.expectedContentLength : nil)
+        if let totalLength, http.value(forHTTPHeaderField: "Content-Encoding") == nil,
+           length != totalLength { throw ReaderError.invalidEPUB }
         guard length > 0 && length <= 50 * 1024 * 1024 else { throw ImportFormatError.oversized }
         let staging = fileManager.temporaryDirectory.appendingPathComponent(
             UUID().uuidString + "." + type
@@ -121,6 +126,18 @@ final class BookshelfStore: ObservableObject {
         books.insert(imported, at: 0)
         progress?(1.0)
         persist(localChange: true)
+    }
+
+    func pauseDownload(_ id: String, saveResumeData: @escaping @MainActor (Data?) -> Void) {
+        guard let session = downloadSessions[id] else { return }
+        session.getAllTasks { tasks in
+            for task in tasks {
+                guard let download = task as? URLSessionDownloadTask else { continue }
+                download.cancel(byProducingResumeData: { data in
+                    Task { @MainActor in saveResumeData(data) }
+                })
+            }
+        }
     }
 
     /// Import supported books from a direct HTTPS URL, including extensionless links.

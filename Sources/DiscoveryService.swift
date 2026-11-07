@@ -80,7 +80,14 @@ enum DiscoveryService {
             catch { lastError = error }
         }
         var seen = Set<String>()
-        let unique = result.filter { seen.insert($0.id).inserted }
+        let grouped = Dictionary(grouping: result, by: \.genre)
+        var unique: [DiscoveryBook] = []
+        for index in 0..<24 {
+            for genre in selected {
+                if let values = grouped[genre], values.indices.contains(index),
+                   seen.insert(values[index].id).inserted { unique.append(values[index]) }
+            }
+        }
         if unique.isEmpty, let lastError { throw lastError }
         return Array(unique.prefix(limit))
     }

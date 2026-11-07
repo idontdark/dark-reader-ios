@@ -85,6 +85,6 @@ enum RecommendationProfile {
             return score($0) == score($1) ? $0.id < $1.id : score($0) > score($1)
         }
         defaults.set(Array(ranked.prefix(12)).map(\.id), forKey: "recommendation.previous")
-        return ranked
+        return Array(ranked.prefix(12))
     }
 }

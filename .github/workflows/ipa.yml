@@ -34,6 +34,11 @@ jobs:
           (cd Tests/Fixtures && cp sample.mp3 second.mp3 && zip -q combined.zip sample.mp3 second.mp3 && rm second.mp3)
       - name: Generate Xcode project
         run: xcodegen generate --spec project.yml
+      - name: Start throttled download fixture
+        shell: bash
+        run: |
+          python3 scripts/download_fixture_server.py > fixture-server.log 2>&1 &
+          echo $! > fixture-server.pid
       - name: Run simulator regression tests
         shell: bash
         run: |

@@ -41,7 +41,7 @@ final class DownloadQueue: ObservableObject {
     func attach(_ library: BookshelfStore) { self.library = library; pump() }
     func enqueue(_ book: CatalogBook) {
         guard book.epubURL != nil, tasks[book.id] == nil,
-              !items.contains(where: { $0.id == book.id && [.queued, .connecting, .downloading, .paused].contains($0.state) }),
+              !items.contains(where: { ($0.id == book.id || $0.book.epubURL == book.epubURL) && [.queued, .connecting, .downloading, .paused].contains($0.state) }),
               library?.books.contains(where: { $0.catalogID == book.id }) != true else { return }
         items.removeAll { $0.id == book.id }
         items.append(BookDownload(book: book))
@@ -51,7 +51,11 @@ final class DownloadQueue: ObservableObject {
     func pause(_ id: String) {
         guard let i = items.firstIndex(where: { $0.id == id }), items[i].state != .downloaded else { return }
         items[i].state = .paused
-        tasks[id]?.cancel()
+        library?.pauseDownload(id) { [weak self] data in
+            guard let self, let index = self.items.firstIndex(where: { $0.id == id }) else { return }
+            self.items[index].resumeData = data
+            self.persist()
+        }
         persist()
     }
     func cancel(_ id: String) {
@@ -72,6 +76,9 @@ final class DownloadQueue: ObservableObject {
             update(id, state: .connecting)
             tasks[id] = Task { [weak self] in
                 guard let self else { return }
+                guard self.items.first(where: { $0.id == id })?.state == .connecting else {
+                    self.tasks[id] = nil; self.pump(); return
+                }
                 do {
                     try await library.download(next.book, progress: { [weak self] progress in
                         guard let self, let i = self.items.firstIndex(where: { $0.id == id }),
@@ -82,7 +89,9 @@ final class DownloadQueue: ObservableObject {
                     self.update(id, state: .downloaded)
                 } catch {
                     if let i = self.items.firstIndex(where: { $0.id == id }) {
-                        self.items[i].resumeData = (error as NSError).userInfo[NSURLSessionDownloadTaskResumeData] as? Data
+                        if let resume = (error as NSError).userInfo[NSURLSessionDownloadTaskResumeData] as? Data {
+                            self.items[i].resumeData = resume
+                        }
                         if self.items[i].state != .paused { self.items[i].state = .failed }
                     }
                 }
