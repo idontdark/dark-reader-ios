@@ -1,0 +1,51 @@
+name: Visual QA
+on:
+  push:
+    branches: [qa-evidence/v0.8.0]
+    paths:
+      - 'VisualTests/**'
+      - 'project.yml'
+      - '.github/workflows/visual-qa.yml'
+permissions:
+  contents: write
+jobs:
+  visual:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - run: brew install xcodegen
+      - run: swift scripts/generate_icon.swift
+      - run: xcodegen generate --spec project.yml
+      - name: Run actual interface scenarios
+        shell: bash
+        run: |
+          set -euo pipefail
+          UDID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for group in d["devices"].values() for x in group if x["name"].startswith("iPhone") and x.get("isAvailable", True)))')
+          xcodebuild test -project DarkReader.xcodeproj -scheme DarkReaderVisual -destination "platform=iOS Simulator,id=$UDID" -derivedDataPath "$PWD/visual-build" -resultBundlePath "$PWD/VisualResults.xcresult" -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO > visual-tests.log 2>&1 || { tail -160 visual-tests.log; exit 1; }
+          grep -E 'Executed |Test Case' visual-tests.log || true
+      - name: Export retained screenshots
+        if: always()
+        run: xcrun xcresulttool export attachments --path VisualResults.xcresult --output-path visual-shots
+      - name: Preserve readable image references
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs'), path = require('path');
+            function walk(dir) { return fs.existsSync(dir) ? fs.readdirSync(dir,{withFileTypes:true}).flatMap(e => e.isDirectory() ? walk(path.join(dir,e.name)) : [path.join(dir,e.name)]) : []; }
+            for (const file of walk('visual-shots').filter(f => f.endsWith('.png'))) {
+              const blob = await github.rest.git.createBlob({...context.repo,encoding:'utf-8',content:fs.readFileSync(file).toString('base64')});
+              core.notice('QA_VISUAL_IMAGE '+path.basename(file)+' '+blob.data.sha);
+            }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: DarkReader-0.8.0-visual-evidence
+          path: |
+            visual-tests.log
+            visual-shots
+          retention-days: 14

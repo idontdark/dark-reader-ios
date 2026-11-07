@@ -83,3 +83,27 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: com.ipadark.reader.tests
         CODE_SIGNING_ALLOWED: NO
+
+  DarkReaderVisualTests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - VisualTests
+    dependencies:
+      - target: DarkReader
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.ipadark.reader.visualtests
+        TEST_TARGET_NAME: DarkReader
+        CODE_SIGNING_ALLOWED: NO
+schemes:
+  DarkReaderVisual:
+    build:
+      targets:
+        DarkReader: all
+        DarkReaderVisualTests: [test]
+    test:
+      targets:
+        - DarkReaderVisualTests
