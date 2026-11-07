@@ -109,22 +109,22 @@ struct ReaderScreen: View {
         }
         .onDisappear { persist() }
         .onChange(of: scenePhase) { _, phase in if phase != .active { persist() } }
-        .onChange(of: fontSize) { _, _ in
+        .onChange(of: fontSize) { _, value in
             apply()
-            sync.settingsChanged()
+            sync.settingsChanged(key: "readerFontSize", value: String(value))
         }
-        .onChange(of: font) { _, _ in
+        .onChange(of: font) { _, value in
             apply()
-            sync.settingsChanged()
+            sync.settingsChanged(key: "readerFont", value: String(value))
         }
-        .onChange(of: theme) { _, _ in
+        .onChange(of: theme) { _, value in
             apply()
-            sync.settingsChanged()
+            sync.settingsChanged(key: "readerTheme", value: String(value))
         }
         .onChange(of: colorScheme) { _, _ in apply() }
-        .onChange(of: scroll) { _, _ in
+        .onChange(of: scroll) { _, value in
             apply()
-            sync.settingsChanged()
+            sync.settingsChanged(key: "readerScroll", value: String(value))
         }
     }
 
