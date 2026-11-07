@@ -65,13 +65,22 @@ struct LibraryScreen: View {
     }
 }
 
+private struct CatalogPage {
+    let title: String
+    let results: [CatalogBook]
+}
+
 struct CatalogScreen: View {
     @EnvironmentObject private var store: BookshelfStore
-    @AppStorage("catalogURL") private var catalogURL = "https://flub.flibusta.is/opds/search"
+    @AppStorage("catalogProvider") private var provider = "flibusta"
+    @AppStorage("catalogURL") private var catalogURL = "https://flibusta.is/opds/search?searchType=books"
     @AppStorage("catalogQueryParameter") private var queryParameter = "searchTerm"
     @State private var query = ""
     @State private var mode = "title"
     @State private var results: [CatalogBook] = []
+    @State private var previousPages: [CatalogPage] = []
+    @State private var pageTitle = "Каталог книг"
+    @State private var hasSearched = false
     @State private var busy = false
     @State private var downloading: String?
     @State private var error: String?
@@ -79,6 +88,14 @@ struct CatalogScreen: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("Источник") {
+                    Picker("Каталог", selection: $provider) {
+                        Text("Флибуста (OPDS)").tag("flibusta")
+                        Text("Gutenberg (Gutendex)").tag("gutendex")
+                        Text("Другой OPDS").tag("custom")
+                    }
+                    .pickerStyle(.menu)
+                }
                 Section {
                     TextField("Название книги или автор", text: $query)
                         .textInputAutocapitalization(.never)
@@ -87,46 +104,114 @@ struct CatalogScreen: View {
                     Picker("Искать", selection: $mode) {
                         Text("По названию").tag("title")
                         Text("По автору").tag("author")
-                    }.pickerStyle(.segmented)
+                    }
+                    .pickerStyle(.segmented)
                     Button("Найти книги") { Task { await search() } }
                         .disabled(query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || busy)
                 }
-                if busy { ProgressView("Поиск в каталоге…") }
+
+                if busy { ProgressView("Получаем данные каталога…") }
+
+                if !previousPages.isEmpty {
+                    Section {
+                        Button {
+                            if let previous = previousPages.popLast() {
+                                results = previous.results
+                                pageTitle = previous.title
+                            }
+                        } label: {
+                            Label("Назад к результатам", systemImage: "arrow.left")
+                        }
+                    }
+                }
+
                 Section("Результаты: \(results.count)") {
+                    if hasSearched && results.isEmpty && !busy {
+                        ContentUnavailableView("Нет доступных EPUB", systemImage: "books.vertical",
+                            description: Text("Попробуйте другой запрос или источник."))
+                    }
                     ForEach(results) { book in
                         HStack(alignment: .top, spacing: 12) {
                             VStack(alignment: .leading, spacing: 5) {
                                 Text(book.title).font(.headline)
-                                Text(book.author).font(.subheadline).foregroundStyle(.secondary)
-                                Text("EPUB").font(.caption2).foregroundStyle(.tertiary)
+                                if book.epubURL != nil {
+                                    Text(book.author).font(.subheadline).foregroundStyle(.secondary)
+                                    Text("EPUB").font(.caption2).foregroundStyle(.tertiary)
+                                } else {
+                                    Label("Открыть раздел", systemImage: "folder")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
                             }
                             Spacer(minLength: 0)
-                            Button { Task { await download(book) } } label: {
-                                if downloading == book.id { ProgressView() }
-                                else { Image(systemName: "arrow.down.circle.fill").font(.title2) }
+                            if book.epubURL != nil {
+                                Button { Task { await download(book) } } label: {
+                                    if downloading == book.id { ProgressView() }
+                                    else { Image(systemName: "arrow.down.circle.fill").font(.title2) }
+                                }
+                                .buttonStyle(.borderless)
+                                .disabled(downloading != nil || busy)
+                                .accessibilityLabel("Скачать EPUB")
+                            } else if book.navigationURL != nil {
+                                Button { Task { await browse(book) } } label: {
+                                    Image(systemName: "chevron.right")
+                                }
+                                .buttonStyle(.borderless)
+                                .disabled(busy)
+                                .accessibilityLabel("Открыть \(book.title)")
                             }
-                            .buttonStyle(.borderless)
-                            .disabled(downloading != nil)
                         }
                     }
                 }
             }
-            .navigationTitle("Каталог книг")
-            .alert("Ошибка", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
+            .navigationTitle(pageTitle)
+            .onChange(of: provider) { _, _ in resetResults() }
+            .onChange(of: mode) { _, _ in resetResults() }
+            .alert("Ошибка", isPresented: Binding(
+                get: { error != nil },
+                set: { if !$0 { error = nil } }
+            )) {
                 Button("OK", role: .cancel) { error = nil }
             } message: { Text(error ?? "") }
         }
+    }
+
+    private func resetResults() {
+        results = []
+        previousPages = []
+        pageTitle = "Каталог книг"
+        hasSearched = false
     }
 
     private func search() async {
         busy = true
         defer { busy = false }
         do {
-            let data = try await OPDSClient(searchEndpoint: catalogURL, queryParameter: queryParameter).search(query)
-            results = mode == "author"
-                ? data.sorted { $0.author.localizedCaseInsensitiveCompare($1.author) == .orderedAscending }
-                : data
-        } catch { results = []; self.error = error.localizedDescription }
+            results = try await CatalogProviders.search(
+                query: query, mode: mode, provider: provider,
+                customURL: catalogURL, customParameter: queryParameter
+            )
+            previousPages = []
+            pageTitle = "Результаты поиска"
+            hasSearched = true
+        } catch {
+            results = []
+            previousPages = []
+            self.error = error.localizedDescription
+            hasSearched = true
+        }
+    }
+
+    private func browse(_ book: CatalogBook) async {
+        guard let url = book.navigationURL else { return }
+        busy = true
+        defer { busy = false }
+        do {
+            let next = try await CatalogProviders.browse(url: url)
+            previousPages.append(CatalogPage(title: pageTitle, results: results))
+            results = next
+            pageTitle = book.title
+            hasSearched = true
+        } catch { self.error = error.localizedDescription }
     }
 
     private func download(_ book: CatalogBook) async {
@@ -138,7 +223,7 @@ struct CatalogScreen: View {
 }
 
 struct SettingsScreen: View {
-    @AppStorage("catalogURL") private var catalogURL = "https://flub.flibusta.is/opds/search"
+    @AppStorage("catalogURL") private var catalogURL = "https://flibusta.is/opds/search?searchType=books"
     @AppStorage("catalogQueryParameter") private var queryParameter = "searchTerm"
     @AppStorage("readerFontSize") private var fontSize = 1.1
     @AppStorage("readerTheme") private var theme = "system"
@@ -152,7 +237,7 @@ struct SettingsScreen: View {
                     TextField("URL поиска", text: $catalogURL)
                         .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
                     TextField("Параметр поиска", text: $queryParameter).textInputAutocapitalization(.never)
-                    Text("Доступность адреса Флибусты не подтверждена. Поддерживаются совместимые OPDS-каталоги по HTTPS.")
+                    Text("Для другого OPDS-каталога укажите HTTPS URL поиска и параметр запроса. Настройки применяются при выборе источника «Другой OPDS».")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Section("Оформление чтения") {
