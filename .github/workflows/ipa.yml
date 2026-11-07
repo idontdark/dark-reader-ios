@@ -3,6 +3,9 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+concurrency:
+  group: dark-reader-ipa-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
