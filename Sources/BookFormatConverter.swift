@@ -1,5 +1,5 @@
 import Foundation
-import ZIPFoundation
+import ReadiumZIPFoundation
 
 enum ImportFormatError: LocalizedError {
     case unsupported, corrupt, protected, oversized, empty, noBookInArchive

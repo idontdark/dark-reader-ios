@@ -43,17 +43,22 @@ jobs:
           print("Checking Internet Archive search...")
           result = load("https://archive.org/advancedsearch.php", {
               "q": "mediatype:audio AND collection:audio_bookspoetry",
-              "fl[]": "identifier", "rows":"3","page":"1","output":"json"
+              "fl[]": "identifier", "rows":"15","page":"1","output":"json"
           })
           docs = result.get("response", {}).get("docs", [])
           if not docs:
               raise ValueError("Internet Archive returned no audio records")
-          ident = docs[0]["identifier"]
-          print("Internet Archive search OK:", ident)
-          item = load("https://archive.org/metadata/" + urllib.parse.quote(ident))
-          audio = [f for f in item.get("files", []) if f.get("name","").lower().endswith(".mp3")]
-          if not audio:
-              raise ValueError("Internet Archive item has no MP3 files")
-          print("Internet Archive metadata OK, MP3:", len(audio))
+          print("Internet Archive search OK, items:", len(docs))
+          found = None
+          for entry in docs[:12]:
+              ident = entry["identifier"]
+              item = load("https://archive.org/metadata/" + urllib.parse.quote(ident))
+              audio = [f for f in item.get("files", []) if f.get("name","").lower().endswith(".mp3")]
+              if audio:
+                  found = (ident, len(audio))
+                  break
+          if not found:
+              raise ValueError("Internet Archive returned no usable MP3 in the sampled records")
+          print("Internet Archive metadata OK, item and MP3 count:", found)
           print("Both catalog API paths checked successfully.")
           PY

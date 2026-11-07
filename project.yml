@@ -11,8 +11,8 @@ packages:
     url: https://github.com/readium/swift-toolkit.git
     from: 3.11.1
   ZIPFoundation:
-    url: https://github.com/weichsel/ZIPFoundation.git
-    from: 0.9.20
+    url: https://github.com/readium/ZIPFoundation.git
+    from: 3.0.1
 targets:
   DarkReader:
     type: application
@@ -54,7 +54,7 @@ targets:
       - package: Readium
         product: ReadiumNavigator
       - package: ZIPFoundation
-        product: ZIPFoundation
+        product: ReadiumZIPFoundation
 
   DarkReaderTests:
     type: bundle.unit-test
