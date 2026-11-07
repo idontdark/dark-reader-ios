@@ -39,9 +39,9 @@ struct CatalogScreen: View {
 
     private var providerName: String {
         switch provider {
-        case "flibusta": "Флибуста"
-        case "gutenberg": "Project Gutenberg"
-        case "gutendex": "Gutendex"
+        case "flibusta": return "Флибуста"
+        case "gutenberg": return "Project Gutenberg"
+        case "gutendex": return "Gutendex"
         default:
             if let selected = OPDSSources.decode(savedOPDSCatalogs).first(where: { "opds:" + $0.id.uuidString == provider }) {
                 return selected.name
