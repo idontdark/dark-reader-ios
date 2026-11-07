@@ -108,3 +108,36 @@ for r in out:
                 print("OPDS-FOLLOW-ERROR:", str(e), follow, flush=True)
     except Exception as e:
         print("OPDS-EXPLORE-ERROR:", r["name"], str(e), flush=True)
+
+# Test direct book-search results instead of navigating the search menu.
+for term in ["Дубровский", "Капитанская дочка", "война и мир"]:
+    params=urllib.parse.urlencode({"searchType":"books","searchTerm":term})
+    url="https://flibusta.is/opds/search?" + params
+    try:
+        req=urllib.request.Request(url,headers={"User-Agent":"DarkReader-Test/0.1","Accept":"application/atom+xml"})
+        with urllib.request.urlopen(req,timeout=12) as reply:
+            feed=ET.fromstring(reply.read(1800000))
+        ns="{http://www.w3.org/2005/Atom}"
+        entries=feed.findall(f"{ns}entry")
+        booklinks=[]
+        for e in entries:
+            title=e.findtext(f"{ns}title") or ""
+            for l in e.findall(f"{ns}link"):
+                mime=l.attrib.get("type","")
+                if "epub" in mime or "fb2" in mime:
+                    booklinks.append({"book":title[:85],"type":mime,"rel":l.attrib.get("rel",""),"url":urllib.parse.urljoin(url,l.attrib.get("href",""))})
+        print("FLIBUSTA-BOOKS:",json.dumps({"term":term,"status":200,"entries":len(entries),"epub_or_fb2_links":len(booklinks),"samples":booklinks[:4]},ensure_ascii=False),flush=True)
+        if booklinks:
+            # Only read the first four bytes; never download a whole third-party book.
+            epub=next((link for link in booklinks if "epub" in link["type"]),None)
+            if epub and epub["url"].startswith("https://"):
+                try:
+                    request=urllib.request.Request(epub["url"],headers={"User-Agent":"DarkReader-Test/0.1","Range":"bytes=0-3"})
+                    with urllib.request.urlopen(request,timeout=12) as response:
+                        header=response.read(4)
+                        print("FLIBUSTA-DOWNLOAD:",json.dumps({"status":response.status,"content_type":response.headers.get("content-type"),"zip_header":header.startswith(b"PK"),"final_url":response.url},ensure_ascii=False),flush=True)
+                except Exception as err:
+                    print("FLIBUSTA-DOWNLOAD-ERROR:",str(err),flush=True)
+            break
+    except Exception as err:
+        print("FLIBUSTA-BOOKS-ERROR:",str(err),term,flush=True)
