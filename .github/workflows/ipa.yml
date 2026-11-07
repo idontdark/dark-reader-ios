@@ -58,6 +58,7 @@ jobs:
               core.notice('QA_SCREENSHOT '+name+' '+blob.data.sha);
             }
       - name: Probe live sources and real EPUB downloads
+        if: always()
         continue-on-error: true
         run: python3 scripts/qa_080.py > live-probes.log 2>&1
       - name: Upload QA evidence

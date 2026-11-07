@@ -261,6 +261,11 @@ final class AudioPlayerModel: ObservableObject {
                 try FileManager.default.removeItem(at: target)
             }
             try FileManager.default.moveItem(at: temporary, to: target)
+            let asset = AVURLAsset(url: target)
+            guard !(try await asset.loadTracks(withMediaType: .audio)).isEmpty else {
+                try? FileManager.default.removeItem(at: target)
+                throw AudioCatalogError.noTracks
+            }
             downloaded.insert(track.id)
             settings.set(Array(downloaded), forKey: downloadKey)
         } catch {
@@ -272,8 +277,11 @@ final class AudioPlayerModel: ObservableObject {
         if track.url.isFileURL { return track.url }
         guard downloaded.contains(track.id),
               let base = try? audioFolder() else { return nil }
-        let file = base.appendingPathComponent(safeFilename(for: track))
-        return FileManager.default.fileExists(atPath: file.path) ? file : nil
+        for name in [safeFilename(for: track), safeFilename(for: track, legacy: true)] {
+            let file = base.appendingPathComponent(name)
+            if FileManager.default.fileExists(atPath: file.path) { return file }
+        }
+        return nil
     }
 
     private func audioFolder() throws -> URL {
@@ -283,13 +291,14 @@ final class AudioPlayerModel: ObservableObject {
         return base
     }
 
-    private func safeFilename(for track: AudioChapter) -> String {
+    private func safeFilename(for track: AudioChapter, legacy: Bool = false) -> String {
         // FNV-1a, deterministic and independent of Swift's randomized Hasher.
         var hash: UInt64 = 14_695_981_039_346_656_037
         for byte in track.id.utf8 {
             hash = (hash ^ UInt64(byte)) &* 1_099_511_628_211
         }
-        return String(hash, radix: 16) + ".mp3"
+        let ext = ["mp3", "m4a", "m4b"].contains(track.url.pathExtension.lowercased()) ? track.url.pathExtension.lowercased() : "mp3"
+        return String(hash, radix: 16) + "." + (legacy ? "mp3" : ext)
     }
 
     private func didAdvance(to seconds: Double) {
@@ -309,7 +318,8 @@ final class AudioPlayerModel: ObservableObject {
             if chapters[chapterIndex].startSeconds == nil { duration = seconds }
         }
         if chapters[chapterIndex].startSeconds != nil, duration > 0, position >= duration {
-            if chapterIndex + 1 < chapters.count { playChapter(chapterIndex + 1) } else { pause() }
+            if chapterIndex + 1 < chapters.count { playChapter(chapterIndex + 1) }
+            else { if let book { settings.set(true, forKey: "audio.finished.\(book.id)") }; pause() }
             return
         }
         saveProgress()
@@ -323,6 +333,7 @@ final class AudioPlayerModel: ObservableObject {
     }
     func openBookmark(_ bookmark: Bookmark) {
         guard let book, let index = chapters.firstIndex(where: { $0.id == bookmark.chapterID }) else { return }
+        if index == chapterIndex { seek(to: bookmark.position); return }
         pause()
         settings.set(bookmark.position, forKey: "audio.trackPosition.\(book.id).\(bookmark.chapterID)")
         playChapter(index)

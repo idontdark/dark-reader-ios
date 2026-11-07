@@ -35,6 +35,20 @@ enum BookFormatConverter {
         }
     }
 
+    static func validateContainer(_ url: URL) async throws {
+        let archive = try await Archive(url: url, accessMode: .read)
+        let entries = try await archive.entries()
+        guard entries.contains(where: { $0.path == "META-INF/container.xml" }),
+              let mimetype = entries.first(where: { $0.path == "mimetype" }),
+              mimetype.uncompressedSize < 100 else { throw ReaderError.invalidEPUB }
+        let temporary = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: temporary) }
+        try await archive.extract(mimetype, to: temporary)
+        guard String(data: try Data(contentsOf: temporary), encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) == "application/epub+zip" else {
+            throw ReaderError.invalidEPUB
+        }
+    }
+
     private static func fromZIP(_ file: URL) async throws -> URL {
         let archive = try await Archive(url: file, accessMode: .read)
         let entries = try await archive.entries()

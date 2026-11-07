@@ -40,8 +40,8 @@ final class DownloadQueue: ObservableObject {
     }
     func attach(_ library: BookshelfStore) { self.library = library; pump() }
     func enqueue(_ book: CatalogBook) {
-        guard book.epubURL != nil,
-              !items.contains(where: { $0.id == book.id && $0.state != .failed }),
+        guard book.epubURL != nil, tasks[book.id] == nil,
+              !items.contains(where: { $0.id == book.id && [.queued, .connecting, .downloading, .paused].contains($0.state) }),
               library?.books.contains(where: { $0.catalogID == book.id }) != true else { return }
         items.removeAll { $0.id == book.id }
         items.append(BookDownload(book: book))

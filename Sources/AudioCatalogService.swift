@@ -117,6 +117,7 @@ enum AudioCatalogService {
     }
 
     static func chapters(for book: AudioBook) async throws -> [AudioChapter] {
+        if book.source != .local, let cached = AudioTrackCache.load(book), !cached.isEmpty { return cached }
         let found: [AudioChapter]
         switch book.source {
         case .local: return try AudioImportStore.chapters(for: book)
@@ -160,7 +161,9 @@ enum AudioCatalogService {
             }
         }
         guard !found.isEmpty else { throw AudioCatalogError.noTracks }
-        return found.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+        let sorted = found.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+        AudioTrackCache.save(sorted, for: book)
+        return sorted
     }
 
     private static func searchLibriVox(_ term: String, byAuthor: Bool) async throws -> [AudioBook] {

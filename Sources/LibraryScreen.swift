@@ -228,7 +228,9 @@ struct LibraryScreen: View {
             case "finished": return UserDefaults.standard.bool(forKey: "audio.finished.\($0.id)")
             case "offline":
                 let book = $0
-                return book.source == .local || audioPlayer.downloaded.contains(where: { $0.hasPrefix(book.id + ":") })
+                if book.source == .local { return true }
+                guard let chapters = AudioTrackCache.load(book), !chapters.isEmpty else { return false }
+                return chapters.allSatisfy { audioPlayer.localURL(for: $0) != nil }
             default: return true
             }
         }
@@ -248,7 +250,10 @@ struct LibraryScreen: View {
                 }
             }
             NavigationLink("Загрузки") { DownloadsScreen() }
-            if let currentlyPlaying = audioPlayer.book {
+            if let currentlyPlaying = audioPlayer.book ?? savedAudioBooks.first(where: {
+                let index = UserDefaults.standard.integer(forKey: "audio.chapter.\($0.id)")
+                return UserDefaults.standard.double(forKey: "audio.position.\($0.id).\(index)") > 0 && !UserDefaults.standard.bool(forKey: "audio.finished.\($0.id)")
+            }) {
                 ReaderCard {
                     Label("Продолжить прослушивание", systemImage: "headphones")
                         .font(.headline)
@@ -258,7 +263,8 @@ struct LibraryScreen: View {
                         .foregroundStyle(ReaderStyle.secondary)
                         .padding(.top, 7)
                     PurpleAction(title: "Открыть плеер", icon: "play.fill") {
-                        showPlayer = true
+                        if audioPlayer.book?.id == currentlyPlaying.id { showPlayer = true }
+                        else { selectedAudio = currentlyPlaying }
                     }
                     .padding(.top, 12)
                 }
@@ -286,6 +292,9 @@ struct LibraryScreen: View {
                     }
                 }
             } else {
+                if filteredAudioBooks.isEmpty {
+                    ReaderCard { Text("В этой категории пока нет аудиокниг.").font(.subheadline).foregroundStyle(ReaderStyle.secondary) }
+                }
                 ForEach(filteredAudioBooks) { book in
                     Button { selectedAudio = book } label: {
                         ReaderCard {

@@ -39,6 +39,7 @@ final class BookshelfStore: ObservableObject {
         defer { if scoped { source.stopAccessingSecurityScopedResource() } }
         let prepared = try await BookFormatConverter.prepare(source)
         try validateEPUB(prepared)
+        try await BookFormatConverter.validateContainer(prepared)
         let filename = UUID().uuidString + ".epub"
         try fileManager.copyItem(at: prepared, to: directory.appendingPathComponent(filename))
         books.insert(LocalBook(title: title, author: author, filename: filename), at: 0)
@@ -100,6 +101,8 @@ final class BookshelfStore: ObservableObject {
             }
         }
         let length = (try fileManager.attributesOfItem(atPath: temporaryURL.path)[.size] as? NSNumber)?.int64Value ?? 0
+        if response.expectedContentLength > 0, http.value(forHTTPHeaderField: "Content-Encoding") == nil,
+           length != response.expectedContentLength { throw ReaderError.invalidEPUB }
         guard length > 0 && length <= 50 * 1024 * 1024 else { throw ImportFormatError.oversized }
         let staging = fileManager.temporaryDirectory.appendingPathComponent(
             UUID().uuidString + "." + type
@@ -108,6 +111,7 @@ final class BookshelfStore: ObservableObject {
         defer { try? fileManager.removeItem(at: staging) }
         let prepared = try await BookFormatConverter.prepare(staging)
         try validateEPUB(prepared)
+        try await BookFormatConverter.validateContainer(prepared)
         let filename = UUID().uuidString + ".epub"
         try fileManager.copyItem(at: prepared, to: directory.appendingPathComponent(filename))
         var imported = LocalBook(title: book.title, author: book.author, filename: filename)
