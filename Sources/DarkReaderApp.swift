@@ -91,7 +91,8 @@ struct CatalogScreen: View {
                 Section("Источник") {
                     Picker("Каталог", selection: $provider) {
                         Text("Флибуста (OPDS)").tag("flibusta")
-                        Text("Gutenberg (Gutendex)").tag("gutendex")
+                        Text("Project Gutenberg (OPDS)").tag("gutenberg")
+                        Text("Gutendex (нестабильный)").tag("gutendex")
                         Text("Другой OPDS").tag("custom")
                     }
                     .pickerStyle(.menu)
