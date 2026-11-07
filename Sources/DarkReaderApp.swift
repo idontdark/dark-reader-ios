@@ -3,7 +3,14 @@ import UniformTypeIdentifiers
 
 @main
 struct DarkReaderApp: App {
-    @StateObject private var bookshelf = BookshelfStore()
+    @StateObject private var bookshelf = DarkReaderAppState.shared.books
+    @StateObject private var sync = DarkReaderAppState.shared.sync
+    @Environment(\.scenePhase) private var scenePhase
+
+    init() {
+        CloudBackgroundSync.register()
+    }
+
     var body: some Scene {
         WindowGroup {
             TabView {
@@ -12,7 +19,21 @@ struct DarkReaderApp: App {
                 SettingsScreen().tabItem { Label("Настройки", systemImage: "gearshape") }
             }
             .environmentObject(bookshelf)
+            .environmentObject(sync)
             .tint(.indigo)
+            .task {
+                if sync.automatic { await sync.syncNow() }
+            }
+            .onChange(of: scenePhase) { _, phase in
+                switch phase {
+                case .active:
+                    if sync.automatic { Task { await sync.syncNow() } }
+                case .background:
+                    if sync.automatic { CloudBackgroundSync.schedule() }
+                default:
+                    break
+                }
+            }
         }
     }
 }
@@ -224,6 +245,7 @@ struct CatalogScreen: View {
 }
 
 struct SettingsScreen: View {
+    @EnvironmentObject private var sync: CloudSyncManager
     @AppStorage("catalogURL") private var catalogURL = "https://flibusta.is/opds/search?searchType=books"
     @AppStorage("catalogQueryParameter") private var queryParameter = "searchTerm"
     @AppStorage("readerFontSize") private var fontSize = 1.1
@@ -281,6 +303,14 @@ struct SettingsScreen: View {
                     }
                 }
 
+                Section("Данные") {
+                    NavigationLink {
+                        CloudSyncScreen()
+                    } label: {
+                        Label("Синхронизация iCloud", systemImage: "icloud")
+                    }
+                }
+
                 Section {
                     NavigationLink {
                         SupportProjectScreen()
@@ -305,6 +335,10 @@ struct SettingsScreen: View {
                 }
             }
             .navigationTitle("Настройки")
+            .onChange(of: theme) { _, _ in sync.settingsChanged() }
+            .onChange(of: font) { _, _ in sync.settingsChanged() }
+            .onChange(of: fontSize) { _, _ in sync.settingsChanged() }
+            .onChange(of: scroll) { _, _ in sync.settingsChanged() }
         }
     }
 }
