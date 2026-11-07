@@ -90,7 +90,16 @@ enum AudioImportStore {
                     cover = target
                 }
             }
-            let groups = (try? await asset.loadChapterMetadataGroups(bestMatchingPreferredLanguages: ["ru", "en"])) ?? []
+            var groups = (try? await asset.loadChapterMetadataGroups(bestMatchingPreferredLanguages: ["ru", "en"])) ?? []
+            if groups.isEmpty {
+                // Many M4B containers tag chapter titles as "und" rather than ru/en.
+                let locales = (try? await asset.load(.availableChapterLocales)) ?? []
+                for locale in locales {
+                    groups = (try? await asset.loadChapterMetadataGroups(withTitleLocale: locale, containingItemsWithCommonKeys: [])) ?? []
+                    if !groups.isEmpty { break }
+                }
+                print("IMPORT_CHAPTERS locales=\(locales.map(\.identifier)) count=\(groups.count)")
+            }
             if groups.isEmpty {
                 tracks.append(AudioChapter(id: "\(id):\(tracks.count)", title: trackTitle,
                                            url: file, durationSeconds: duration))
