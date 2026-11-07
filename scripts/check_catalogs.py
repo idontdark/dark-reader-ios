@@ -141,3 +141,29 @@ for term in ["Дубровский", "Капитанская дочка", "во�
             break
     except Exception as err:
         print("FLIBUSTA-BOOKS-ERROR:",str(err),term,flush=True)
+
+# Verify a real Gutendex EPUB acquisition URL and Gutenberg's per-book OPDS.
+try:
+    with urllib.request.urlopen("https://gutendex.com/books/?search=pride",timeout=15) as response:
+        books=json.load(response).get("results",[])
+    candidate=next((v for b in books for k,v in b.get("formats",{}).items() if "epub" in k and v.startswith("https://")),None)
+    print("GUTENDEX-LINK:",json.dumps({"result_count":len(books),"first_epub_url":candidate},ensure_ascii=False),flush=True)
+    if candidate:
+        try:
+            req=urllib.request.Request(candidate,headers={"Range":"bytes=0-3","User-Agent":"DarkReader-Test/0.1"})
+            with urllib.request.urlopen(req,timeout=15) as response:
+                first=response.read(4)
+                print("GUTENDEX-DOWNLOAD:",json.dumps({"status":response.status,"zip_header":first.startswith(b"PK"),"content_type":response.headers.get("content-type"),"url":response.url},ensure_ascii=False),flush=True)
+        except Exception as e:
+            print("GUTENDEX-DOWNLOAD-ERROR:",str(e),flush=True)
+except Exception as e:
+    print("GUTENDEX-LINK-ERROR:",str(e),flush=True)
+
+try:
+    with urllib.request.urlopen("https://www.gutenberg.org/ebooks/1342.opds",timeout=15) as response:
+        root=ET.fromstring(response.read(1000000))
+        ns="{http://www.w3.org/2005/Atom}"
+        links=[{"rel":l.attrib.get("rel"),"type":l.attrib.get("type"),"href":l.attrib.get("href")} for l in root.findall(f".//{ns}link")]
+        print("GUTENBERG-BOOK-OPDS:",json.dumps({"status":response.status,"root":root.tag,"epub_links":[l for l in links if "epub" in str(l["type"]).lower()][:3],"total_links":len(links)},ensure_ascii=False),flush=True)
+except Exception as e:
+    print("GUTENBERG-BOOK-OPDS-ERROR:",str(e),flush=True)
