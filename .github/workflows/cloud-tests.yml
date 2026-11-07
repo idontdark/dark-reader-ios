@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - 'Tests/**'
-      - 'Sources/CloudSync*.swift'
+      - 'Sources/**'
       - 'Sources/CloudFolderWorker.swift'
       - 'Sources/BookshelfStore.swift'
       - 'Sources/Book.swift'
@@ -43,6 +43,29 @@ jobs:
             -derivedDataPath "$PWD/test-build" \
             -resultBundlePath "$PWD/TestResults.xcresult" \
             -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO
+      - name: Capture Dark Reader simulator screen
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          UDID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next((x["udid"] for group in d["devices"].values() for x in group if x["name"].startswith("iPhone") and x.get("isAvailable", True)), ""))')
+          test -n "$UDID"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          APP="$PWD/test-build/Build/Products/Debug-iphonesimulator/DarkReader.app"
+          test -d "$APP"
+          xcrun simctl install "$UDID" "$APP"
+          xcrun simctl launch "$UDID" com.ipadark.reader
+          sleep 3
+          xcrun simctl io "$UDID" screenshot "$PWD/dark-reader-simulator.png"
+      - name: Upload simulator screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dark-reader-simulator-screen
+          path: dark-reader-simulator.png
+          if-no-files-found: ignore
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
