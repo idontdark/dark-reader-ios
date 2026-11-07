@@ -21,7 +21,8 @@ struct CatalogBook: Identifiable, Hashable {
     var id: String
     var title: String
     var author: String
-    var epubURL: URL
+    var epubURL: URL?
+    var navigationURL: URL? = nil
 }
 
 enum ReaderError: LocalizedError {
