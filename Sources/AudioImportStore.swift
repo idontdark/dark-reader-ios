@@ -123,7 +123,7 @@ enum AudioImportStore {
         return book
     }
     static func importURL(_ url: URL, title: String, author: String) async throws -> AudioBook {
-        guard url.scheme == "https", url.host != nil, extensions.contains(url.pathExtension.lowercased()) else {
+        guard url.scheme == "https", url.host != nil else {
             throw ReaderError.invalidCatalogURL
         }
         let configuration = URLSessionConfiguration.default
@@ -133,7 +133,14 @@ enum AudioImportStore {
         defer { session.invalidateAndCancel() }
         let (temporary, response) = try await session.download(from: url)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { throw AudioCatalogError.unavailable }
-        let file = temporary.appendingPathExtension(url.pathExtension)
+        let mime = http.mimeType?.lowercased() ?? ""
+        let ext: String
+        if extensions.contains(url.pathExtension.lowercased()) { ext = url.pathExtension.lowercased() }
+        else if mime.contains("mpeg") { ext = "mp3" }
+        else if mime.contains("mp4") || mime.contains("m4a") { ext = "m4a" }
+        else if mime.contains("zip") { ext = "zip" }
+        else { throw ImportFormatError.unsupported }
+        let file = temporary.appendingPathExtension(ext)
         try FileManager.default.moveItem(at: temporary, to: file)
         defer { try? FileManager.default.removeItem(at: file) }
         return try await importFiles([file], title: title, author: author)

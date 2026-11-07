@@ -153,7 +153,7 @@ enum AudioCatalogService {
                 guard let name = file["name"] as? String,
                       (name.lowercased().hasSuffix(".mp3") || (!hasMP3 && name.lowercased().hasSuffix(".m4b"))),
                       name.count < 260,
-                      file["private"] as? String != "true",
+                      file["private"] as? String != "true", file["private"] as? Bool != true,
                       file["source"] as? String != "metadata",
                       let fileURL = URL(string: "https://archive.org/download/\(safeID)/")?
                         .appendingPathComponent(name) else { return nil }

@@ -101,7 +101,8 @@ private struct RootReaderView: View {
 
     private var preferenceObservers: some View {
         tabs
-            .onChange(of: appLanguage) { _, value in
+            .onChange(of: appLanguage) { old, value in
+                if bookLanguage == old || bookLanguage == "auto" { bookLanguage = value }
                 sync.settingsChanged(key: "appLanguage", value: value)
             }
             .onChange(of: bookLanguage) { _, value in

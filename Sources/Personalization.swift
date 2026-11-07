@@ -72,10 +72,9 @@ struct LanguageSettingsScreen: View {
                     SectionLabel(text: "Язык книг")
                     ReaderCard {
                         Picker("Язык каталога", selection: $bookLanguage) {
-                            Text("Автоматически").tag("auto")
                             Text("Русский").tag("ru")
                             Text("English").tag("en")
-                            Text("Все языки").tag("all")
+                            Text("Все").tag("all")
                         }
                         .tint(Color(hex: ReaderStyle.defaultAccent))
                         Text("Язык книг настраивается отдельно от языка приложения. Фильтрация зависит от выбранного каталога.")

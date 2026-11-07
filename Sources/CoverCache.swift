@@ -6,8 +6,13 @@ actor CoverCache {
     static let shared = CoverCache()
     private var memory: [URL: Data] = [:]
     private var pending: [URL: Task<Data, Error>] = [:]
-    private let folder = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-        .appendingPathComponent("Covers", isDirectory: true)
+    private let folder: URL
+    private let session: URLSession
+    init(session: URLSession = .shared, folder: URL? = nil) {
+        self.session = session
+        self.folder = folder ?? FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Covers", isDirectory: true)
+    }
 
     func data(for url: URL) async throws -> Data {
         if url.isFileURL { return try Data(contentsOf: url) }
@@ -19,7 +24,7 @@ actor CoverCache {
             if let cached = try? Data(contentsOf: target), UIImage(data: cached) != nil { return cached }
             var request = URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 20)
             request.setValue("image/*", forHTTPHeaderField: "Accept")
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await session.data(for: request)
             guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
                   data.count <= 8_000_000, UIImage(data: data) != nil else { throw ReaderError.noResults }
             try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)

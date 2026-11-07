@@ -45,6 +45,7 @@ jobs:
           set -euo pipefail
           UDID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for group in d["devices"].values() for x in group if x["name"].startswith("iPhone") and x.get("isAvailable", True)))')
           xcodebuild test -project DarkReader.xcodeproj -scheme DarkReader -destination "platform=iOS Simulator,id=$UDID" -derivedDataPath "$PWD/test-build" -resultBundlePath "$PWD/RegressionResults.xcresult" -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO > simulator-tests.log 2>&1 || { tail -180 simulator-tests.log; exit 1; }
+          grep -E 'Executed |LIVE_|DOWNLOAD_RESUME_|COVER_CACHE_|Test Case.*(M4|MP3)' simulator-tests.log || true
       - name: Capture simulator layouts
         uses: actions/github-script@v7
         with:
@@ -52,8 +53,12 @@ jobs:
             const {execFileSync} = require('child_process');
             const fs = require('fs');
             const devices = JSON.parse(execFileSync('xcrun',['simctl','list','devices','available','-j'], {encoding:'utf8'}));
-            const device = Object.values(devices.devices).flat().find(d => d.name.startsWith('iPhone') && d.state === 'Booted');
-            if (!device) throw new Error('No booted simulator');
+            const all = Object.values(devices.devices).flat();
+            const device = all.find(d => d.name.startsWith('iPhone') && d.state === 'Booted') || all.find(d => d.name.startsWith('iPhone') && d.isAvailable);
+            if (!device) throw new Error('No available iPhone simulator');
+            if (device.state !== 'Booted') execFileSync('xcrun',['simctl','boot',device.udid]);
+            execFileSync('xcrun',['simctl','bootstatus',device.udid,'-b']);
+            execFileSync('xcrun',['simctl','install',device.udid,process.cwd()+'/test-build/Build/Products/Debug-iphonesimulator/DarkReader.app']);
             for (const [name, schema] of [['onboarding','0'],['library','3']]) {
               try { execFileSync('xcrun',['simctl','terminate',device.udid,'com.ipadark.reader']); } catch {}
               execFileSync('xcrun',['simctl','launch',device.udid,'com.ipadark.reader','-onboardingSchemaVersion',schema]);

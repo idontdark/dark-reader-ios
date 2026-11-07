@@ -122,7 +122,7 @@ struct CatalogScreen: View {
                             Menu {
                                 Button("Русский") { bookLanguage = "ru" }
                                 Button("English") { bookLanguage = "en" }
-                                Button("Все языки") { bookLanguage = "all" }
+                                Button("Все") { bookLanguage = "all" }
                             } label: {
                                 Text(languageName)
                                     .foregroundStyle(Color(hex: accentHex))
