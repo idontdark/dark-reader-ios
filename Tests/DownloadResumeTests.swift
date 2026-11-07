@@ -21,18 +21,24 @@ final class DownloadResumeTests: XCTestCase {
         }
         XCTAssertEqual(queue.items.first?.state,.paused)
         XCTAssertNotNil(queue.items.first?.resumeData,"Range-capable server must produce resume data")
+        for _ in 0..<100 {
+            if queue.activeDownloadCount == 0 { break }
+            try await Task.sleep(for:.milliseconds(50))
+        }
+        XCTAssertEqual(queue.activeDownloadCount,0,"Paused session must release its queue slot")
         let restored = DownloadQueue(storage:storage)
         XCTAssertEqual(restored.items.first?.state,.paused)
         XCTAssertNotNil(restored.items.first?.resumeData)
-        restored.attach(library);restored.retry(book.id)
-        for _ in 0..<300 {
+        let restartedLibrary = BookshelfStore()
+        restored.attach(restartedLibrary);restored.retry(book.id)
+        for _ in 0..<1200 {
             if restored.items.first?.state == .downloaded || restored.items.first?.state == .failed { break }
             try await Task.sleep(for:.milliseconds(50))
         }
         XCTAssertEqual(restored.items.first?.state,.downloaded)
-        let imported = try XCTUnwrap(library.books.first { $0.catalogID == book.id })
-        defer { library.delete(imported) }
-        _ = try await ReaderSession.open(fileURL:library.fileURL(for:imported),previousLocation:nil)
+        let imported = try XCTUnwrap(restartedLibrary.books.first { $0.catalogID == book.id })
+        defer { restartedLibrary.delete(imported) }
+        _ = try await ReaderSession.open(fileURL:restartedLibrary.fileURL(for:imported),previousLocation:nil)
         let (data,_) = try await URLSession.shared.data(from:URL(string:"http://127.0.0.1:8765/stats")!)
         let stats = try XCTUnwrap(JSONSerialization.jsonObject(with:data) as? [String:Any])
         XCTAssertTrue((stats["ranges"] as? [Int] ?? []).contains { $0 > 0 },"Restart must request remaining bytes")

@@ -44,8 +44,24 @@ jobs:
         run: |
           set -euo pipefail
           UDID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for group in d["devices"].values() for x in group if x["name"].startswith("iPhone") and x.get("isAvailable", True)))')
-          xcodebuild test -project DarkReader.xcodeproj -scheme DarkReader -destination "platform=iOS Simulator,id=$UDID" -derivedDataPath "$PWD/test-build" -resultBundlePath "$PWD/RegressionResults.xcresult" -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO > simulator-tests.log 2>&1 || { tail -180 simulator-tests.log; exit 1; }
+          xcodebuild test -project DarkReader.xcodeproj -scheme DarkReader -destination "platform=iOS Simulator,id=$UDID" -derivedDataPath "$PWD/test-build" -resultBundlePath "$PWD/RegressionResults.xcresult" -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO > simulator-tests.log 2>&1 || { grep -E 'error:|Test Case.*failed|Executed ' simulator-tests.log; tail -180 simulator-tests.log; exit 1; }
           grep -E 'Executed |LIVE_|DOWNLOAD_RESUME_|COVER_CACHE_|Test Case.*(M4|MP3)' simulator-tests.log || true
+      - name: Export visual test screenshots
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {execFileSync} = require('child_process');
+            const fs = require('fs');
+            const path = require('path');
+            if (!fs.existsSync('RegressionResults.xcresult')) return;
+            execFileSync('xcrun',['xcresulttool','export','attachments','--path','RegressionResults.xcresult','--output-path','visual-attachments']);
+            function files(dir) { return fs.readdirSync(dir,{withFileTypes:true}).flatMap(e=>e.isDirectory()?files(path.join(dir,e.name)):[path.join(dir,e.name)]); }
+            for (const file of files('visual-attachments').filter(f=>f.endsWith('.png'))) {
+              const blob = await github.rest.git.createBlob({...context.repo,encoding:'utf-8',content:fs.readFileSync(file).toString('base64')});
+              core.notice('QA_VISUAL_IMAGE '+path.basename(file)+' '+blob.data.sha);
+            }
+            for (const file of files('visual-attachments').filter(f=>f.endsWith('.json'))) core.info(fs.readFileSync(file,'utf8'));
       - name: Capture simulator layouts
         uses: actions/github-script@v7
         with:
@@ -81,6 +97,7 @@ jobs:
             simulator-tests.log
             onboarding.png
             library.png
+            visual-attachments
             live-probes.log
             qa-results/live-probes.json
           if-no-files-found: ignore

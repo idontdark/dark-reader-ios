@@ -23,8 +23,9 @@ final class VisualTests: XCTestCase {
         XCTAssertTrue(app.buttons["Аудиокниги"].waitForExistence(timeout:10))
         app.buttons["Аудиокниги"].tap()
         XCTAssertTrue(app.staticTexts["Время слушать"].waitForExistence(timeout:5))
-        XCTAssertTrue(app.buttons["Импортировать аудиокнигу"].exists)
         capture("01-audio-library", app)
+        app.swipeUp()
+        XCTAssertTrue(app.buttons["Импортировать аудиокнигу"].waitForExistence(timeout:5))
 
         app.tabBars.buttons["Каталог"].tap()
         app.buttons["Аудиокниги"].tap()

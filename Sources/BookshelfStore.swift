@@ -59,7 +59,10 @@ final class BookshelfStore: ObservableObject {
         configuration.waitsForConnectivity = false
         let session = URLSession(configuration: configuration, delegate: delegate, delegateQueue: nil)
         downloadSessions[book.id] = session
-        defer { downloadSessions[book.id] = nil; session.finishTasksAndInvalidate() }
+        defer {
+            if downloadSessions[book.id] === session { downloadSessions[book.id] = nil }
+            session.finishTasksAndInvalidate()
+        }
         let temporaryURL: URL
         let response: URLResponse
         if let resumeData {

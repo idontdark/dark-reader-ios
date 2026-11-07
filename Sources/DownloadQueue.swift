@@ -25,6 +25,7 @@ final class DownloadQueue: ObservableObject {
     static let shared = DownloadQueue()
     @Published private(set) var items: [BookDownload] = []
     private var tasks: [String: Task<Void, Never>] = [:]
+    var activeDownloadCount: Int { tasks.count }
     private weak var library: BookshelfStore?
     private let storage: URL
     init(storage: URL? = nil) {
