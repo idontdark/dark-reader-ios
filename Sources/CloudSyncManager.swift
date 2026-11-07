@@ -18,6 +18,8 @@ final class CloudSyncManager: ObservableObject {
     private var bookStore: BookshelfStore?
     private var queued: Task<Void, Never>?
     private var retryAfterCurrentRun = false
+    private var remotelyAppliedSettings: [String: String] = [:]
+    private var remotelyAppliedUntil = Date.distantPast
 
     init() {
         folderName = UserDefaults.standard.string(forKey: "cloudSync.folderName")
@@ -84,7 +86,21 @@ final class CloudSyncManager: ObservableObject {
         // Files already saved in iCloud Drive are never deleted here.
     }
 
-    func settingsChanged() {
+    func settingsChanged(key: String, value: String) {
+        // @AppStorage also emits change events when a remote setting is restored.
+        // Ignore those echoes, otherwise devices can keep re-uploading identical values.
+        if Date() < remotelyAppliedUntil, let expected = remotelyAppliedSettings[key] {
+            let matches: Bool
+            if key == "readerScroll" {
+                matches = (expected == "1" || expected.lowercased() == "true") ==
+                          (value == "1" || value.lowercased() == "true")
+            } else if key == "readerFontSize", let a = Double(expected), let b = Double(value) {
+                matches = abs(a - b) < 0.001
+            } else {
+                matches = expected == value
+            }
+            if matches { return }
+        }
         defaults.set(Date(), forKey: settingsDateKey)
         requestSync()
     }
@@ -195,6 +211,8 @@ final class CloudSyncManager: ObservableObject {
     }
 
     private func applySettings(_ values: [String: String]) {
+        remotelyAppliedSettings = values
+        remotelyAppliedUntil = Date(timeIntervalSinceNow: 5)
         for (key, value) in values {
             switch key {
             case "readerFontSize":
