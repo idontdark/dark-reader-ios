@@ -6,6 +6,7 @@ final class VisualTests: XCTestCase {
         app.launchArguments = [
             "-onboardingSchemaVersion", onboarding ? "0" : "3",
             "-appLanguage", "ru", "-preferredBookLanguage", "ru",
+            "-audio.historyJSON", "[]",
             "-hintLibraryShown", "YES", "-hintCatalogShown", "YES", "-hintReaderShown", "YES"
         ]
         app.launch()
@@ -64,3 +65,4 @@ final class VisualTests: XCTestCase {
         capture("05-russian-books", app)
     }
 }
+
