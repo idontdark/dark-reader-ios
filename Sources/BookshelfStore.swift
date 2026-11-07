@@ -97,15 +97,22 @@ final class BookshelfStore: ObservableObject {
             if date > (deletions[id] ?? .distantPast) { deletions[id] = date }
         }
 
-        let existing = Dictionary(uniqueKeysWithValues: books.map { ($0.id, $0) })
-        var winners = existing
+        var winners: [UUID: LocalBook] = [:]
+        for item in books {
+            if let previous = winners[item.id], previous.changeDate >= item.changeDate { continue }
+            winners[item.id] = item
+        }
         for item in remote {
             if let local = winners[item.id] {
-                if item.changeDate > local.changeDate {
-                    var newer = item
-                    newer.filename = local.filename
-                    winners[item.id] = newer
+                if let stagedFile = staged[item.id.uuidString],
+                   !fileManager.fileExists(atPath: fileURL(for: local).path) {
+                    try validateEPUB(stagedFile)
+                    try fileManager.moveItem(at: stagedFile, to: fileURL(for: local))
                 }
+                var newer = item.changeDate > local.changeDate ? item : local
+                newer.filename = local.filename
+                newer.bookmarks = Array(Set((local.bookmarks ?? []) + (item.bookmarks ?? []))).sorted()
+                winners[item.id] = newer
             } else if let stagedFile = staged[item.id.uuidString] {
                 try validateEPUB(stagedFile)
                 let filename = UUID().uuidString + ".epub"
