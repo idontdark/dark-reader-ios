@@ -51,6 +51,7 @@ struct ReaderContainer: UIViewControllerRepresentable {
 }
 
 struct ReaderScreen: View {
+    @EnvironmentObject private var sync: CloudSyncManager
     @EnvironmentObject private var store: BookshelfStore
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
@@ -97,14 +98,34 @@ struct ReaderScreen: View {
                 }
             }
         }
-        .task { await load() }
+        .task {
+            await load()
+            // Periodic safety save, also triggered when leaving or backgrounding.
+            while !Task.isCancelled {
+                do { try await Task.sleep(nanoseconds: 20_000_000_000) }
+                catch { break }
+                persist()
+            }
+        }
         .onDisappear { persist() }
         .onChange(of: scenePhase) { _, phase in if phase != .active { persist() } }
-        .onChange(of: fontSize) { _, _ in apply() }
-        .onChange(of: font) { _, _ in apply() }
-        .onChange(of: theme) { _, _ in apply() }
+        .onChange(of: fontSize) { _, _ in
+            apply()
+            sync.settingsChanged()
+        }
+        .onChange(of: font) { _, _ in
+            apply()
+            sync.settingsChanged()
+        }
+        .onChange(of: theme) { _, _ in
+            apply()
+            sync.settingsChanged()
+        }
         .onChange(of: colorScheme) { _, _ in apply() }
-        .onChange(of: scroll) { _, _ in apply() }
+        .onChange(of: scroll) { _, _ in
+            apply()
+            sync.settingsChanged()
+        }
     }
 
     private func load() async {
