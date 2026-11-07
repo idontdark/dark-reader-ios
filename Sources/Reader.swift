@@ -86,6 +86,21 @@ struct ReaderScreen: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
+                        Button("Добавить закладку", systemImage: "bookmark.fill") {
+                            addBookmark()
+                        }
+                        if let bookmarks = book?.bookmarks, !bookmarks.isEmpty {
+                            Divider()
+                            ForEach(bookmarks.indices, id: \.self) { index in
+                                Button("Закладка \(index + 1)") {
+                                    Task { await openBookmark(bookmarks[index]) }
+                                }
+                            }
+                        }
+                    } label: { Image(systemName: "bookmark") }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
                         Button("А−") { fontSize = max(0.7, fontSize - 0.15) }
                         Button("А+") { fontSize = min(3.0, fontSize + 0.15) }
                         Picker("Тема", selection: $theme) {
@@ -138,6 +153,18 @@ struct ReaderScreen: View {
 
     private func apply() {
         session?.applyPreferences(fontSize: fontSize, font: font, theme: theme == "system" ? (colorScheme == .dark ? "dark" : "light") : theme, scroll: scroll)
+    }
+
+    private func addBookmark() {
+        guard let locator = session?.navigator.currentLocation,
+              let json = try? locator.jsonString() else { return }
+        store.saveBookmark(bookID: bookID, locatorJSON: json)
+    }
+
+    private func openBookmark(_ json: String) async {
+        guard let locator = try? Locator(jsonString: json) else { return }
+        await session?.navigator.go(to: locator)
+        persist()
     }
 
     private func persist() {
