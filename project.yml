@@ -17,6 +17,9 @@ targets:
     deploymentTarget: "17.0"
     sources:
       - Sources
+    scheme:
+      testTargets:
+        - DarkReaderTests
     info:
       path: BuildSupport/DarkReader-Info.plist
       properties:
@@ -41,3 +44,17 @@ targets:
         product: ReadiumStreamer
       - package: Readium
         product: ReadiumNavigator
+
+  DarkReaderTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - Tests
+    dependencies:
+      - target: DarkReader
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.ipadark.reader.tests
+        CODE_SIGNING_ALLOWED: NO
