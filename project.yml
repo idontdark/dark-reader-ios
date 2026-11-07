@@ -24,6 +24,8 @@ targets:
       path: BuildSupport/DarkReader-Info.plist
       properties:
         CFBundleDisplayName: Dark Reader
+        CFBundleShortVersionString: "0.2.0"
+        CFBundleVersion: "2"
         LSSupportsOpeningDocumentsInPlace: true
         UIFileSharingEnabled: true
         BGTaskSchedulerPermittedIdentifiers:
