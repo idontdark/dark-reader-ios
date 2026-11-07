@@ -91,8 +91,13 @@ struct CloudFolderWorker: Sendable {
 
         for manifest in allSnapshots {
             for book in manifest.books {
-                if let current = allBooks[book.id], current.changeDate >= book.changeDate { continue }
-                allBooks[book.id] = book
+                if let current = allBooks[book.id] {
+                    var latest = book.changeDate > current.changeDate ? book : current
+                    latest.bookmarks = Array(Set((current.bookmarks ?? []) + (book.bookmarks ?? []))).sorted()
+                    allBooks[book.id] = latest
+                } else {
+                    allBooks[book.id] = book
+                }
             }
             for (id, deletion) in manifest.deletions {
                 if deletion > (tombstones[id] ?? .distantPast) { tombstones[id] = deletion }
@@ -103,7 +108,8 @@ struct CloudFolderWorker: Sendable {
             }
         }
 
-        let locallyPresent = Dictionary(uniqueKeysWithValues: snapshots.books.map { ($0.id, $0) })
+        var locallyPresent: [UUID: LocalBook] = [:]
+        for book in snapshots.books { locallyPresent[book.id] = book }
         let staging = fileManager.temporaryDirectory
             .appendingPathComponent("DarkReaderRestore-\(UUID().uuidString)", isDirectory: true)
         try fileManager.createDirectory(at: staging, withIntermediateDirectories: true)
