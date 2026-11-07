@@ -31,11 +31,25 @@ final class AudioPlayerModel: ObservableObject {
     func open(_ selected: AudioBook, tracks: [AudioChapter]) {
         pause()
         book = selected
+        saveToHistory(selected)
         chapters = tracks
         chapterIndex = 0
         let savedChapter = settings.integer(forKey: "audio.chapter.\(selected.id)")
         chapterIndex = max(0, min(savedChapter, max(0, tracks.count - 1)))
         playChapter(chapterIndex)
+    }
+
+    /// Save real played items so the Audiobooks section of Library survives relaunch.
+    private func saveToHistory(_ item: AudioBook) {
+        let key = "audio.historyJSON"
+        let saved = settings.string(forKey: key) ?? "[]"
+        let existing = (saved.data(using: .utf8)).flatMap {
+            try? JSONDecoder().decode([AudioBook].self, from: $0)
+        } ?? []
+        let updated = [item] + existing.filter { $0.id != item.id }
+        if let encoded = try? JSONEncoder().encode(Array(updated.prefix(40))) {
+            settings.set(String(decoding: encoded, as: UTF8.self), forKey: key)
+        }
     }
 
     func playChapter(_ index: Int) {

@@ -27,7 +27,8 @@ struct ImportScreen: View {
                         }
                         .buttonStyle(.plain)
                         ReaderDivider()
-                        Button { navigation.tab = .catalog } label: {
+                        Button { navigation.searchScope = "books"
+                            navigation.tab = .search } label: {
                             ReaderRow(icon: "books.vertical", title: "Найти на Флибусте",
                                       subtitle: "Поиск и загрузка EPUB прямо в приложении") {
                                 Image(systemName: "chevron.right").foregroundStyle(ReaderStyle.secondary)

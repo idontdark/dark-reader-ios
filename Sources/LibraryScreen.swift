@@ -3,12 +3,19 @@ import SwiftUI
 struct LibraryScreen: View {
     @EnvironmentObject private var books: BookshelfStore
     @EnvironmentObject private var navigation: ReaderNavigation
+    @EnvironmentObject private var audioPlayer: AudioPlayerModel
     @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
     @State private var selected: LocalBook?
+    @State private var selectedAudio: AudioBook?
+    @State private var selectedDiscovery: DiscoveryBook?
+    @State private var showPlayer = false
+    @State private var showingImport = false
+    @State private var libraryKind = "books"
     @State private var query = ""
     @State private var filter = 0
     @State private var showSearch = false
-    @AppStorage("preferredAuthorsJSON") private var authorsJSON = "[]"
+    @AppStorage("favoriteBooksJSON") private var favoriteBooksJSON = "[]"
+    @AppStorage("audio.historyJSON") private var audioHistoryJSON = "[]"
     @AppStorage("hintLibraryShown") private var hintLibraryShown = false
     @AppStorage("onboardingSchemaVersion") private var onboardingVersion = 0
     @State private var showLibraryTip = false
@@ -36,8 +43,15 @@ struct LibraryScreen: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 25) {
                     ReaderHeader(title: "Моя библиотека", trailingIcon: "plus") {
-                        navigation.tab = .add
+                        showingImport = true
                     }
+                    Picker("Моя библиотека", selection: $libraryKind) {
+                        Text("Книги").tag("books")
+                        Text("Аудиокниги").tag("audio")
+                    }
+                    .pickerStyle(.segmented)
+
+                    if libraryKind == "books" {
 
                     if let currentBook {
                         featuredBook(currentBook)
@@ -45,33 +59,23 @@ struct LibraryScreen: View {
                         welcomeCard
                     }
 
-                    if !ReaderPreferences.array(authorsJSON).isEmpty {
-                        VStack(alignment: .leading, spacing: 11) {
-                            HStack {
-                                SectionLabel(text: "Любимые авторы")
-                                Spacer()
-                                NavigationLink {
-                                    FavoriteAuthorsScreen()
-                                } label: {
-                                    Text("Изменить")
-                                        .font(.subheadline)
-                                        .foregroundStyle(Color(hex: accentHex))
-                                }
-                            }
+                    if !DiscoveryService.saved(favoriteBooksJSON).isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            SectionLabel(text: "Вы выбрали")
                             ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 9) {
-                                    ForEach(ReaderPreferences.array(authorsJSON), id: \.self) { author in
-                                        Button {
-                                            navigation.authorToSearch = author
-                                            navigation.tab = .catalog
-                                        } label: {
-                                            Label(author, systemImage: "person.crop.circle")
-                                                .font(.subheadline)
-                                                .foregroundStyle(.white)
-                                                .padding(.horizontal, 13)
-                                                .padding(.vertical, 10)
-                                                .background(ReaderStyle.surface, in: Capsule())
+                                HStack(alignment: .top, spacing: 12) {
+                                    ForEach(DiscoveryService.saved(favoriteBooksJSON)) { book in
+                                        Button { selectedDiscovery = book } label: {
+                                            VStack(alignment: .leading, spacing: 6) {
+                                                DiscoveryArtwork(book: book, width: 95, height: 137)
+                                                Text(book.title)
+                                                    .font(.caption.weight(.medium))
+                                                    .foregroundStyle(.white)
+                                                    .lineLimit(2)
+                                            }
+                                            .frame(width: 95, alignment: .leading)
                                         }
+                                        .buttonStyle(.plain)
                                     }
                                 }
                             }
@@ -112,14 +116,14 @@ struct LibraryScreen: View {
                                 Text(books.books.isEmpty ? "Здесь будут ваши книги" : "Книг не найдено")
                                     .font(.headline)
                                 Text(books.books.isEmpty
-                                     ? "Добавьте EPUB из «Файлов» или найдите книгу в каталоге."
+                                     ? "Добавьте EPUB, FB2 или MOBI из «Файлов» либо найдите книгу в каталоге."
                                      : "Попробуйте изменить фильтр или строку поиска.")
                                     .font(.subheadline)
                                     .foregroundStyle(ReaderStyle.secondary)
                                     .multilineTextAlignment(.center)
                                 if books.books.isEmpty {
                                     PurpleAction(title: "Добавить книгу", icon: "plus") {
-                                        navigation.tab = .add
+                                        showingImport = true
                                     }
                                     .padding(.top, 8)
                                 }
@@ -173,6 +177,9 @@ struct LibraryScreen: View {
                             }
                         }
                     }
+                    } else {
+                        audioHistorySection
+                    }
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 24)
@@ -189,8 +196,92 @@ struct LibraryScreen: View {
             .sheet(item: $selected) { book in
                 ReaderScreen(bookID: book.id)
             }
+            .sheet(isPresented: $showingImport) {
+                ImportScreen()
+                    .environmentObject(books)
+                    .environmentObject(navigation)
+            }
+            .sheet(item: $selectedDiscovery) { book in
+                DiscoveryBookDetail(book: book).environmentObject(navigation)
+            }
+            .sheet(item: $selectedAudio) { book in
+                AudioBookDetailScreen(book: book) { showPlayer = true }
+                    .environmentObject(audioPlayer)
+            }
+            .sheet(isPresented: $showPlayer) {
+                AudioPlayerScreen().environmentObject(audioPlayer)
+            }
         }
     }
+
+    private var savedAudioBooks: [AudioBook] {
+        guard let data = audioHistoryJSON.data(using: .utf8) else { return [] }
+        return (try? JSONDecoder().decode([AudioBook].self, from: data)) ?? []
+    }
+
+    private var audioHistorySection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            if let currentlyPlaying = audioPlayer.book {
+                ReaderCard {
+                    Label("Продолжить прослушивание", systemImage: "headphones")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                    Text(currentlyPlaying.title)
+                        .font(.subheadline)
+                        .foregroundStyle(ReaderStyle.secondary)
+                        .padding(.top, 7)
+                    PurpleAction(title: "Открыть плеер", icon: "play.fill") {
+                        showPlayer = true
+                    }
+                    .padding(.top, 12)
+                }
+            }
+            SectionLabel(text: "Мои аудиокниги")
+            if savedAudioBooks.isEmpty {
+                ReaderCard {
+                    VStack(alignment: .leading, spacing: 9) {
+                        Text("Здесь появятся книги, которые вы слушали.")
+                            .font(.subheadline)
+                            .foregroundStyle(ReaderStyle.secondary)
+                        Button("Найти аудиокнигу") {
+                            navigation.searchScope = "audio"
+                            navigation.tab = .search
+                        }
+                        .foregroundStyle(Color(hex: accentHex))
+                        .font(.subheadline.weight(.medium))
+                    }
+                }
+            } else {
+                ForEach(savedAudioBooks) { book in
+                    Button { selectedAudio = book } label: {
+                        ReaderCard {
+                            HStack(spacing: 12) {
+                                BookArtwork(title: book.title, author: book.author,
+                                            coverURL: book.coverURL, width: 65, height: 91)
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text(book.title)
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(.white)
+                                        .lineLimit(2)
+                                    Text(book.author)
+                                        .font(.caption)
+                                        .foregroundStyle(ReaderStyle.secondary)
+                                    Text(book.source.title)
+                                        .font(.caption2)
+                                        .foregroundStyle(Color(hex: accentHex))
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundStyle(ReaderStyle.secondary)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
 
     private func offerLibraryHint() {
         guard onboardingVersion >= 2, !hintLibraryShown else { return }
@@ -209,7 +300,7 @@ struct LibraryScreen: View {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("Время читать")
                         .font(.headline)
-                    Text("Ваша библиотека пока пуста. Начните с поиска книги или импорта EPUB.")
+                    Text("Ваша библиотека пока пуста. Начните с поиска или импортируйте книгу через «Файлы».")
                         .font(.subheadline)
                         .foregroundStyle(ReaderStyle.secondary)
                 }

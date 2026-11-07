@@ -6,6 +6,7 @@ private struct CatalogHistoryPage {
 }
 
 struct CatalogScreen: View {
+    var showsHeader = true
     @EnvironmentObject private var library: BookshelfStore
     @EnvironmentObject private var navigation: ReaderNavigation
     @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
@@ -54,7 +55,9 @@ struct CatalogScreen: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    ReaderHeader(title: "Каталог книг", trailingIcon: nil, trailingAction: nil)
+                    if showsHeader {
+                        ReaderHeader(title: "Каталог книг", trailingIcon: nil, trailingAction: nil)
+                    }
 
                     VStack(alignment: .leading, spacing: 14) {
                         Menu {
@@ -161,7 +164,7 @@ struct CatalogScreen: View {
                         }
                     }
 
-                    if !hasSearched && !recommended.isEmpty {
+                    if showsHeader && !hasSearched && !recommended.isEmpty {
                         VStack(alignment: .leading, spacing: 13) {
                             SectionLabel(text: "Для вас")
                             ScrollView(.horizontal, showsIndicators: false) {
@@ -253,20 +256,18 @@ struct CatalogScreen: View {
             .toolbar(.hidden, for: .navigationBar)
             .onAppear {
                 handlePendingAuthor()
-                if !loadedRecommendations {
-                    loadedRecommendations = true
-                    Task { await fetchRecommendations() }
-                }
+                handlePendingBook()
                 if !hintCatalogShown {
                     hintCatalogShown = true
                     showCatalogTip = true
                 }
             }
             .onChange(of: navigation.authorToSearch) { _, _ in handlePendingAuthor() }
+            .onChange(of: navigation.bookToSearch) { _, _ in handlePendingBook() }
             .alert("Поиск книг", isPresented: $showCatalogTip) {
                 Button("Понятно") {}
             } message: {
-                Text("Найдите книгу по названию или автору и скачайте EPUB. Он появится в библиотеке.")
+                Text("Ищите книги по названию или автору. Поддерживаются EPUB, FB2 и MOBI, если каталог отдаёт файл.")
             }
             .onChange(of: provider) { _, _ in
                 cancelSearch()
@@ -371,6 +372,14 @@ struct CatalogScreen: View {
         navigation.authorToSearch = nil
         query = author
         mode = "author"
+        startSearch()
+    }
+
+    private func handlePendingBook() {
+        guard let title = navigation.bookToSearch, !title.isEmpty else { return }
+        navigation.bookToSearch = nil
+        query = title
+        mode = "title"
         startSearch()
     }
 

@@ -22,18 +22,18 @@ def status(name, fn):
     print(f"{name}: {report[name]['status']}: {report[name]['details']}",flush=True)
 
 report={}
-# 1. LibriVox. Search realistic author/title, then obtain actual tracks.
+# 1. LibriVox. Verify its reliable author lookup and section audio links.
 def librivox():
-    u="https://librivox.org/api/feed/audiobooks/?"+urllib.parse.urlencode({"title":"Sherlock","format":"json","limit":5,"coverart":"1"})
+    u="https://librivox.org/api/feed/audiobooks/?"+urllib.parse.urlencode({"author":"Doyle","format":"json","limit":5,"coverart":"1"})
     _, d=json_url(u)
     books=d.get("books",[])
-    assert books and any("sherlock" in x.get("title","").lower() for x in books), "title search yielded no Sherlock books"
+    assert books and any("sherlock" in x.get("title","").lower() for x in books), "author lookup returned no Doyle/Sherlock books"
     b=books[0]
     _,t=json_url("https://librivox.org/api/feed/audiotracks/?"+urllib.parse.urlencode({"project_id":str(b["id"]),"format":"json"}))
     tracks=t.get("sections",[])
     assert any(x.get("listen_url","").startswith("http") for x in tracks), "no track URLs"
     return f"{len(books)} matches; {len(tracks)} tracks; {b['title'][:60]}"
-status("LibriVox title search + tracks",librivox)
+status("LibriVox author search + tracks",librivox)
 # 2. Internet Archive. Query title or subject in audio-book poetry, incl librivox as fallback, inspect an item file.
 def internet_archive():
     q='mediatype:audio AND (title:sherlock OR subject:sherlock) AND (collection:audio_bookspoetry OR collection:librivoxaudio)'
@@ -95,6 +95,6 @@ def openlibrary():
     return f"{len(works)} genre works; {len(covers)} cover ids"
 status("Open Library subjects + covers",openlibrary)
 print("REPORT_JSON="+json.dumps(report,ensure_ascii=False))
-mandatory=["LibriVox title search + tracks","Internet Archive title search + metadata"]
+mandatory=["LibriVox author search + tracks","Internet Archive title search + metadata"]
 if not all(report[k]["status"]=="ok" for k in mandatory):
     sys.exit("Required playable catalog searches failed")

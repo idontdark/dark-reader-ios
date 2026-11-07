@@ -2,13 +2,16 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 enum ReaderTab: Int, CaseIterable, Hashable {
-    case library, catalog, audio, add, settings
+    case library, catalog, search, settings
 }
 
 @MainActor
 final class ReaderNavigation: ObservableObject {
     @Published var tab: ReaderTab = .library
     @Published var authorToSearch: String?
+    @Published var bookToSearch: String?
+    @Published var genreToBrowse: String?
+    @Published var searchScope = "books"
 }
 
 @main
@@ -26,6 +29,7 @@ struct DarkReaderApp: App {
     @AppStorage("preferredBookLanguage") private var bookLanguage = "auto"
     @AppStorage("preferredGenresJSON") private var genresJSON = "[]"
     @AppStorage("preferredAuthorsJSON") private var authorsJSON = "[]"
+    @AppStorage("favoriteBooksJSON") private var favoriteBooksJSON = "[]"
     @AppStorage("wantsBooks") private var wantsBooks = true
     @AppStorage("wantsAudiobooks") private var wantsAudio = false
     @State private var importError: String?
@@ -38,15 +42,12 @@ struct DarkReaderApp: App {
                 LibraryScreen()
                     .tabItem { Label("Библиотека", systemImage: "books.vertical.fill") }
                     .tag(ReaderTab.library)
-                CatalogScreen()
-                    .tabItem { Label("Каталог", systemImage: "magnifyingglass") }
+                CatalogHomeScreen()
+                    .tabItem { Label("Каталог", systemImage: "square.stack.3d.up") }
                     .tag(ReaderTab.catalog)
-                AudioCatalogScreen()
-                    .tabItem { Label("Аудиокниги", systemImage: "headphones") }
-                    .tag(ReaderTab.audio)
-                ImportScreen()
-                    .tabItem { Label("Добавить", systemImage: "square.and.arrow.down") }
-                    .tag(ReaderTab.add)
+                UnifiedSearchScreen()
+                    .tabItem { Label("Поиск", systemImage: "magnifyingglass") }
+                    .tag(ReaderTab.search)
                 SettingsScreen()
                     .tabItem { Label("Настройки", systemImage: "gearshape") }
                     .tag(ReaderTab.settings)
@@ -61,14 +62,14 @@ struct DarkReaderApp: App {
             .environmentObject(audioPlayer)
             .environment(\.locale, Locale(identifier: appLanguage))
             .fullScreenCover(isPresented: Binding(
-                get: { onboardingSchemaVersion < 2 },
+                get: { onboardingSchemaVersion < 3 },
                 set: { if !$0 {
-                    onboardingSchemaVersion = 2
+                    onboardingSchemaVersion = 3
                     didFinishOnboarding = true
                 } }
             )) {
                 OnboardingFlow {
-                    onboardingSchemaVersion = 2
+                    onboardingSchemaVersion = 3
                     didFinishOnboarding = true
                 }
             }
@@ -84,6 +85,9 @@ struct DarkReaderApp: App {
             }
             .onChange(of: authorsJSON) { _, value in
                 sync.settingsChanged(key: "preferredAuthorsJSON", value: value)
+            }
+            .onChange(of: favoriteBooksJSON) { _, value in
+                sync.settingsChanged(key: "favoriteBooksJSON", value: value)
             }
             .onChange(of: wantsBooks) { _, value in
                 sync.settingsChanged(key: "wantsBooks", value: String(value))

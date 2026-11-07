@@ -4,8 +4,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: 5.9
-    MARKETING_VERSION: 0.6.0
-    CURRENT_PROJECT_VERSION: 6
+    MARKETING_VERSION: 0.7.0
+    CURRENT_PROJECT_VERSION: 7
 packages:
   Readium:
     url: https://github.com/readium/swift-toolkit.git
@@ -29,8 +29,8 @@ targets:
       properties:
         CFBundleDisplayName: "Dark Reader"
         CFBundleName: "Dark Reader - Books & Audiobooks"
-        CFBundleShortVersionString: "0.6.0"
-        CFBundleVersion: "6"
+        CFBundleShortVersionString: "0.7.0"
+        CFBundleVersion: "7"
         LSSupportsOpeningDocumentsInPlace: true
         UIFileSharingEnabled: true
         UILaunchScreen: {}

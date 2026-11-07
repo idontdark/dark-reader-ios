@@ -1,9 +1,10 @@
 import SwiftUI
 
 struct AudioCatalogScreen: View {
+    var showsHeader = true
     @EnvironmentObject private var player: AudioPlayerModel
     @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
-    @State private var source: AudioSource = .librivox
+    @AppStorage("preferredAudioSource") private var source: AudioSource = .librivox
     @State private var query = ""
     @State private var byAuthor = false
     @State private var books: [AudioBook] = []
@@ -11,6 +12,7 @@ struct AudioCatalogScreen: View {
     @State private var didSearch = false
     @State private var showVPNHint = false
     @State private var message: String?
+    @State private var searchID = UUID()
     @State private var searchTask: Task<Void, Never>?
     @State private var hintTask: Task<Void, Never>?
     @State private var selected: AudioBook?
@@ -21,7 +23,9 @@ struct AudioCatalogScreen: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 21) {
-                    ReaderHeader(title: "Аудиокниги", trailingIcon: nil, trailingAction: nil)
+                    if showsHeader {
+                        ReaderHeader(title: "Аудиокниги", trailingIcon: nil, trailingAction: nil)
+                    }
                     VStack(alignment: .leading, spacing: 13) {
                         SectionLabel(text: "Источник")
                         Picker("Источник", selection: $source) {
@@ -93,7 +97,7 @@ struct AudioCatalogScreen: View {
                             VStack(alignment: .leading, spacing: 7) {
                                 Text("Ничего не найдено")
                                     .font(.headline)
-                                Text("Попробуйте другой запрос или переключите источник.")
+                                Text("Попробуйте другое название или автора. Бесплатных записей некоторых книг пока нет.")
                                     .font(.subheadline).foregroundStyle(ReaderStyle.secondary)
                             }
                         }
@@ -168,6 +172,7 @@ struct AudioCatalogScreen: View {
     }
 
     private func cancelSearch() {
+        searchID = UUID()
         searchTask?.cancel()
         hintTask?.cancel()
         searchTask = nil
@@ -182,12 +187,14 @@ struct AudioCatalogScreen: View {
         books = []
         message = nil
         searching = true
+        let token = UUID()
+        searchID = token
         let chosenSource = source
         let term = query
         let authorMode = byAuthor
         hintTask = Task {
             try? await Task.sleep(nanoseconds: 7_000_000_000)
-            if !Task.isCancelled && searching { showVPNHint = true }
+            if !Task.isCancelled && searching && searchID == token { showVPNHint = true }
         }
         searchTask = Task {
             do {
@@ -195,14 +202,15 @@ struct AudioCatalogScreen: View {
                     source: chosenSource, query: term, byAuthor: authorMode
                 )
                 try Task.checkCancellation()
-                guard source == chosenSource else { return }
+                guard source == chosenSource && searchID == token else { return }
                 books = result
             } catch is CancellationError {
                 // A canceled search is not an error and must not repaint old results.
             } catch {
-                guard !Task.isCancelled else { return }
-                message = "Каталог сейчас не отвечает. Попробуйте позже или включите VPN."
+                guard !Task.isCancelled && searchID == token else { return }
+                message = "Не удалось загрузить записи. Проверьте интернет или попробуйте VPN."
             }
+            guard searchID == token else { return }
             hintTask?.cancel()
             searching = false
             showVPNHint = false

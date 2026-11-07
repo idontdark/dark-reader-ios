@@ -10,16 +10,17 @@ struct OnboardingFlow: View {
     @AppStorage("wantsBooks") private var wantsBooks = true
     @AppStorage("wantsAudiobooks") private var wantsAudio = false
     @AppStorage("preferredGenresJSON") private var genresJSON = "[]"
-    @AppStorage("preferredAuthorsJSON") private var authorsJSON = "[]"
+    @AppStorage("favoriteBooksJSON") private var favoriteBooksJSON = "[]"
     @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
 
     @State private var step = 0
-    @State private var authorQuery = ""
-    @FocusState private var authorFocused: Bool
+    @State private var bookSuggestions: [DiscoveryBook] = []
+    @State private var loadingSuggestions = false
+    @State private var suggestionError: String?
 
     private var english: Bool { language == "en" }
     private var genres: [String] { ReaderPreferences.array(genresJSON) }
-    private var authors: [String] { ReaderPreferences.array(authorsJSON) }
+    private var favoriteBooks: [DiscoveryBook] { DiscoveryService.saved(favoriteBooksJSON) }
 
     var body: some View {
         ZStack {
@@ -33,7 +34,7 @@ struct OnboardingFlow: View {
                         case 0: languageChoices
                         case 1: contentChoices
                         case 2: genreChoices
-                        case 3: authorChoices
+                        case 3: bookChoices
                         default: completion
                         }
                     }
@@ -46,6 +47,9 @@ struct OnboardingFlow: View {
         }
         .preferredColorScheme(.dark)
         .environment(\.locale, Locale(identifier: language))
+        .task(id: "\(step)-\(genresJSON)-\(language)") {
+            if step == 3 { await loadBookSuggestions() }
+        }
     }
 
     private var header: some View {
@@ -58,7 +62,7 @@ struct OnboardingFlow: View {
                 Spacer()
                 if step < 4 {
                     Button(english ? "Skip" : "Пропустить") {
-                        authorFocused = false
+                        
                         withAnimation(.easeInOut(duration: 0.18)) { step += 1 }
                     }
                     .font(.subheadline)
@@ -103,7 +107,7 @@ struct OnboardingFlow: View {
         case 0: english ? "Choose your language" : "Выберите язык"
         case 1: english ? "What do you enjoy?" : "Что вам нравится?"
         case 2: english ? "Favorite genres" : "Любимые жанры"
-        case 3: english ? "Favorite authors" : "Любимые авторы"
+        case 3: english ? "Choose books" : "Выберите книги"
         default: english ? "You're all set" : "Всё готово"
         }
     }
@@ -113,7 +117,7 @@ struct OnboardingFlow: View {
         case 0: english ? "You can change it later in Settings." : "Язык можно изменить в настройках."
         case 1: english ? "Choose one or both options." : "Можно выбрать оба варианта."
         case 2: english ? "Pick the genres you enjoy. This step is optional." : "Отметьте интересные жанры. Это необязательно."
-        case 3: english ? "Save your authors to find their books faster." : "Сохраняйте авторов, чтобы быстро находить их книги."
+        case 3: english ? "Pick stories you like. We will use your choices for recommendations." : "Отметьте интересные книги. Мы учтём ваш выбор в рекомендациях."
         default: english ? "All set. Find a book or an audiobook." :
             "Всё готово. Выберите книгу или аудиозапись."
         }
@@ -232,65 +236,94 @@ struct OnboardingFlow: View {
         }
     }
 
-    private var authorChoices: some View {
+    private var bookChoices: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 9) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(ReaderStyle.secondary)
-                TextField(english ? "Add an author" : "Добавить автора", text: $authorQuery)
-                    .textInputAutocapitalization(.words)
-                    .autocorrectionDisabled()
-                    .submitLabel(.done)
-                    .focused($authorFocused)
-                    .onSubmit(addCustom)
-                Button { addCustom() } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(Color(hex: accentHex))
+            if loadingSuggestions && bookSuggestions.isEmpty {
+                HStack(spacing: 11) {
+                    ProgressView().tint(Color(hex: accentHex))
+                    Text(english ? "Finding books with covers…" : "Подбираем книги с обложками…")
+                        .font(.subheadline)
+                        .foregroundStyle(ReaderStyle.secondary)
                 }
-                .disabled(authorQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }
-            .padding(14)
-            .background(ReaderStyle.surface, in: RoundedRectangle(cornerRadius: 14))
-
-            let sample = language == "en" ? ReaderPreferences.suggestedAuthorsEN :
-                ReaderPreferences.suggestedAuthorsRU
-            ForEach(sample, id: \.self) { author in
-                let picked = authors.contains(author)
-                Button {
-                    var list = authors
-                    if picked { list.removeAll { $0 == author } }
-                    else { list.append(author) }
-                    authorsJSON = ReaderPreferences.encode(list)
-                } label: {
-                    HStack(spacing: 13) {
-                        Image(systemName: "person.crop.circle")
-                            .foregroundStyle(Color(hex: accentHex))
-                            .font(.title2)
-                        Text(author)
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.white)
-                        Spacer()
-                        Image(systemName: picked ? "checkmark.circle.fill" : "plus.circle")
-                            .foregroundStyle(Color(hex: accentHex))
+                .padding(.vertical, 18)
+            } else if bookSuggestions.isEmpty {
+                ReaderCard {
+                    Text(suggestionError ?? (english ? "No books available yet." : "Подборка пока недоступна."))
+                        .font(.subheadline)
+                        .foregroundStyle(ReaderStyle.secondary)
+                    Button(english ? "Try again" : "Повторить") {
+                        Task { await loadBookSuggestions() }
                     }
-                    .padding(.horizontal, 15)
-                    .padding(.vertical, 14)
-                    .background(ReaderStyle.surface, in: RoundedRectangle(cornerRadius: 13))
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Color(hex: accentHex))
+                    .padding(.top, 10)
                 }
-                .buttonStyle(.plain)
+            } else {
+                Text(english ? "Real titles and covers from Open Library" :
+                    "Реальные книги и обложки из Open Library")
+                    .font(.caption)
+                    .foregroundStyle(ReaderStyle.secondary)
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 14),
+                                    GridItem(.flexible(), spacing: 14)], spacing: 17) {
+                    ForEach(bookSuggestions) { book in
+                        let picked = favoriteBooks.contains(where: { $0.id == book.id })
+                        Button { toggleBook(book) } label: {
+                            VStack(alignment: .leading, spacing: 8) {
+                                ZStack(alignment: .topTrailing) {
+                                    DiscoveryArtwork(book: book, width: 133, height: 175)
+                                        .frame(maxWidth: .infinity)
+                                    Image(systemName: picked ? "checkmark.circle.fill" : "circle")
+                                        .font(.title3)
+                                        .foregroundStyle(picked ? Color(hex: accentHex) : .white)
+                                        .padding(9)
+                                }
+                                Text(book.title)
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.white)
+                                    .lineLimit(2)
+                                Text(book.author)
+                                    .font(.caption2)
+                                    .foregroundStyle(ReaderStyle.secondary)
+                                    .lineLimit(1)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(book.title)
+                    }
+                }
             }
         }
     }
 
-    private func addCustom() {
-        let value = authorQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !value.isEmpty, value.count <= 120 else { return }
-        if !authors.contains(where: { $0.localizedCaseInsensitiveCompare(value) == .orderedSame }) {
-            authorsJSON = ReaderPreferences.encode(authors + [value])
+    private func toggleBook(_ book: DiscoveryBook) {
+        var selected = favoriteBooks
+        if selected.contains(where: { $0.id == book.id }) {
+            selected.removeAll { $0.id == book.id }
+        } else {
+            selected.append(book)
         }
-        authorQuery = ""
-        authorFocused = false
+        favoriteBooksJSON = DiscoveryService.encode(selected)
+    }
+
+    private func loadBookSuggestions() async {
+        loadingSuggestions = true
+        suggestionError = nil
+        defer { loadingSuggestions = false }
+        do {
+            bookSuggestions = try await DiscoveryService.books(
+                genres: genres, language: language, limit: 12
+            )
+            if bookSuggestions.isEmpty {
+                suggestionError = english ? "No books found. You can skip this step." :
+                    "Книги не найдены. Этот шаг можно пропустить."
+            }
+        } catch is CancellationError {
+            return
+        } catch {
+            suggestionError = english ? "Can't load books. Check your connection or try a VPN." :
+                "Не удалось загрузить книги. Проверьте интернет или включите VPN."
+        }
     }
 
     private var completion: some View {
@@ -305,7 +338,7 @@ struct OnboardingFlow: View {
                       systemImage: "checkmark.circle.fill")
                 Label(english ? "Your own library" : "Ваша библиотека",
                       systemImage: "checkmark.circle.fill")
-                Label(english ? "Save favorite authors" : "Любимые авторы всегда под рукой",
+                Label(english ? "Recommendations for your interests" : "Подборки по вашим интересам",
                       systemImage: "checkmark.circle.fill")
             }
             .font(.subheadline)
@@ -322,7 +355,7 @@ struct OnboardingFlow: View {
             HStack(spacing: 10) {
                 if step > 0 {
                     Button {
-                        authorFocused = false
+                        
                         withAnimation(.easeInOut(duration: 0.18)) { step -= 1 }
                     } label: {
                         Image(systemName: "chevron.left")
@@ -337,7 +370,7 @@ struct OnboardingFlow: View {
                         : (english ? "Continue" : "Продолжить"),
                     icon: step == 4 ? "book" : "arrow.right"
                 ) {
-                    authorFocused = false
+                    
                     if step == 4 {
                         finish()
                     } else {

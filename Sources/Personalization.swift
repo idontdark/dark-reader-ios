@@ -157,7 +157,8 @@ struct FavoriteAuthorsScreen: View {
                             HStack {
                                 Button {
                                     navigation.authorToSearch = author
-                                    navigation.tab = .catalog
+                                    navigation.searchScope = "books"
+                                    navigation.tab = .search
                                 } label: {
                                     Label(author, systemImage: "person.crop.circle")
                                         .foregroundStyle(.white)
