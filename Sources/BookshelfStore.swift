@@ -3,6 +3,10 @@ import Foundation
 @MainActor
 final class BookshelfStore: ObservableObject {
     @Published private(set) var books: [LocalBook] = []
+    private(set) var deletions: [String: Date] = [:]
+
+    /// Set by the sync manager. Cloud merges deliberately do not trigger this.
+    var onLocalChange: (() -> Void)?
 
     private let fileManager = FileManager.default
 
@@ -11,15 +15,18 @@ final class BookshelfStore: ObservableObject {
             .appendingPathComponent("Books", isDirectory: true)
     }
 
-    private var indexURL: URL {
-        directory.appendingPathComponent("books.json")
-    }
+    private var indexURL: URL { directory.appendingPathComponent("books.json") }
+    private var deletionsURL: URL { directory.appendingPathComponent("deletions.json") }
 
     init() {
         try? fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
         if let data = try? Data(contentsOf: indexURL),
            let decoded = try? JSONDecoder().decode([LocalBook].self, from: data) {
             books = decoded
+        }
+        if let data = try? Data(contentsOf: deletionsURL),
+           let decoded = try? JSONDecoder().decode([String: Date].self, from: data) {
+            deletions = decoded
         }
     }
 
@@ -33,10 +40,9 @@ final class BookshelfStore: ObservableObject {
         guard source.pathExtension.lowercased() == "epub" else { throw ReaderError.noEPUB }
         try validateEPUB(source)
         let filename = UUID().uuidString + ".epub"
-        let destination = directory.appendingPathComponent(filename)
-        try fileManager.copyItem(at: source, to: destination)
+        try fileManager.copyItem(at: source, to: directory.appendingPathComponent(filename))
         books.insert(LocalBook(title: title, author: author, filename: filename), at: 0)
-        persist()
+        persist(localChange: true)
     }
 
     func download(_ book: CatalogBook) async throws {
@@ -47,28 +53,88 @@ final class BookshelfStore: ObservableObject {
         }
         try validateEPUB(temporaryURL)
         let filename = UUID().uuidString + ".epub"
-        let destination = directory.appendingPathComponent(filename)
-        try fileManager.moveItem(at: temporaryURL, to: destination)
+        try fileManager.moveItem(at: temporaryURL, to: directory.appendingPathComponent(filename))
         books.insert(LocalBook(title: book.title, author: book.author, filename: filename), at: 0)
-        persist()
+        persist(localChange: true)
     }
 
     func savePosition(bookID: UUID, locatorJSON: String?) {
-        guard let index = books.firstIndex(where: { $0.id == bookID }) else { return }
-        books[index].locatorJSON = locatorJSON
-        persist()
+        guard let i = books.firstIndex(where: { $0.id == bookID }),
+              books[i].locatorJSON != locatorJSON else { return }
+        books[i].locatorJSON = locatorJSON
+        books[i].updatedAt = Date()
+        persist(localChange: true)
+    }
+
+    func toggleFavorite(_ book: LocalBook) {
+        guard let i = books.firstIndex(where: { $0.id == book.id }) else { return }
+        books[i].isFavorite = !(books[i].isFavorite ?? false)
+        books[i].updatedAt = Date()
+        persist(localChange: true)
+    }
+
+    func saveBookmark(bookID: UUID, locatorJSON: String) {
+        guard let i = books.firstIndex(where: { $0.id == bookID }) else { return }
+        var all = books[i].bookmarks ?? []
+        guard !all.contains(locatorJSON) else { return }
+        all.append(locatorJSON)
+        books[i].bookmarks = all
+        books[i].updatedAt = Date()
+        persist(localChange: true)
     }
 
     func delete(_ book: LocalBook) {
+        deletions[book.id.uuidString] = Date()
         try? fileManager.removeItem(at: fileURL(for: book))
         books.removeAll { $0.id == book.id }
-        persist()
+        persist(localChange: true)
     }
 
-    private func persist() {
+    /// Merge remote metadata with local state and move already-downloaded staged EPUBs
+    /// into Documents/Books. Never remove an EPUB that has no newer tombstone.
+    func mergeFromCloud(_ remote: [LocalBook], tombstones: [String: Date], staged: [String: URL]) throws {
+        for (id, date) in tombstones {
+            if date > (deletions[id] ?? .distantPast) { deletions[id] = date }
+        }
+
+        let existing = Dictionary(uniqueKeysWithValues: books.map { ($0.id, $0) })
+        var winners = existing
+        for item in remote {
+            if let local = winners[item.id] {
+                if item.changeDate > local.changeDate {
+                    var newer = item
+                    newer.filename = local.filename
+                    winners[item.id] = newer
+                }
+            } else if let stagedFile = staged[item.id.uuidString] {
+                try validateEPUB(stagedFile)
+                let filename = UUID().uuidString + ".epub"
+                try fileManager.moveItem(at: stagedFile, to: directory.appendingPathComponent(filename))
+                var incoming = item
+                incoming.filename = filename
+                winners[item.id] = incoming
+            }
+        }
+        var merged: [LocalBook] = []
+        for item in winners.values {
+            if let deletedAt = deletions[item.id.uuidString], deletedAt >= item.changeDate {
+                try? fileManager.removeItem(at: fileURL(for: item))
+            } else {
+                merged.append(item)
+            }
+        }
+        books = merged.sorted { $0.addedAt > $1.addedAt }
+        persist(localChange: false)
+    }
+
+    private func persist(localChange: Bool) {
         if let data = try? JSONEncoder().encode(books) {
             try? data.write(to: indexURL, options: .atomic)
         }
+        if let data = try? JSONEncoder().encode(deletions) {
+            try? data.write(to: deletionsURL, options: .atomic)
+        }
+        if localChange { onLocalChange?() }
     }
 
     private func validateEPUB(_ url: URL) throws {
