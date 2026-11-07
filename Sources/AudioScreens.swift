@@ -396,6 +396,18 @@ struct AudioPlayerScreen: View {
                     .font(.title2)
                     .foregroundStyle(.white)
                     .buttonStyle(.plain)
+                    Menu {
+                        Button("Добавить закладку", systemImage: "bookmark") { player.addBookmark() }
+                        ForEach(player.bookmarks) { bookmark in
+                            Button("Закладка · \(timeText(bookmark.position))") { player.openBookmark(bookmark) }
+                        }
+                        Divider()
+                        ForEach(Array(player.chapters.enumerated()), id: \.element.id) { index, chapter in
+                            Button(chapter.title) { player.playChapter(index) }
+                        }
+                    } label: {
+                        Label("Главы и закладки", systemImage: "list.bullet")
+                    }.foregroundStyle(color)
                     HStack(spacing: 14) {
                         Menu {
                             ForEach([0.75, 1.0, 1.25, 1.5, 1.75, 2.0], id: \.self) { value in

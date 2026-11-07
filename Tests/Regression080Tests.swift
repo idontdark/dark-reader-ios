@@ -95,6 +95,35 @@ final class Regression080Tests: XCTestCase {
         XCTAssertGreaterThanOrEqual(player.position, 3.8)
         XCTAssertLessThan(player.position, 5.5)
     }
+    @MainActor func testRealMP3M4BAndZIPFixtures() async throws {
+        let bundle = Bundle(for: Self.self)
+        let mp3 = try XCTUnwrap(bundle.url(forResource:"sample",withExtension:"mp3"))
+        let m4b = try XCTUnwrap(bundle.url(forResource:"chapters",withExtension:"m4b"))
+        let zip = try XCTUnwrap(bundle.url(forResource:"combined",withExtension:"zip"))
+        let first = try await AudioImportStore.importFiles([mp3])
+        let segmented = try await AudioImportStore.importFiles([m4b])
+        let combined = try await AudioImportStore.importFiles([zip])
+        defer {
+            for book in [first,segmented,combined] { try? FileManager.default.removeItem(at:AudioImportStore.directory(book.sourceID)) }
+        }
+        XCTAssertEqual(try AudioImportStore.chapters(for:first).count,1)
+        let chapters = try AudioImportStore.chapters(for:segmented)
+        XCTAssertEqual(chapters.count,2)
+        XCTAssertEqual(chapters.last?.startSeconds ?? -1,2,accuracy:0.1)
+        XCTAssertEqual(try AudioImportStore.chapters(for:combined).count,2)
+        let player = AudioPlayerModel()
+        player.open(segmented, tracks:chapters)
+        defer { player.pause() }
+        for _ in 0..<60 {
+            if player.chapterIndex == 1 { break }
+            try await Task.sleep(for:.milliseconds(100))
+        }
+        XCTAssertEqual(player.chapterIndex,1,"Embedded M4B must automatically advance chapters")
+        player.pause()
+        player.seek(to:0.5)
+        try await Task.sleep(for:.milliseconds(300))
+        XCTAssertEqual(player.position,0.5,accuracy:0.2)
+    }
     private static func makeAudio(_ file: URL) throws {
         let format = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 1)!
         let output = try AVAudioFile(forWriting:file,settings:[

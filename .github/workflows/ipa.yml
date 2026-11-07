@@ -22,6 +22,16 @@ jobs:
         run: brew install xcodegen
       - name: Generate AppIcon.png
         run: swift scripts/generate_icon.swift
+      - name: Generate real audio test fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v ffmpeg >/dev/null || brew install ffmpeg
+          mkdir -p Tests/Fixtures
+          ffmpeg -hide_banner -loglevel error -f lavfi -i 'sine=frequency=440:duration=4' -c:a libmp3lame Tests/Fixtures/sample.mp3
+          printf ';FFMETADATA1\ntitle=Test Audiobook\nartist=QA\n[CHAPTER]\nTIMEBASE=1/1000\nSTART=0\nEND=2000\ntitle=First\n[CHAPTER]\nTIMEBASE=1/1000\nSTART=2000\nEND=4000\ntitle=Second\n' > /tmp/dark-reader-chapters.txt
+          ffmpeg -hide_banner -loglevel error -i Tests/Fixtures/sample.mp3 -i /tmp/dark-reader-chapters.txt -map_metadata 1 -map_chapters 1 -c:a aac Tests/Fixtures/chapters.m4b
+          (cd Tests/Fixtures && cp sample.mp3 second.mp3 && zip -q combined.zip sample.mp3 second.mp3 && rm second.mp3)
       - name: Generate Xcode project
         run: xcodegen generate --spec project.yml
       - name: Run simulator regression tests
@@ -30,6 +40,23 @@ jobs:
           set -euo pipefail
           UDID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for group in d["devices"].values() for x in group if x["name"].startswith("iPhone") and x.get("isAvailable", True)))')
           xcodebuild test -project DarkReader.xcodeproj -scheme DarkReader -destination "platform=iOS Simulator,id=$UDID" -derivedDataPath "$PWD/test-build" -resultBundlePath "$PWD/RegressionResults.xcresult" -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO > simulator-tests.log 2>&1 || { tail -180 simulator-tests.log; exit 1; }
+      - name: Capture simulator layouts
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {execFileSync} = require('child_process');
+            const fs = require('fs');
+            const devices = JSON.parse(execFileSync('xcrun',['simctl','list','devices','available','-j'], {encoding:'utf8'}));
+            const device = Object.values(devices.devices).flat().find(d => d.name.startsWith('iPhone') && d.state === 'Booted');
+            if (!device) throw new Error('No booted simulator');
+            for (const [name, schema] of [['onboarding','0'],['library','3']]) {
+              try { execFileSync('xcrun',['simctl','terminate',device.udid,'com.ipadark.reader']); } catch {}
+              execFileSync('xcrun',['simctl','launch',device.udid,'com.ipadark.reader','-onboardingSchemaVersion',schema]);
+              await new Promise(r => setTimeout(r,3000));
+              execFileSync('xcrun',['simctl','io',device.udid,'screenshot',name+'.png']);
+              const blob = await github.rest.git.createBlob({...context.repo,encoding:'base64',content:fs.readFileSync(name+'.png').toString('base64')});
+              core.notice('QA_SCREENSHOT '+name+' '+blob.data.sha);
+            }
       - name: Probe live sources and real EPUB downloads
         continue-on-error: true
         run: python3 scripts/qa_080.py > live-probes.log 2>&1

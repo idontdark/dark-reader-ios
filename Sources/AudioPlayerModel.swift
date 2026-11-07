@@ -5,6 +5,12 @@ import MediaPlayer
 /// A single playback engine shared across tabs. Playback survives closing its sheet.
 @MainActor
 final class AudioPlayerModel: ObservableObject {
+    struct Bookmark: Codable, Identifiable {
+        var id = UUID()
+        var chapterID: String
+        var position: Double
+    }
+    @Published private(set) var bookmarks: [Bookmark] = []
     @Published private(set) var book: AudioBook?
     @Published private(set) var chapters: [AudioChapter] = []
     @Published private(set) var chapterIndex = 0
@@ -40,12 +46,17 @@ final class AudioPlayerModel: ObservableObject {
     func open(_ selected: AudioBook, tracks: [AudioChapter]) {
         pause()
         guard !tracks.isEmpty else { error = AudioCatalogError.noTracks.localizedDescription; return }
+        stopObserver()
+        player = nil
+        position = 0
         book = selected
         saveToHistory(selected)
         chapters = tracks
+        bookmarks = settings.data(forKey: "audio.bookmarks.\(selected.id)").flatMap { try? JSONDecoder().decode([Bookmark].self, from: $0) } ?? []
         chapterIndex = 0
         let savedChapter = settings.integer(forKey: "audio.chapter.\(selected.id)")
-        chapterIndex = max(0, min(savedChapter, max(0, tracks.count - 1)))
+        let savedID = settings.string(forKey: "audio.chapterID.\(selected.id)")
+        chapterIndex = tracks.firstIndex(where: { $0.id == savedID }) ?? max(0, min(savedChapter, max(0, tracks.count - 1)))
         playChapter(chapterIndex)
     }
 
@@ -57,14 +68,14 @@ final class AudioPlayerModel: ObservableObject {
             try? JSONDecoder().decode([AudioBook].self, from: $0)
         } ?? []
         let updated = [item] + existing.filter { $0.id != item.id }
-        if let encoded = try? JSONEncoder().encode(Array(updated.prefix(40))) {
+        if let encoded = try? JSONEncoder().encode(updated) {
             settings.set(String(decoding: encoded, as: UTF8.self), forKey: key)
         }
     }
 
     func playChapter(_ index: Int) {
         guard let book, chapters.indices.contains(index) else { return }
-        saveProgress()
+        if player != nil { saveProgress() }
         stopObserver()
         player?.pause()
         error = nil
@@ -76,6 +87,7 @@ final class AudioPlayerModel: ObservableObject {
         chapterIndex = index
         let track = chapters[index]
         settings.set(index, forKey: "audio.chapter.\(book.id)")
+        settings.set(track.id, forKey: "audio.chapterID.\(book.id)")
 
         let source = localURL(for: track) ?? track.url
         let item = AVPlayerItem(url: source)
@@ -89,7 +101,8 @@ final class AudioPlayerModel: ObservableObject {
         } catch {
             self.error = "Не удалось включить воспроизведение звука."
         }
-        let saved = settings.double(forKey: "audio.position.\(book.id).\(index)")
+        let saved = settings.object(forKey: "audio.trackPosition.\(book.id).\(track.id)") as? Double
+            ?? settings.double(forKey: "audio.position.\(book.id).\(index)")
         pendingRestore = saved
         statusObserver = item.observe(\.status, options: [.initial, .new]) { [weak self] item, _ in
             Task { @MainActor in
@@ -303,9 +316,24 @@ final class AudioPlayerModel: ObservableObject {
         updateNowPlaying()
     }
 
+    func addBookmark() {
+        guard let book, chapters.indices.contains(chapterIndex) else { return }
+        bookmarks.append(Bookmark(chapterID: chapters[chapterIndex].id, position: position))
+        settings.set(try? JSONEncoder().encode(bookmarks), forKey: "audio.bookmarks.\(book.id)")
+    }
+    func openBookmark(_ bookmark: Bookmark) {
+        guard let book, let index = chapters.firstIndex(where: { $0.id == bookmark.chapterID }) else { return }
+        pause()
+        settings.set(bookmark.position, forKey: "audio.trackPosition.\(book.id).\(bookmark.chapterID)")
+        playChapter(index)
+    }
+
     private func saveProgress() {
         guard let book else { return }
         settings.set(position, forKey: "audio.position.\(book.id).\(chapterIndex)")
+        if chapters.indices.contains(chapterIndex) {
+            settings.set(position, forKey: "audio.trackPosition.\(book.id).\(chapters[chapterIndex].id)")
+        }
     }
 
     private func stopObserver() {

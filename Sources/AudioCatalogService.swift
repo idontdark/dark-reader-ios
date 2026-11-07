@@ -141,9 +141,10 @@ enum AudioCatalogService {
             }
             let object = try await requestObject(url)
             let files = object["files"] as? [[String: Any]] ?? []
+            let hasMP3 = files.contains { (string($0["name"]) ?? "").lowercased().hasSuffix(".mp3") }
             found = files.enumerated().compactMap { index, file in
                 guard let name = file["name"] as? String,
-                      (name.lowercased().hasSuffix(".mp3") || name.lowercased().hasSuffix(".m4b")),
+                      (name.lowercased().hasSuffix(".mp3") || (!hasMP3 && name.lowercased().hasSuffix(".m4b"))),
                       name.count < 260,
                       file["private"] as? String != "true",
                       file["source"] as? String != "metadata",
@@ -196,7 +197,6 @@ enum AudioCatalogService {
     }
 
     private static func searchArchive(_ term: String, byAuthor: Bool, language: String?) async throws -> [AudioBook] {
-        // Filter out the LibriVox collection so the second source provides separate recordings.
         let safeTerm = RecommendationProfile.normalized(term)
         let field = byAuthor ? "creator" : "title"
         let words = safeTerm.split(separator: " ").map { "\(field):\($0)*" }.joined(separator: " AND ")
@@ -250,8 +250,9 @@ enum AudioCatalogService {
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             try Task.checkCancellation()
-            guard let response = response as? HTTPURLResponse,
-                  (200..<300).contains(response.statusCode) else { throw AudioCatalogError.unavailable }
+            guard let response = response as? HTTPURLResponse else { throw AudioCatalogError.unavailable }
+            if response.statusCode == 404, url.host == "librivox.org" { return [:] }
+            guard (200..<300).contains(response.statusCode) else { throw AudioCatalogError.unavailable }
             guard data.count < 4_000_000,
                   let value = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
                 throw AudioCatalogError.invalidReply

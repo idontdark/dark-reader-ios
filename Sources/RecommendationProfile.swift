@@ -9,7 +9,7 @@ enum RecommendationProfile {
         var date: Date
     }
     static func normalized(_ value: String) -> String {
-        value.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "ru"))
+        value.folding(options: [.caseInsensitive], locale: Locale(identifier: "ru"))
             .replacingOccurrences(of: "ё", with: "е")
             .components(separatedBy: CharacterSet.alphanumerics.inverted).filter { !$0.isEmpty }.joined(separator: " ")
     }

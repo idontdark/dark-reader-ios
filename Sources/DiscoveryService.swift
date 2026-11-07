@@ -67,7 +67,8 @@ enum DiscoveryService {
                 let feed = try JSONDecoder().decode(SearchFeed.self, from: data)
                 for item in feed.docs {
                     guard let edition = item.editions?.docs.first(where: { $0.language?.contains(code) == true }),
-                          let cover = edition.cover_i ?? item.cover_i, cover > 0 else { continue }
+                          let cover = edition.cover_i, cover > 0 else { continue }
+                    if code == "rus", edition.title.range(of: "[А-Яа-яЁё]", options: .regularExpression) == nil { continue }
                     result.append(DiscoveryBook(
                         id: "openlibrary:\(item.key)", title: edition.title,
                         author: (item.author_name ?? []).joined(separator: ", "),
