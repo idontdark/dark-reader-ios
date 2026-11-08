@@ -8,7 +8,10 @@ final class LocalBackupTests: XCTestCase {
         book.bookmarks=["named-bookmark"]
         let snapshot=CloudLibrarySnapshot(schema:1,deviceID:"test",savedAt:Date(),books:[book],deletions:[:],
                                           settings:["readerProgressDisplay":"percent"],settingsChangedAt:Date())
-        let url=try LocalLibraryBackup.createMetadata(snapshot)
+        let folder=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at:folder,withIntermediateDirectories:true)
+        let url=folder.appendingPathComponent("legacy.json")
+        try JSONEncoder().encode(snapshot).write(to:url)
         defer {try? FileManager.default.removeItem(at:url.deletingLastPathComponent())}
         let restored=try await LocalLibraryBackup.read(url)
         defer {try? FileManager.default.removeItem(at:restored.directory)}

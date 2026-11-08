@@ -49,6 +49,22 @@ enum BookFormatConverter {
         }
     }
 
+    /// Upgrade only our old four-entry converter output. Originals remain untouched.
+    static func optimizedLegacyCopy(_ source: URL, title: String, author: String) async throws -> URL? {
+        let archive = try await Archive(url: source, accessMode: .read)
+        let entries = try await archive.entries()
+        guard Set(entries.map(\.path)) == Set(["mimetype", "META-INF/container.xml", "OEBPS/content.opf", "OEBPS/book.xhtml"]),
+              let text = entries.first(where: { $0.path == "OEBPS/book.xhtml" }),
+              text.type == .file, text.uncompressedSize > 512 * 1024, text.uncompressedSize <= 50 * 1024 * 1024 else { return nil }
+        let temporary = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: temporary) }
+        try await archive.extract(text, to: temporary)
+        let data = try Data(contentsOf: temporary)
+        guard data.range(of: Data("<style>body{font-family:serif;line-height:1.5}p{margin:0 0 0.8em}</style>".utf8)) != nil else { return nil }
+        let content = try FB2Document.parse(data)
+        return try await EPUBWriter.make(title: title, paragraphs: content.paragraphs, author: author)
+    }
+
     private static func fromZIP(_ file: URL) async throws -> URL {
         let archive = try await Archive(url: file, accessMode: .read)
         let entries = try await archive.entries()
@@ -71,14 +87,11 @@ enum BookFormatConverter {
     private static func fromFB2(_ source: URL) async throws -> URL {
         let data = try Data(contentsOf: source, options: .mappedIfSafe)
         guard data.count <= 50 * 1024 * 1024 else { throw ImportFormatError.oversized }
-        let parser = FB2Parser()
-        let xml = XMLParser(data: data)
-        xml.delegate = parser
-        xml.shouldResolveExternalEntities = false
-        guard xml.parse(), !parser.paragraphs.isEmpty else { throw ImportFormatError.corrupt }
+        let book = try FB2Document.parse(data)
         return try await EPUBWriter.make(
-            title: parser.bookTitle.isEmpty ? source.deletingPathExtension().lastPathComponent : parser.bookTitle,
-            paragraphs: parser.paragraphs
+            title: book.title.isEmpty ? source.deletingPathExtension().lastPathComponent : book.title,
+            paragraphs: book.paragraphs, author: book.author, language: book.language,
+            cover: book.cover, coverMIME: book.coverMIME
         )
     }
 
@@ -175,63 +188,18 @@ enum BookFormatConverter {
     }
 }
 
-private final class FB2Parser: NSObject, XMLParserDelegate {
-    var bookTitle = ""
-    var paragraphs: [String] = []
-    private var withinBody = false
-    private var withinBookTitle = false
-    private var withinParagraph = false
-    private var buffer = ""
-    private var binaryDepth = 0
-
-    func parser(_ parser: XMLParser, didStartElement elementName: String,
-                namespaceURI: String?, qualifiedName qName: String?, attributes: [String: String]) {
-        let tag = elementName.components(separatedBy: ":").last ?? elementName
-        if tag == "binary" { binaryDepth += 1 }
-        if binaryDepth > 0 { return }
-        if tag == "body" { withinBody = true }
-        if tag == "book-title" { withinBookTitle = true; buffer = "" }
-        if tag == "p" && withinBody { withinParagraph = true; buffer = "" }
-    }
-
-    func parser(_ parser: XMLParser, foundCharacters string: String) {
-        if binaryDepth == 0 && (withinBookTitle || withinParagraph) { buffer += string }
-    }
-
-    func parser(_ parser: XMLParser, didEndElement elementName: String,
-                namespaceURI: String?, qualifiedName qName: String?) {
-        let tag = elementName.components(separatedBy: ":").last ?? elementName
-        if tag == "binary" { binaryDepth = max(0, binaryDepth - 1); return }
-        if binaryDepth > 0 { return }
-        if tag == "book-title" {
-            bookTitle = buffer.trimmingCharacters(in: .whitespacesAndNewlines)
-            withinBookTitle = false
-            buffer = ""
-        }
-        if tag == "p" && withinParagraph {
-            let line = buffer.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !line.isEmpty { paragraphs.append(line) }
-            withinParagraph = false
-            buffer = ""
-        }
-        if tag == "body" { withinBody = false }
-    }
-}
-
-private enum EPUBWriter {
-    static func make(title: String, paragraphs: [String]) async throws -> URL {
+enum EPUBWriter {
+    static func make(title: String, paragraphs: [String], author: String = "", language: String = "und", cover: Data? = nil, coverMIME: String = "image/jpeg") async throws -> URL {
         let output = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString + ".epub")
         let archive = try await Archive(url: output, accessMode: .create)
         let uuid = UUID().uuidString
-        let text = paragraphs.map { "<p>\(escape($0))</p>" }.joined(separator: "\n")
-        let xhtml = """
-        <?xml version="1.0" encoding="utf-8"?>
-        <!DOCTYPE html>
-        <html xmlns="http://www.w3.org/1999/xhtml"><head><title>\(escape(title))</title>
-        <style>body{font-family:serif;line-height:1.5}p{margin:0 0 0.8em}</style>
-        </head><body><h1>\(escape(title))</h1>\(text)</body></html>
-        """
+        let chunks = EPUBTextChunks.make(paragraphs)
+        let manifest = chunks.indices.map { "<item id=\"chapter\($0)\" href=\"chapter-\($0).xhtml\" media-type=\"application/xhtml+xml\"/>" }.joined()
+        let spine = chunks.indices.map { "<itemref idref=\"chapter\($0)\"/>" }.joined()
+        let hasCover = cover != nil && (cover?.count ?? 0) <= 8_000_000 && ["image/jpeg", "image/png", "image/webp"].contains(coverMIME)
+        let coverMeta = hasCover ? "<meta name=\"cover\" content=\"cover-image\"/>" : ""
+        let coverItem = hasCover ? "<item id=\"cover-image\" href=\"cover.img\" media-type=\"\(coverMIME)\"/>" : ""
         let container = """
         <?xml version="1.0" encoding="UTF-8"?>
         <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
@@ -243,15 +211,24 @@ private enum EPUBWriter {
         <package version="2.0" unique-identifier="bookid" xmlns="http://www.idpf.org/2007/opf">
         <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
         <dc:title>\(escape(title))</dc:title>
-        <dc:language>und</dc:language><dc:identifier id="bookid">urn:uuid:\(uuid)</dc:identifier>
-        </metadata><manifest>
-        <item id="chapter" href="book.xhtml" media-type="application/xhtml+xml"/>
-        </manifest><spine><itemref idref="chapter"/></spine></package>
+        <dc:creator>\(escape(author))</dc:creator><dc:language>\(escape(language))</dc:language><dc:identifier id="bookid">urn:uuid:\(uuid)</dc:identifier>
+        \(coverMeta)</metadata><manifest>\(manifest)\(coverItem)</manifest><spine>\(spine)</spine></package>
         """
         try await add(Data("application/epub+zip".utf8), path: "mimetype", archive: archive, compress: false)
         try await add(Data(container.utf8), path: "META-INF/container.xml", archive: archive)
         try await add(Data(opf.utf8), path: "OEBPS/content.opf", archive: archive)
-        try await add(Data(xhtml.utf8), path: "OEBPS/book.xhtml", archive: archive)
+        for (index, chunk) in chunks.enumerated() {
+            try Task.checkCancellation()
+            let text = chunk.map { "<p>\(escape($0))</p>" }.joined(separator: "\n")
+            let heading = index == 0 ? "<h1>\(escape(title))</h1>" : ""
+            let xhtml = """
+            <?xml version="1.0" encoding="utf-8"?>
+            <html xmlns="http://www.w3.org/1999/xhtml"><head><title>\(escape(title))</title>
+            <style>p{margin:0 0 0.8em}</style></head><body>\(heading)\(text)</body></html>
+            """
+            try await add(Data(xhtml.utf8), path: "OEBPS/chapter-\(index).xhtml", archive: archive)
+        }
+        if hasCover, let cover { try await add(cover, path: "OEBPS/cover.img", archive: archive, compress: false) }
         return output
     }
 

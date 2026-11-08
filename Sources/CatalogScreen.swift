@@ -192,9 +192,10 @@ struct CatalogScreen: View {
                                 }
                             }
                             .padding(18)
-                        } else if hasSearched && results.isEmpty {
+                        }
+                        if hasSearched && results.isEmpty && !searching {
                             emptyResults
-                        } else if !hasSearched {
+                        } else if !hasSearched && !searching {
                             ReaderCard {
                                 Label("Начните с названия книги или имени автора.", systemImage: "text.book.closed")
                                     .font(.subheadline)
@@ -202,7 +203,7 @@ struct CatalogScreen: View {
                             }
                         } else {
                             VStack(spacing: 11) {
-                                ForEach(Array(results.enumerated()),id:\.offset) { _,book in
+                                ForEach(results) { book in
                                     bookRow(book)
                                 }
                             }
@@ -383,6 +384,7 @@ struct CatalogScreen: View {
         let term = query
         let selectedMode = mode
         let languageChoice = ReaderPreferences.effectiveLanguage(bookLanguage, appLanguage: language)
+        results = []; hasSearched = true; history = []; heading = "Результаты"
         searching = true
         showVPNHint = false
         error = nil
@@ -398,7 +400,12 @@ struct CatalogScreen: View {
                     provider: matchingOPDS == nil ? selectedProvider : "custom",
                     customURL: matchingOPDS?.url ?? customURL,
                     customParameter: matchingOPDS?.searchParameter ?? customParameter,
-                    language: languageChoice
+                    language: languageChoice, onResults: { page in
+                        await MainActor.run {
+                            guard requestID == token, !Task.isCancelled else { return }
+                            results = page.filter {$0.epubURL != nil || $0.navigationURL != nil}
+                        }
+                    }
                 )
                 try Task.checkCancellation()
                 guard requestID == token else { return }

@@ -626,3 +626,7 @@
 "Прогресс виден вместе с панелью чтения. Включите переключатель, чтобы видеть его постоянно." = "Progress appears with the reading controls. Turn this on to keep it visible while reading.";
 
 "Сборка %@ · %@" = "Build %@ · %@";
+
+"Книги, закладки, прогресс и настройки в одном файле. Аудиофайлы сохраняются отдельно." = "Books, bookmarks, reading progress and settings in one file. Audio files are saved separately.";
+"Проверяем копию…" = "Checking backup…";
+"Настройки, прогресс и закладки восстановлены для книг в библиотеке." = "Settings, progress and bookmarks have been restored for books in your library.";

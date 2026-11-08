@@ -3,12 +3,20 @@ import ReadiumShared
 import ReadiumStreamer
 import ReadiumNavigator
 import UIKit
+import WebKit
 
 @MainActor
 final class ReaderSession: ObservableObject, EPUBNavigatorDelegate {
     let navigator: EPUBNavigatorViewController
 
-    let totalPositions:Int
+    @Published private(set) var totalPositions = 0
+    @Published private(set) var isReady = false
+    @Published private(set) var displayedTheme: String
+    private let publication: Publication
+    private var options: ReaderOptions
+    private var updateTask: Task<Void, Never>?
+    private var positionTask: Task<Void, Never>?
+    private var transitionCover: UIView?
     @Published private(set) var location:Locator?
     @Published var errorMessage:String?
     var onLocationChange:((Locator)->Void)?
@@ -20,12 +28,15 @@ final class ReaderSession: ObservableObject, EPUBNavigatorDelegate {
         guard let position=location?.locations.position,totalPositions>1 else{return nil}
         return Double(position-1)/Double(totalPositions-1)
     }
-    private init(navigator:EPUBNavigatorViewController,totalPositions:Int) {
-        self.navigator=navigator
-        self.totalPositions=totalPositions
-        self.location=navigator.currentLocation
+    private init(navigator: EPUBNavigatorViewController, publication: Publication, options: ReaderOptions) {
+        self.navigator = navigator
+        self.publication = publication
+        self.options = options
+        self.displayedTheme = options.theme
+        self.location = navigator.currentLocation
         navigator.delegate=self
         let adapter=DirectionalNavigationAdapter(animatedTransition:true,onNavigation:{[weak self] in self?.onPageTurn?()})
+        adapter.animatedTransition = options.animated && !UIAccessibility.isReduceMotionEnabled
         pageNavigation=adapter;adapter.bind(to:navigator)
         navigator.addObserver(.tap { [weak self] _ in
             self?.onToggleChrome?()
@@ -33,14 +44,22 @@ final class ReaderSession: ObservableObject, EPUBNavigatorDelegate {
         })
     }
     func navigator(_ navigator:Navigator,locationDidChange locator:Locator) {
-        location=locator
+        location = locator
+        if !isReady {
+            isReady = true
+            positionTask = Task { [weak self, publication] in
+                let positions = (try? await publication.positions().get()) ?? []
+                guard !Task.isCancelled else { return }
+                self?.totalPositions = positions.count
+            }
+        }
         onLocationChange?(locator)
     }
     func navigator(_ navigator:Navigator,presentError error:NavigatorError) {
         errorMessage="Это действие недоступно для данной книги."
     }
 
-    static func open(fileURL: URL, previousLocation: String?) async throws -> ReaderSession {
+    static func open(fileURL: URL, previousLocation: String?, options: ReaderOptions) async throws -> ReaderSession {
         let httpClient = DefaultHTTPClient()
         let retriever = AssetRetriever(httpClient: httpClient)
         let opener = PublicationOpener(parser: DefaultPublicationParser(
@@ -53,29 +72,102 @@ final class ReaderSession: ObservableObject, EPUBNavigatorDelegate {
         let publication = try await opener.open(asset: asset, allowUserInteraction: true).get()
         guard publication.conforms(to: .epub) else { throw ReaderError.unsupportedPublication }
         let locator = previousLocation.flatMap { try? Locator(jsonString: $0) }
-        let navigator = try EPUBNavigatorViewController(publication: publication, initialLocation: locator, config:.init(contentInset:[.compact:(top:64,bottom:56),.regular:(top:64,bottom:56)]))
-        let positions=(try? await publication.positions().get()) ?? []
-        return ReaderSession(navigator:navigator,totalPositions:positions.count)
+        let navigator = try EPUBNavigatorViewController(publication: publication, initialLocation: locator, config: .init(
+            preferences: options.preferences,
+            contentInset: [.compact: (top: 34, bottom: 34), .regular: (top: 40, bottom: 40)],
+            preloadPreviousPositionCount: 0, preloadNextPositionCount: 1
+        ))
+        return ReaderSession(navigator: navigator, publication: publication, options: options)
     }
 
-    func applyPreferences(fontSize: Double, font: String, theme: String, scroll: Bool, animated:Bool=true) {
+    func apply(_ next: ReaderOptions) {
+        guard next != options else { return }
+        options = next
+        pageNavigation?.animatedTransition = next.animated && !UIAccessibility.isReduceMotionEnabled
+        updateTask?.cancel()
+        updateTask = Task { [weak self] in
+            do { try await Task.sleep(nanoseconds: 120_000_000) } catch { return }
+            guard let self else { return }
+            // Keep the last complete page visible while WebKit changes its CSS.
+            // Native chrome switches only after the page has completed two frames.
+            if self.transitionCover == nil, self.isReady, let cover = self.navigator.view.snapshotView(afterScreenUpdates: false) {
+                cover.frame = self.navigator.view.bounds
+                cover.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+                cover.isUserInteractionEnabled = false
+                self.navigator.view.addSubview(cover)
+                self.transitionCover = cover
+            }
+            self.navigator.submitPreferences(next.preferences)
+            await Task.yield()
+            for webView in Self.webViews(in: self.navigator.view) {
+                _ = try? await webView.callAsyncJavaScript(
+                    """
+                    const root = document.documentElement;
+                    const normalize = value => { const e = document.createElement('span'); e.style.color = value; e.style.position = 'fixed'; e.style.visibility = 'hidden'; document.body.appendChild(e); const result = getComputedStyle(e).color; e.remove(); return result; };
+                    const expectedColor = normalize(background);
+                    const deadline = Date.now() + 2000;
+                    while (Date.now() < deadline) {
+                        const style = getComputedStyle(root);
+                        const size = parseFloat(style.getPropertyValue('--USER__fontSize'));
+                        const color = style.getPropertyValue('--USER__backgroundColor').trim();
+                        if (Math.abs(size - percent) < 0.01 && color && normalize(color) === expectedColor) break;
+                        await new Promise(resolve => setTimeout(resolve, 32));
+                    }
+                    await document.fonts.ready;
+                    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+                    return true;
+                    """,
+                    arguments: ["percent": next.fontSize * 100, "background": ReaderPaper(theme: next.theme).backgroundHex], in: nil, contentWorld: .page
+                )
+                guard !Task.isCancelled else { return }
+            }
+            guard !Task.isCancelled else { return }
+            self.displayedTheme = next.theme
+            self.navigator.view.backgroundColor = UIColor(ReaderPaper(theme: next.theme).background)
+            self.transitionCover?.removeFromSuperview()
+            self.transitionCover = nil
+        }
+    }
+    private static func webViews(in view: UIView) -> [WKWebView] {
+        if let webView = view as? WKWebView { return [webView] }
+        return view.subviews.flatMap { webViews(in: $0) }
+    }
+    func cancelUpdates() {
+        updateTask?.cancel(); positionTask?.cancel()
+        transitionCover?.removeFromSuperview(); transitionCover = nil
+    }
+
+}
+
+private extension ReaderOptions {
+    var preferences: EPUBPreferences {
         var preferences = EPUBPreferences(
             fontFamily: font == "sans" ? .sansSerif : .serif,
-            fontSize: fontSize,
-            publisherStyles: false,
-            scroll: scroll
+            fontSize: fontSize, publisherStyles: false, scroll: scroll
         )
+        // Readium uses a multiplier (1.0 = 100%), not an integer percentage.
         switch theme {
         case "dark", "oled": preferences.theme = .dark
         case "sepia": preferences.theme = .sepia
         default: preferences.theme = .light
         }
-        let palette=ReaderPaper(theme:theme)
-        preferences.backgroundColor=ReadiumNavigator.Color(hex:palette.backgroundHex)
-        preferences.textColor=ReadiumNavigator.Color(hex:palette.textHex)
-        navigator.view.backgroundColor=UIColor(palette.background)
-        pageNavigation?.animatedTransition=animated && !UIAccessibility.isReduceMotionEnabled
-        navigator.submitPreferences(preferences)
+        let palette = ReaderPaper(theme: theme)
+        preferences.backgroundColor = ReadiumNavigator.Color(hex: palette.backgroundHex)
+        preferences.textColor = ReadiumNavigator.Color(hex: palette.textHex)
+        return preferences
+    }
+}
+
+private struct ReaderSurface: View {
+    @ObservedObject var session: ReaderSession
+    var body: some View {
+        ZStack {
+            ReaderContainer(navigator: session.navigator)
+            if !session.isReady {
+                ReaderPaper(theme: session.displayedTheme).background.ignoresSafeArea()
+                ProgressView("Открываем книгу…").tint(ReaderPaper(theme: session.displayedTheme).text)
+            }
+        }
     }
 }
 
@@ -108,6 +200,8 @@ struct ReaderScreen: View {
         self.initialLocation = initialLocation
     }
     @State private var session: ReaderSession?
+    @State private var displayedTheme: String?
+    @State private var bookReady = false
     @StateObject private var chrome=ReaderChrome()
     @AppStorage("readerPageAnimation") private var pageAnimation=true
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -123,14 +217,19 @@ struct ReaderScreen: View {
     private var book: LocalBook? { store.books.first(where: { $0.id == bookID }) }
 
     private var effectiveTheme:String {theme == "system" ? (colorScheme == .dark ? "dark":"light"):theme}
-    private var paper:ReaderPaper {ReaderPaper(theme:effectiveTheme)}
+    private var paper:ReaderPaper {ReaderPaper(theme:displayedTheme ?? effectiveTheme)}
+    private var readerOptions: ReaderOptions {
+        ReaderOptions(fontSize: fontSize, font: font, theme: effectiveTheme, scroll: scroll, animated: pageAnimation && !reduceMotion)
+    }
     var body: some View {
         NavigationStack {
             ZStack {
                 paper.background.ignoresSafeArea()
                 Group {
                 if let session {
-                    ReaderContainer(navigator: session.navigator).ignoresSafeArea()
+                    ReaderSurface(session: session).ignoresSafeArea()
+                        .onReceive(session.$displayedTheme) { displayedTheme = $0 }
+                        .onReceive(session.$isReady) { bookReady = $0 }
                         .accessibilityAction(named:Text(verbatim:L10n.text("Показать панель чтения"))) {chrome.visible=true}
                 } else if let error {
                     ContentUnavailableView(
@@ -143,9 +242,12 @@ struct ReaderScreen: View {
                 }
                 }
                 if let session, chrome.visible || persistentProgress {
-                    VStack {Spacer();ReadingProgressFooter(session:session,format:progressDisplay,theme:effectiveTheme)}.allowsHitTesting(false)
+                    VStack {Spacer();ReadingProgressFooter(session:session,format:progressDisplay,theme:displayedTheme ?? effectiveTheme)}.allowsHitTesting(false)
                 }
-                if chrome.visible || session == nil {readerControls}
+                if chrome.visible { readerControls }
+                else if !bookReady {
+                    VStack { HStack { readerButton("chevron.down", label: "Закрыть книгу") { dismiss() }; Spacer() }; Spacer() }.padding(12)
+                }
             }
             .toolbar(.hidden,for:.navigationBar)
             .foregroundStyle(paper.text)
@@ -171,7 +273,7 @@ struct ReaderScreen: View {
                 persist()
             }
         }
-        .onDisappear { persist() }
+        .onDisappear { persist(); session?.cancelUpdates() }
         .onChange(of: scenePhase) { _, phase in if phase != .active { persist() } }
         .onChange(of:chrome.visible) {_,visible in
             if visible && !hintReaderShown {hintReaderShown=true;showReaderTip=true}
@@ -193,7 +295,7 @@ struct ReaderScreen: View {
             apply()
             sync.settingsChanged(key: "readerTheme", value: value)
         }
-        .onChange(of: colorScheme) { _, _ in apply() }
+        .onChange(of: colorScheme) { _, _ in if theme == "system" { apply() } }
         .onChange(of: scroll) { _, value in
             apply()
             sync.settingsChanged(key: "readerScroll", value: String(value))
@@ -222,8 +324,11 @@ struct ReaderScreen: View {
     private func load() async {
         guard session == nil, let book else { return }
         do {
+            let book = await store.prepareForReading(book, explicitLocation: initialLocation)
+            try Task.checkCancellation()
             session = try await ReaderSession.open(
-                fileURL: store.fileURL(for: book), previousLocation: initialLocation ?? book.locatorJSON
+                fileURL: store.fileURL(for: book), previousLocation: initialLocation ?? book.locatorJSON,
+                options: readerOptions
             )
             let chrome=chrome
             session?.onToggleChrome={ [weak chrome] in chrome?.visible.toggle() }
@@ -231,8 +336,7 @@ struct ReaderScreen: View {
             if UIAccessibility.isVoiceOverRunning {chrome.visible=true}
             let id=bookID
             let store=store
-            session?.onLocationChange={ [weak store,weak chrome] locator in
-                if !UIAccessibility.isVoiceOverRunning {chrome?.visible=false}
+            session?.onLocationChange={ [weak store] locator in
                 guard let json=try? locator.jsonString() else{return}
                 store?.savePosition(bookID:id,locatorJSON:json)
             }
@@ -241,12 +345,7 @@ struct ReaderScreen: View {
     }
 
     private func apply() {
-        session?.applyPreferences(
-            fontSize: fontSize,
-            font: font,
-            theme: theme == "system" ? (colorScheme == .dark ? "dark" : "light") : theme,
-            scroll: scroll, animated: pageAnimation && !reduceMotion
-        )
+        session?.apply(readerOptions)
     }
 
     private func addBookmark() {

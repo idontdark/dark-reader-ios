@@ -174,6 +174,7 @@ private struct RootReaderView: View {
         additionalObservers
             .task {
                 DownloadQueue.shared.attach(library)
+                await library.recoverEmbeddedCovers()
                 await GoogleDriveBackup.shared.restoreConnection()
                 if bookLanguage == "auto" { bookLanguage = appLanguage }
                 if UserDefaults.standard.object(forKey: "preferredAudioSource") == nil {

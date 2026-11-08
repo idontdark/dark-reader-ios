@@ -8,6 +8,7 @@ on:
       - 'Resources/**'
       - 'project.yml'
       - 'scripts/catalog_regressions.swift'
+      - 'scripts/core-regressions/**'
       - '.github/workflows/validate.yml'
   workflow_dispatch:
 permissions:
@@ -24,7 +25,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run production catalog client regressions
         run: |
-          swiftc -swift-version 5 -parse-as-library Sources/Book.swift Sources/SearchQueryPolicy.swift Sources/OPDSClient.swift scripts/catalog_regressions.swift -o /tmp/catalog-regressions
+          swiftc -swift-version 5 -parse-as-library Sources/Book.swift Sources/SearchQueryPolicy.swift Sources/CatalogSearchAccumulator.swift Sources/OPDSClient.swift scripts/catalog_regressions.swift -o /tmp/catalog-regressions
           /tmp/catalog-regressions
   validate:
     runs-on: macos-15
@@ -36,6 +37,10 @@ jobs:
           xcode-version: latest-stable
       - name: Install XcodeGen
         run: brew install xcodegen
+      - name: Run real import and backup round trips on macOS
+        run: |
+          cp Sources/{Book,BookFormatConverter,FB2Document,BookMetadata,ReaderOptions,CloudLibraryModels,LocalLibraryBackup}.swift scripts/core-regressions/Harness/
+          swift run --package-path scripts/core-regressions ReaderCoreRegressions
       - name: Prepare project
         run: |
           swift scripts/generate_icon.swift

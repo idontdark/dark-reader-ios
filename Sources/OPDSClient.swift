@@ -6,6 +6,8 @@ import FoundationNetworking
 import FoundationXML
 #endif
 
+typealias CatalogSearchProgress = @Sendable ([CatalogBook]) async -> Void
+
 /// OPDS 1.x (Atom) catalog reader. Navigation entries are kept so the UI can
 /// traverse author pages and book detail pages, not just flat acquisition feeds.
 struct OPDSClient {
@@ -13,7 +15,7 @@ struct OPDSClient {
     let queryParameter: String
     var session: URLSession = .shared
 
-    func search(_ query: String) async throws -> [CatalogBook] {
+    func search(_ query: String, onPage: CatalogSearchProgress? = nil) async throws -> [CatalogBook] {
         let term = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !term.isEmpty, let endpoint = URL(string: searchEndpoint),
               ["http", "https"].contains(endpoint.scheme ?? "") else { throw ReaderError.invalidCatalogURL }
@@ -30,16 +32,16 @@ struct OPDSClient {
                 parser.shouldResolveExternalEntities = false
                 parser.delegate = description
                 guard parser.parse() else { throw ReaderError.invalidCatalogURL }
-                if let discovered = description.template { return try await searchTemplate(discovered, query: term, base: descriptionURL) }
-            } else if let template { return try await searchTemplate(template, query: term, base: base) }
+                if let discovered = description.template { return try await searchTemplate(discovered, query: term, base: descriptionURL, onPage: onPage) }
+            } else if let template { return try await searchTemplate(template, query: term, base: base, onPage: onPage) }
         }
         guard var components = URLComponents(url: endpoint, resolvingAgainstBaseURL: true) else { throw ReaderError.invalidCatalogURL }
         components.queryItems = (components.queryItems ?? []).filter { $0.name != queryParameter } +
             [URLQueryItem(name: queryParameter.isEmpty ? "searchTerm" : queryParameter, value: term)]
-        return try await browse(components.url!, maxPages: 5)
+        return try await browse(components.url!, maxPages: 5, onPage: onPage)
     }
 
-    private func searchTemplate(_ template: String, query: String, base: URL) async throws -> [CatalogBook] {
+    private func searchTemplate(_ template: String, query: String, base: URL, onPage: CatalogSearchProgress?) async throws -> [CatalogBook] {
         let encoded = query.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? ""
         let expanded = template.replacingOccurrences(of: "{searchTerms}", with: encoded)
             .replacingOccurrences(of: "{searchTerms?}", with: encoded)
@@ -47,10 +49,10 @@ struct OPDSClient {
         guard !expanded.contains("{"), let url = URL(string: expanded, relativeTo: base)?.absoluteURL else {
             throw ReaderError.invalidCatalogURL
         }
-        return try await browse(url, maxPages: 5)
+        return try await browse(url, maxPages: 5, onPage: onPage)
     }
 
-    func browse(_ url: URL, maxPages: Int = 1) async throws -> [CatalogBook] {
+    func browse(_ url: URL, maxPages: Int = 1, onPage: CatalogSearchProgress? = nil) async throws -> [CatalogBook] {
         var next: URL? = url
         var visited = Set<URL>()
         var seen = Set<String>()
@@ -62,6 +64,7 @@ struct OPDSClient {
                 let (data, base) = try await fetch(current)
                 let feed = try Self.parse(data, baseURL: base)
                 for book in feed.books where seen.insert(book.id).inserted { books.append(book) }
+                if !books.isEmpty { await onPage?(Array(books.prefix(200))) }
                 next = feed.nextURL
                 if books.count >= 200 { break }
             } catch is CancellationError { throw CancellationError() }
@@ -73,7 +76,7 @@ struct OPDSClient {
     private func fetch(_ url: URL) async throws -> (Data, URL) {
         guard ["http", "https"].contains(url.scheme ?? "") else { throw ReaderError.invalidCatalogURL }
         var request = URLRequest(url: url)
-        request.timeoutInterval = 25
+        request.timeoutInterval = 12
         request.setValue("application/atom+xml, application/opensearchdescription+xml, application/xml;q=0.9", forHTTPHeaderField: "Accept")
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),

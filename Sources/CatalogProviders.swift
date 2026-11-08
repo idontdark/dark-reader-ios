@@ -5,7 +5,7 @@ enum CatalogProviders {
     static func search(
         query: String, mode: String, provider: String,
         customURL: String, customParameter: String,
-        language: String? = nil
+        language: String? = nil, onResults: CatalogSearchProgress? = nil
     ) async throws -> [CatalogBook] {
         switch provider {
         case "flibusta":
@@ -13,11 +13,16 @@ enum CatalogProviders {
             var seen = Set<String>()
             var succeeded = false
             var lastError: Error?
+            let progress = CatalogSearchAccumulator(query: query, byAuthor: mode == "author")
             for variant in SearchQueryPolicy.variants(query, byAuthor: mode == "author") {
                 do {
-                    let batch = try await FlibustaCatalog.shared.search(variant, mode: mode)
+                    let batch = try await FlibustaCatalog.shared.search(variant, mode: mode, onPage: { page in
+                        let merged = await progress.merge(page)
+                        await onResults?(merged)
+                    })
                     succeeded = true
                     for book in batch where seen.insert(book.id).inserted { found.append(book) }
+                    if mode == "title", batch.contains(where: { SearchQueryPolicy.score(title:$0.title,author:$0.author,query:query) == 10_000 }) { break }
                 } catch is CancellationError { throw CancellationError() }
                 catch { lastError = error }
             }
@@ -28,17 +33,19 @@ enum CatalogProviders {
                 return lhs == rhs ? left.offset < right.offset : lhs > rhs
             }.map(\.element)
         case "gutendex":
-            return try await GutendexClient().search(query, mode: mode, language: language)
+            let books = try await GutendexClient().search(query, mode: mode, language: language)
+            await onResults?(books)
+            return books
         case "gutenberg":
             return try await OPDSClient(
                 searchEndpoint: "https://www.gutenberg.org/ebooks/search.opds/",
                 queryParameter: "query"
-            ).search(query)
+            ).search(query, onPage: onResults)
         default:
             return try await OPDSClient(
                 searchEndpoint: customURL,
                 queryParameter: customParameter
-            ).search(query)
+            ).search(query, onPage: onResults)
         }
     }
 

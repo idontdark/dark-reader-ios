@@ -1,4 +1,5 @@
 import Foundation
+import ImageIO
 
 @MainActor
 final class BookshelfStore: ObservableObject {
@@ -43,7 +44,10 @@ final class BookshelfStore: ObservableObject {
         try await BookFormatConverter.validateContainer(prepared)
         let filename = UUID().uuidString + ".epub"
         try fileManager.copyItem(at: prepared, to: directory.appendingPathComponent(filename))
-        books.insert(LocalBook(title: title, author: author, filename: filename), at: 0)
+        let metadata = try? await BookMetadata.read(prepared)
+        var imported = LocalBook(title: metadata?.title ?? title, author: metadata?.author ?? author, filename: filename)
+        imported.coverURL = saveCover(metadata?.cover, id: imported.id)
+        books.insert(imported, at: 0)
         persist(localChange: true)
     }
 
@@ -123,7 +127,8 @@ final class BookshelfStore: ObservableObject {
         let filename = UUID().uuidString + ".epub"
         try fileManager.copyItem(at: prepared, to: directory.appendingPathComponent(filename))
         var imported = LocalBook(title: book.title, author: book.author, filename: filename)
-        imported.coverURL = book.coverURL
+        let metadata = try? await BookMetadata.read(prepared)
+        imported.coverURL = saveCover(metadata?.cover, id: imported.id) ?? book.coverURL
         imported.catalogID = book.id
         imported.isFavorite = CatalogBookmarks.decode(UserDefaults.standard.string(forKey:CatalogBookmarks.favoritesKey) ?? "[]").contains {$0.id == book.id}
         RecommendationProfile.record(title: book.title, author: book.author, weight: 1)
@@ -131,6 +136,45 @@ final class BookshelfStore: ObservableObject {
         CatalogBookmarks.downloaded(book)
         progress?(1.0)
         persist(localChange: true)
+    }
+
+    func prepareForReading(_ book: LocalBook, explicitLocation: String?) async -> LocalBook {
+        guard LegacyReaderUpgrade.canUpgrade(locatorJSON: book.locatorJSON, bookmarks: book.bookmarks, explicitLocation: explicitLocation),
+              let prepared = try? await BookFormatConverter.optimizedLegacyCopy(fileURL(for: book), title: book.title, author: book.author) else { return book }
+        defer { try? fileManager.removeItem(at: prepared) }
+        guard let index = books.firstIndex(where: { $0.id == book.id && $0.filename == book.filename }),
+              LegacyReaderUpgrade.canUpgrade(locatorJSON: books[index].locatorJSON, bookmarks: books[index].bookmarks, explicitLocation: explicitLocation) else { return book }
+        do {
+            let filename = UUID().uuidString + ".epub"
+            try fileManager.copyItem(at: prepared, to: directory.appendingPathComponent(filename))
+            // Keep the original EPUB on disk so the migration is reversible.
+            books[index].filename = filename
+            books[index].locatorJSON = nil
+            persist(localChange: false)
+            return books[index]
+        } catch { return book }
+    }
+
+    /// Backfill existing imported EPUBs without a network request or a full Readium open.
+    func recoverEmbeddedCovers() async {
+        for book in books where book.coverURL == nil || (book.coverURL?.isFileURL == true && !fileManager.fileExists(atPath: book.coverURL!.path)) {
+            guard !Task.isCancelled else { return }
+            guard let metadata = try? await BookMetadata.read(fileURL(for: book)),
+                  let url = saveCover(metadata.cover, id: book.id),
+                  let index = books.firstIndex(where: { $0.id == book.id }) else { continue }
+            books[index].coverURL = url
+            persist(localChange: false)
+        }
+    }
+    private func saveCover(_ data: Data?, id: UUID) -> URL? {
+        guard let data, data.count <= 8_000_000, CGImageSourceCreateWithData(data as CFData, nil) != nil else { return nil }
+        let covers = directory.deletingLastPathComponent().appendingPathComponent("BookCovers", isDirectory: true)
+        let target = covers.appendingPathComponent(id.uuidString + ".img")
+        do {
+            try fileManager.createDirectory(at: covers, withIntermediateDirectories: true)
+            try data.write(to: target, options: .atomic)
+            return target
+        } catch { return nil }
     }
 
     func pauseDownload(_ id: String, saveResumeData: @escaping @MainActor (Data?) -> Void) {

@@ -5,10 +5,12 @@ import FoundationNetworking
 
 // Runs the production OPDS client and query policy on macOS, without an iOS simulator.
 final class CatalogFixtureProtocol: URLProtocol {
+    static var secondRequested = false
     static var pages: [String: (Int, String)] = [:]
     override class func canInit(with request: URLRequest) -> Bool { request.url?.host == "catalog.test" }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
+        if request.url!.path == "/two" { Self.secondRequested = true }
         let response = Self.pages[request.url!.path] ?? (404, "missing")
         client?.urlProtocol(self, didReceive: HTTPURLResponse(url:request.url!,statusCode:response.0,httpVersion:nil,headerFields:["Content-Type":"application/atom+xml"])!, cacheStoragePolicy:.notAllowed)
         client?.urlProtocol(self, didLoad: Data(response.1.utf8))
@@ -17,6 +19,11 @@ final class CatalogFixtureProtocol: URLProtocol {
     override func stopLoading() {}
 }
 
+actor CatalogPageLog {
+    var pages: [[String]] = []
+    func add(_ books: [CatalogBook]) { pages.append(books.map(\.id)) }
+    func all() -> [[String]] { pages }
+}
 @main struct CatalogRegressions {
     static func check(_ condition: @autoclosure () -> Bool, _ name: String) {
         guard condition() else { fatalError("FAIL: " + name) }
@@ -44,6 +51,17 @@ final class CatalogFixtureProtocol: URLProtocol {
         defer { session.invalidateAndCancel() }
         let client = OPDSClient(searchEndpoint:"https://catalog.test/one",queryParameter:"q",session:session)
         CatalogFixtureProtocol.pages = ["/one":(200,feed("a",next:"/two")),"/two":(200,feed("b",next:"/one"))]
+        let progress = CatalogPageLog()
+        let streamed = try await client.browse(URL(string: "https://catalog.test/one")!, maxPages: 5, onPage: { books in
+            if books.map(\.id) == ["a"] { check(!CatalogFixtureProtocol.secondRequested, "first results published before requesting later pages") }
+            await progress.add(books)
+        })
+        let pages = await progress.all()
+        check(pages == [["a"], ["a", "b"]] && streamed.count == 2, "progress callbacks accumulate successive pages")
+        let ranked = CatalogSearchAccumulator(query: "Книга b", byAuthor: false)
+        _ = await ranked.merge(streamed)
+        let merged = await ranked.merge(streamed)
+        check(merged.count == 2 && merged.first?.id == "b", "progressive search ranks and deduplicates results")
         let books = try await client.browse(URL(string:"https://catalog.test/one")!,maxPages:5)
         check(books.map(\.id) == ["a","b"], "next page followed and pagination cycle stopped")
         check(books[0].summary?.contains("Второй абзац.") == true, "nested XHTML description retained")
