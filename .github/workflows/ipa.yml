@@ -79,7 +79,7 @@ jobs:
               await github.rest.repos.updateReleaseAsset({...context.repo, asset_id:ipa.id, name:desired, label:desired});
             }
             const releases = await github.paginate(github.rest.repos.listReleases, {...context.repo, per_page: 100});
-            const published = releases.find(r => r.tag_name === current && !r.draft && r.assets.some(a => a.name === desired && a.state === 'uploaded' && a.size > 0));
+            const published = releases.find(r => r.tag_name === current && !r.draft && r.assets.some(a => (a.name === desired || a.label === desired) && a.state === 'uploaded' && a.size > 0));
             if (!published) throw new Error('New IPA not confirmed; keep old files');
             for (const release of releases.filter(r => r.id !== published.id)) {
               for (const asset of release.assets.filter(a => /^(DarkReader|dark-signer).*\.(ipa|zip)$/i.test(a.name))) {

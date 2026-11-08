@@ -1,0 +1,32 @@
+name: Finalize requested IPA release
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/finalize-release.yml']
+permissions:
+  contents: write
+  actions: write
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = 'v1.0.0-build-82';
+            const {data: release} = await github.rest.repos.getReleaseByTag({...context.repo, tag});
+            const ipa = release.assets.find(a => a.name === 'dark-signer.v1.1.ipa' && a.label === 'dark-signer [v1.1].ipa');
+            if (!ipa || ipa.state !== 'uploaded' || ipa.size !== 11551783 || ipa.digest !== 'sha256:4474c992c7096d22f7ebbb43498bed0d66f079fdfdb6922a58079587333ceb92') {
+              throw new Error('Verified build 82 IPA is missing or changed. Keep old installation files.');
+            }
+            core.notice('Verified IPA: ' + ipa.browser_download_url);
+            const releases = await github.paginate(github.rest.repos.listReleases, {...context.repo, per_page:100});
+            for (const previous of releases.filter(r => r.id !== release.id)) {
+              for (const asset of previous.assets.filter(a => /^(DarkReader|dark-signer).*\.(ipa|zip)$/i.test(a.name))) {
+                await github.rest.repos.deleteReleaseAsset({...context.repo, asset_id:asset.id});
+              }
+            }
+            const artifacts = await github.paginate(github.rest.actions.listArtifactsForRepo, {...context.repo, per_page:100});
+            for (const artifact of artifacts.filter(a => /^(DarkReader|dark-signer).*IPA$/i.test(a.name) && a.workflow_run?.id !== 42507326951)) {
+              await github.rest.actions.deleteArtifact({...context.repo, artifact_id:artifact.id});
+            }
