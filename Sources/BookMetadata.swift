@@ -33,11 +33,21 @@ struct BookMetadata: Sendable {
         return result
     }
     static func resourcePath(_ href: String, relativeTo package: String) -> String? {
-        guard let decoded = href.removingPercentEncoding, !decoded.contains(":"), !decoded.hasPrefix("/"), !decoded.contains("\\") else { return nil }
-        let path = ((package as NSString).deletingLastPathComponent + "/" + decoded.components(separatedBy: "#")[0]) as NSString
-        let normalized = path.standardizingPath
-        guard normalized != "..", !normalized.hasPrefix("../"), !normalized.hasPrefix("/") else { return nil }
-        return normalized
+        let reference = String(href.split(separator: "#", maxSplits: 1, omittingEmptySubsequences: false)[0])
+        guard let decoded = reference.removingPercentEncoding,
+              !decoded.contains(":"), !decoded.hasPrefix("/"), !decoded.contains("\\"),
+              !package.hasPrefix("/"), !package.contains("\\") else { return nil }
+        // NSString.standardizingPath can discard leading parent components on
+        // Darwin. Resolve archive names lexically, without filesystem expansion.
+        var components: [String] = []
+        for part in package.split(separator: "/").dropLast() + decoded.split(separator: "/") {
+            if part == "." { continue }
+            if part == ".." {
+                guard !components.isEmpty else { return nil }
+                components.removeLast()
+            } else { components.append(String(part)) }
+        }
+        return components.isEmpty ? nil : components.joined(separator: "/")
     }
 }
 
