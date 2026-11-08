@@ -12,7 +12,7 @@ import ReadiumZIPFoundation
         try fm.createDirectory(at: folder, withIntermediateDirectories: true)
         defer { try? fm.removeItem(at: folder) }
         let image = Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jF9sAAAAASUVORK5CYII=")!
-        let paragraphs = (0..<5000).map { "Абзац \($0): Текст & <проверка> — кириллица. " + String(repeating: "слово ", count: 30) }
+        let paragraphs = (0..<5000).map { "Абзац \($0): Текст & <проверка> — кириллица. " + String(repeating: "слово ", count: 30).trimmingCharacters(in: .whitespaces) }
         let fb2 = """
         <?xml version="1.0"?><FictionBook xmlns:l="http://www.w3.org/1999/xlink">
         <description><title-info><author><first-name>Имя</first-name><last-name>Автора</last-name></author><book-title>Обложка &amp; текст</book-title><lang>ru</lang><coverpage><image l:href="#cover"/></coverpage></title-info></description>
