@@ -20,7 +20,7 @@ enum CatalogBookmarks {
             RecommendationProfile.record(title:book.title,author:book.author,weight:key == favoritesKey ? 4:1)
         }
         UserDefaults.standard.set(encode(books),forKey:key)
-        GoogleDriveBackup.shared.requestBackup()
+        Task { @MainActor in GoogleDriveBackup.shared.requestBackup() }
     }
     static func downloaded(_ book:CatalogBook) {
         let books=decode(UserDefaults.standard.string(forKey:wishlistKey) ?? "[]").filter {$0.id != book.id}
