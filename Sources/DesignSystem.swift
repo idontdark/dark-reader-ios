@@ -181,7 +181,7 @@ struct BookArtwork:View {
     var body:some View {
         Group {
             if let coverURL {
-                CachedCover(url:CoverSize.url(coverURL,detailed:width>115),
+                CachedCover(url:CoverSize.url(coverURL,detailed:width>115), pointSize:height,
                             content: { $0.resizable().scaledToFill() }, placeholder: { fallback })
             } else { fallback }
         }.frame(width:width,height:height)

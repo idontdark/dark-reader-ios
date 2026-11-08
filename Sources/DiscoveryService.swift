@@ -116,7 +116,7 @@ struct DiscoveryArtwork: View {
     var height: CGFloat = 148
 
     var body: some View {
-        CachedCover(url: CoverSize.url(book.coverURL, detailed: width > 115)) { image in
+        CachedCover(url: CoverSize.url(book.coverURL, detailed: width > 115), pointSize: height) { image in
             image.resizable().scaledToFill()
         } placeholder: {
             ZStack {

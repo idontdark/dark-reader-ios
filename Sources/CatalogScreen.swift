@@ -15,7 +15,11 @@ struct CatalogScreen: View {
     @AppStorage("catalogProvider") private var provider = "flibusta"
     @AppStorage("catalogURL") private var customURL = "https://flibusta.is/opds/search?searchType=books"
     @AppStorage("catalogQueryParameter") private var customParameter = "searchTerm"
-    @State private var query = ""
+    @FocusState private var queryFocused: Bool
+    private var query: String {
+        get { navigation.searchQuery }
+        nonmutating set { navigation.searchQuery = newValue }
+    }
     @State private var mode = "title"
     @State private var results: [CatalogBook] = []
     @State private var history: [CatalogHistoryPage] = []
@@ -81,7 +85,7 @@ struct CatalogScreen: View {
                         } label: {ReaderSearchSourceLabel(title:providerName,icon:"book.closed")}
 
 
-                        ReaderQueryField(query:$query) {if !searching {startSearch()}}
+                        ReaderQueryField(query:$navigation.searchQuery, focus:$queryFocused) {if !searching {startSearch()}}
 
                         ReaderSegmentedControl(items:[("title","По названию"),("author","По автору")],selection:$mode)
                         ReaderSearchLanguage(selection:$bookLanguage)
@@ -210,6 +214,10 @@ struct CatalogScreen: View {
             }
             .readerCanvas()
             .toolbar(.hidden, for: .navigationBar)
+            .onChange(of:navigation.searchScope) { _, scope in
+                queryFocused = false
+                if scope == "books" { handlePendingSearch() }
+            }
             .onAppear {
                 if bookLanguage == "auto" { bookLanguage = language }
                 handlePendingAuthor()
@@ -236,17 +244,14 @@ struct CatalogScreen: View {
                 completedTitle = nil
                 hasSearched = false
             }
+            .task(id:results.prefix(8).map(\.id)) { await CoverCache.shared.prefetch(results.prefix(8).compactMap(\.coverURL)) }
             .onDisappear { cancelSearch() }
             .fullScreenCover(item: $selectedBook) { book in
                 CatalogBookDetailSheet(book: book) { selectedBook = nil }
                     .environmentObject(library)
             }
             .fullScreenCover(item:$readingBook) {book in ReaderScreen(bookID:book.id).environmentObject(library)}
-            .alert("Не удалось выполнить действие", isPresented: Binding(
-                get: { error != nil }, set: { if !$0 { error = nil } }
-            )) {
-                Button("Понятно", role: .cancel) { error = nil }
-            } message: { Text(verbatim:L10n.render(error ?? "",language:localizationLanguage)) }
+            .readerError($error,title:"Источник не ответил")
         }
     }
 
@@ -335,7 +340,10 @@ struct CatalogScreen: View {
 
     private var supportsLanguageFiltering: Bool { provider == "gutendex" }
 
+    private func handlePendingSearch() { handlePendingAuthor(); handlePendingBook() }
+
     private func handlePendingAuthor() {
+        guard navigation.searchScope == "books", navigation.tab == .search else { return }
         guard let author = navigation.authorToSearch, !author.isEmpty else { return }
         navigation.authorToSearch = nil
         query = author
@@ -344,6 +352,7 @@ struct CatalogScreen: View {
     }
 
     private func handlePendingBook() {
+        guard navigation.searchScope == "books", navigation.tab == .search else { return }
         guard let title = navigation.bookToSearch, !title.isEmpty else { return }
         navigation.bookToSearch = nil
         query = title
@@ -362,6 +371,7 @@ struct CatalogScreen: View {
     }
 
     private func startSearch() {
+        queryFocused = false
         guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         cancelSearch()
         let token = UUID()

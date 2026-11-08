@@ -4,6 +4,10 @@ extension View {
     func readerHint(isPresented: Binding<Bool>, title: String, message: String, icon: String) -> some View {
         modifier(ReaderHint(presented: isPresented, title: title, message: message, icon: icon))
     }
+    func readerError(_ message: Binding<String?>, title: String) -> some View {
+        readerHint(isPresented: Binding(get: { message.wrappedValue != nil }, set: { if !$0 { message.wrappedValue = nil } }),
+                   title: title, message: L10n.render(message.wrappedValue ?? ""), icon: "exclamationmark.circle")
+    }
 }
 
 private struct ReaderHint: ViewModifier {
@@ -15,7 +19,7 @@ private struct ReaderHint: ViewModifier {
     @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     func body(content: Content) -> some View {
-        content.safeAreaInset(edge: .bottom, spacing: 8) {
+        content.overlay(alignment: .bottom) {
             if presented {
                 HStack(alignment: .top, spacing: 12) {
                     Image(systemName: icon).font(.title3).foregroundStyle(Color(hex: accentHex)).padding(.top, 4)

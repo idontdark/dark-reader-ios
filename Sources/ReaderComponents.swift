@@ -23,12 +23,13 @@ struct ReaderQueryField:View {
     @AppStorage("appLanguage") private var localizationLanguage="ru"
 
     @Binding var query:String
+    var focus: FocusState<Bool>.Binding
     let search:()->Void
     var body:some View {
         HStack(spacing:10) {
             Image(systemName:"magnifyingglass").foregroundStyle(ReaderStyle.secondary)
             TextField("Название или автор",text:$query).textInputAutocapitalization(.never).autocorrectionDisabled()
-                .submitLabel(.search).onSubmit(search).foregroundStyle(.white)
+                .focused(focus).submitLabel(.search).onSubmit { focus.wrappedValue=false; search() }.foregroundStyle(.white)
             if !query.isEmpty {
                 Button {query=""} label:{Image(systemName:"xmark.circle.fill").foregroundStyle(ReaderStyle.secondary)}
                     .frame(minWidth:44,minHeight:44).accessibilityLabel(Text(verbatim:L10n.render("Очистить поиск",language:localizationLanguage)))

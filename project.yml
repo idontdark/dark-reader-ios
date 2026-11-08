@@ -5,7 +5,7 @@ settings:
   base:
     SWIFT_VERSION: 5.9
     MARKETING_VERSION: 1.0.0
-    CURRENT_PROJECT_VERSION: 12
+    CURRENT_PROJECT_VERSION: 13
 packages:
   GoogleSignIn:
     url: https://github.com/google/GoogleSignIn-iOS.git
@@ -34,7 +34,7 @@ targets:
         CFBundleDisplayName: "Dark Reader"
         CFBundleName: "Dark Reader - Books & Audiobooks"
         CFBundleShortVersionString: "1.0.0"
-        CFBundleVersion: "12"
+        CFBundleVersion: "13"
         GIDClientID: "183748481353-7vbvbe3o7u1pgtg4vet7g3o86dg7lfsq.apps.googleusercontent.com"
         CFBundleURLTypes:
           - CFBundleURLSchemes:

@@ -122,6 +122,8 @@ struct SettingsScreen: View {
                         Link("Конфиденциальность",destination:URL(string:"https://idontdark.github.io/dark-reader/privacy.html")!)
                         Link("Условия",destination:URL(string:"https://idontdark.github.io/dark-reader/terms.html")!)
                     }.font(.system(size:11)).foregroundStyle(ReaderStyle.secondary).frame(maxWidth:.infinity)
+                    Text(verbatim:String(format:L10n.text("Сборка %@ · %@"),Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "13",String((Bundle.main.infoDictionary?["ReaderSourceCommit"] as? String ?? "local").prefix(7))))
+                        .font(.caption2).foregroundStyle(ReaderStyle.secondary).frame(maxWidth:.infinity)
                     Text("Dark Reader · \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0")")
                         .font(.caption)
                         .foregroundStyle(ReaderStyle.secondary)
@@ -307,6 +309,7 @@ struct TypographyScreen: View {
     @AppStorage("readerFontSize") private var fontSize = 1.1
     @AppStorage("readerScroll") private var scroll = false
     @AppStorage("readerProgressDisplay") private var progressDisplay = "percent"
+    @AppStorage("readerPersistentProgress") private var persistentProgress = false
 
     var body: some View {
         ScrollView {
@@ -350,7 +353,8 @@ struct TypographyScreen: View {
                     VStack(alignment:.leading,spacing:11) {
                         Text(verbatim:L10n.render("Прогресс чтения",language:localizationLanguage)).font(.system(size:14,weight:.semibold))
                         ReaderSegmentedControl(items:[("percent","Процент прочтения"),("pages","Текущая страница")],selection:$progressDisplay)
-                        Text(verbatim:L10n.render("Выберите, что показывать внизу книги.",language:localizationLanguage)).font(.system(size:11)).foregroundStyle(ReaderStyle.secondary)
+                        Toggle("Всегда показывать прогресс",isOn:$persistentProgress)
+                        Text(verbatim:L10n.render("Прогресс виден вместе с панелью чтения. Включите переключатель, чтобы видеть его постоянно.",language:localizationLanguage)).font(.system(size:11)).foregroundStyle(ReaderStyle.secondary)
                         if progressDisplay == "pages" {
                             Text(verbatim:L10n.render("В EPUB номера страниц рассчитываются приложением и могут отличаться от печатного издания.",language:localizationLanguage))
                                 .font(.system(size:11)).foregroundStyle(ReaderStyle.secondary)
@@ -364,6 +368,7 @@ struct TypographyScreen: View {
         .readerCanvas()
         .readerNavigationTitle("Чтение")
         .navigationBarTitleDisplayMode(.inline)
+        .onChange(of:persistentProgress) {_,value in sync.settingsChanged(key:"readerPersistentProgress",value:String(value))}
         .onChange(of: progressDisplay) { _,value in sync.settingsChanged(key:"readerProgressDisplay",value:value) }
         .onChange(of: theme) { _, value in sync.settingsChanged(key: "readerTheme", value: value) }
         .onChange(of: font) { _, value in sync.settingsChanged(key: "readerFont", value: value) }

@@ -3,6 +3,7 @@ import UIKit
 import UniformTypeIdentifiers
 
 struct AudioImportScreen: View {
+    @EnvironmentObject private var navigation: ReaderNavigation
     @AppStorage("appLanguage") private var localizationLanguage="ru"
 
     @State private var picking = false
@@ -32,7 +33,7 @@ struct AudioImportScreen: View {
                             busy = true
                             Task {
                                 defer { busy = false }
-                                do { _ = try await AudioImportStore.importURL(url, title: title, author: author); message = "Аудиокнига добавлена в библиотеку." }
+                                do { let imported = try await AudioImportStore.importURL(url, title: title, author: author); navigation.imported(imported.title,audio:true); message = "Аудиокнига добавлена в библиотеку." }
                                 catch { message = "Не удалось импортировать аудио. Проверьте ссылку и формат." }
                             }
                         }.disabled(busy || address.isEmpty)
@@ -42,7 +43,7 @@ struct AudioImportScreen: View {
                     Text(verbatim:L10n.render("Порядок глав, название, автора и обложку можно изменить в карточке импортированной книги.",language:localizationLanguage))
                         .font(.footnote).foregroundStyle(ReaderStyle.secondary)
                 }.padding(20)
-            }.readerCanvas().readerNavigationTitle("Импорт аудиокниг")
+            }.readerCanvas().readerNotice().readerNavigationTitle("Импорт аудиокниг")
                 .fileImporter(isPresented: $picking, allowedContentTypes: AudioImportStore.extensions.compactMap { UTType(filenameExtension: $0) },
                               allowsMultipleSelection: true) { result in
                     guard case .success(let urls) = result else { message = "Не удалось открыть файлы."; return }
@@ -50,8 +51,17 @@ struct AudioImportScreen: View {
                     Task {
                         defer { busy = false }
                         do {
-                            if combine { _ = try await AudioImportStore.importFiles(urls, title: title, author: author) }
-                            else { for file in urls { _ = try await AudioImportStore.importFiles([file], title: title, author: author) } }
+                            if combine {
+                                let imported = try await AudioImportStore.importFiles(urls, title:title, author:author)
+                                navigation.imported(imported.title,audio:true)
+                            } else {
+                                var importedTitles:[String]=[]
+                                for file in urls {
+                                    let imported = try await AudioImportStore.importFiles([file],title:title,author:author)
+                                    importedTitles.append(imported.title)
+                                    navigation.imported(importedTitles.joined(separator:", "),audio:true)
+                                }
+                            }
                             message = "Аудиокниги добавлены в библиотеку."
                         } catch { message = "Не удалось прочитать аудио. Проверьте формат и свободное место." }
                     }

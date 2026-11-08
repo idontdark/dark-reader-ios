@@ -13,6 +13,12 @@ final class ReaderNavigation: ObservableObject {
     @Published var bookToSearch: String?
     @Published var genreToBrowse: String?
     @Published var searchScope = "books"
+    @Published var searchQuery = ""
+    @Published var playerPresented = false
+    @Published var notice: ReaderNotice?
+    func imported(_ title: String, audio: Bool = false) {
+        notice = ReaderNotice(title: "Добавлено в библиотеку", message: title, audio: audio)
+    }
     @Published var libraryScope = "books"
 }
 
@@ -61,17 +67,21 @@ private struct RootTabs: View {
     var body: some View {
         TabView(selection: $navigation.tab) {
             LibraryScreen()
+                .readerAccessories()
                 .tabItem { Label("Библиотека", systemImage: "book") }
                 .tag(ReaderTab.library)
 
             UnifiedSearchScreen()
+                .readerAccessories()
                 .tabItem { Label("Поиск", systemImage: "magnifyingglass") }
                 .tag(ReaderTab.search)
 
             SettingsScreen()
+                .readerAccessories()
                 .tabItem { Label("Настройки", systemImage: "gearshape") }
                 .tag(ReaderTab.settings)
         }
+        .fullScreenCover(isPresented: $navigation.playerPresented) { AudioPlayerScreen() }
         .tint(Color(hex: accentHex))
         .toolbarBackground(ReaderStyle.background, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
@@ -172,14 +182,7 @@ private struct RootReaderView: View {
                 if sync.automatic { _ = await sync.syncNow() }
             }
             .onOpenURL(perform: handleIncomingURL)
-            .alert("Не удалось импортировать", isPresented: Binding(
-                get: { importError != nil },
-                set: { if !$0 { importError = nil } }
-            )) {
-                Button("Понятно", role: .cancel) {}
-            } message: {
-                Text(verbatim:L10n.render(importError ?? "",language:appLanguage))
-            }
+            .readerError($importError,title:"Не удалось импортировать")
             .onChange(of: scenePhase) { _, phase in
                 switch phase {
                 case .active:
@@ -198,7 +201,9 @@ private struct RootReaderView: View {
             do {
                 if AudioImportStore.extensions.contains(url.pathExtension.lowercased()) {
                     do {
-                        _ = try await AudioImportStore.importFiles([url])
+                        let imported = try await AudioImportStore.importFiles([url])
+                        navigation.imported(imported.title, audio: true)
+                        navigation.libraryScope = "audio"
                         navigation.tab = .library
                         return
                     } catch {
@@ -208,6 +213,8 @@ private struct RootReaderView: View {
                 try await library.addImportedFile(
                     from: url, title: url.deletingPathExtension().lastPathComponent
                 )
+                navigation.libraryScope = "books"
+                navigation.imported(url.deletingPathExtension().lastPathComponent)
                 navigation.tab = .library
             } catch {
                 importError = L10n.errorDescription(error)

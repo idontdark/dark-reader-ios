@@ -606,3 +606,23 @@
 "Анимация перелистывания" = "Page-turn animation";
 "Плавное перелистывание по нажатию. В режиме прокрутки и при уменьшении движения анимация не используется." = "Animate page turns when tapping. Animation is disabled in scrolling mode and when Reduce Motion is enabled.";
 "Источник не предоставил аудиофайлы приложению. Откройте книгу на сайте." = "The source did not provide audio files to the app. Open the book on its website.";
+
+"Источник не ответил" = "Source unavailable";
+
+"Добавлено в библиотеку" = "Added to your library";
+
+"В библиотеку" = "Go to library";
+
+"Экспортировать настройки и прогресс (JSON)" = "Export settings and progress (JSON)";
+
+"JSON сохраняет настройки, прогресс и закладки. Файлы книг в него не входят." = "JSON saves settings, reading progress and bookmarks. Book files are not included.";
+
+"Восстановить настройки и прогресс?" = "Restore settings and reading progress?";
+
+"Прогресс и закладки восстановятся для книг, которые уже есть в библиотеке. Настройки будут заменены." = "Progress and bookmarks will be restored for books already in your library. Your settings will be replaced.";
+
+"Всегда показывать прогресс" = "Always show reading progress";
+
+"Прогресс виден вместе с панелью чтения. Включите переключатель, чтобы видеть его постоянно." = "Progress appears with the reading controls. Turn this on to keep it visible while reading.";
+
+"Сборка %@ · %@" = "Build %@ · %@";

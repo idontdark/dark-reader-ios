@@ -53,8 +53,16 @@ struct UnifiedSearchScreen:View {
             ReaderHeader(title:"Поиск",trailingIcon:nil,trailingAction:nil).padding(.horizontal,ReaderMetrics.screenInset)
             ReaderSegmentedControl(items:[("books","Книги"),("audio","Аудиокниги")],selection:$navigation.searchScope)
                 .padding(.horizontal,ReaderMetrics.screenInset)
-            if navigation.searchScope == "books" {CatalogScreen(showsHeader:false)}
-            else {AudioCatalogScreen(showsHeader:false)}
+            ZStack {
+                CatalogScreen(showsHeader:false)
+                    .opacity(navigation.searchScope == "books" ? 1 : 0)
+                    .allowsHitTesting(navigation.searchScope == "books")
+                    .accessibilityHidden(navigation.searchScope != "books")
+                AudioCatalogScreen(showsHeader:false)
+                    .opacity(navigation.searchScope == "audio" ? 1 : 0)
+                    .allowsHitTesting(navigation.searchScope == "audio")
+                    .accessibilityHidden(navigation.searchScope != "audio")
+            }
         }.readerCanvas()
     }
 }

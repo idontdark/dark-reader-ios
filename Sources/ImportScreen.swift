@@ -115,6 +115,7 @@ struct ImportScreen: View {
                 .padding(.bottom, 24)
             }
             .readerCanvas()
+            .readerNotice()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
             .fileImporter(
@@ -132,6 +133,7 @@ struct ImportScreen: View {
                                     from: url, title: url.deletingPathExtension().lastPathComponent
                                 )
                                 added = true
+                                navigation.imported(url.deletingPathExtension().lastPathComponent)
                             } catch {
                                 self.error = L10n.errorDescription(error)
                             }
@@ -147,15 +149,10 @@ struct ImportScreen: View {
                 guard let item=items.first(where:{$0.id == id}) else {downloading=false;return}
                 progress=item.progress
                 downloading=[.queued,.connecting,.downloading,.paused].contains(item.state)
-                if item.state == .downloaded {completed=true;directURL="";queuedID=nil}
+                if item.state == .downloaded {completed=true;directURL="";queuedID=nil;navigation.imported(item.book.title)}
                 if item.state == .failed {error="Не удалось скачать книгу. Проверьте подключение и повторите попытку."}
             }
-            .alert("Импорт не завершён", isPresented: Binding(
-                get: { error != nil },
-                set: { if !$0 { error = nil } }
-            )) {
-                Button("Понятно", role: .cancel) {}
-            } message: { Text(verbatim:L10n.render(error ?? "",language:localizationLanguage)) }
+            .readerError($error,title:"Импорт не завершён")
         }
     }
 

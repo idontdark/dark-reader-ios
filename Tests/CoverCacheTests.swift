@@ -24,6 +24,21 @@ private final class SlowCoverProtocol: URLProtocol {
 }
 
 final class CoverCacheTests: XCTestCase {
+    @MainActor func testLargeCoverIsDecodedToCardPixels() async throws {
+        let renderer = UIGraphicsImageRenderer(size:CGSize(width:1024,height:512))
+        let png = renderer.pngData { context in UIColor.orange.setFill(); context.fill(CGRect(x:0,y:0,width:1024,height:512)) }
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at:folder,withIntermediateDirectories:true)
+        defer {try? FileManager.default.removeItem(at:folder)}
+        let url = folder.appendingPathComponent("large.png")
+        try png.write(to:url)
+        let cache = CoverCache(folder:folder.appendingPathComponent("cache"))
+        let image = try await cache.image(for:url,maxPixelSize:128)
+        XCTAssertEqual(image.cgImage?.width,128)
+        XCTAssertEqual(image.cgImage?.height,64)
+        let second = try await cache.image(for:url,maxPixelSize:128)
+        XCTAssertTrue(image === second,"Decoded thumbnail must be reused, not decoded again")
+    }
     @MainActor func testSlowCoverRequestsCoalesceAndPersistAcrossCacheInstances() async throws {
         let renderer = UIGraphicsImageRenderer(size:CGSize(width:16,height:16))
         let png = renderer.pngData { context in UIColor.purple.setFill(); context.fill(CGRect(x:0,y:0,width:16,height:16)) }

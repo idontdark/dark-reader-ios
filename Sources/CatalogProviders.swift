@@ -9,13 +9,24 @@ enum CatalogProviders {
     ) async throws -> [CatalogBook] {
         switch provider {
         case "flibusta":
-            // The live OPDS server splits title and author search into two feeds.
-            let type = mode == "author" ? "authors" : "books"
-            let client = OPDSClient(
-                searchEndpoint: "https://flibusta.is/opds/search?searchType=\(type)",
-                queryParameter: "searchTerm"
-            )
-            return try await client.search(query)
+            var found: [CatalogBook] = []
+            var seen = Set<String>()
+            var succeeded = false
+            var lastError: Error?
+            for variant in SearchQueryPolicy.variants(query, byAuthor: mode == "author") {
+                do {
+                    let batch = try await FlibustaCatalog.shared.search(variant, mode: mode)
+                    succeeded = true
+                    for book in batch where seen.insert(book.id).inserted { found.append(book) }
+                } catch is CancellationError { throw CancellationError() }
+                catch { lastError = error }
+            }
+            if !succeeded, let lastError { throw lastError }
+            return found.enumerated().sorted { left, right in
+                let lhs = SearchQueryPolicy.score(title:left.element.title,author:left.element.author,query:query,byAuthor:mode == "author")
+                let rhs = SearchQueryPolicy.score(title:right.element.title,author:right.element.author,query:query,byAuthor:mode == "author")
+                return lhs == rhs ? left.offset < right.offset : lhs > rhs
+            }.map(\.element)
         case "gutendex":
             return try await GutendexClient().search(query, mode: mode, language: language)
         case "gutenberg":
@@ -36,7 +47,7 @@ enum CatalogProviders {
     }
 
     static func browse(url: URL) async throws -> [CatalogBook] {
-        try await OPDSClient(searchEndpoint: "", queryParameter: "").browse(url)
+        try await OPDSClient(searchEndpoint: "", queryParameter: "").browse(url, maxPages: 5)
     }
 }
 

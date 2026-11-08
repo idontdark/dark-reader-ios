@@ -14,6 +14,8 @@ struct CatalogBookDetailSheet:View {
     @ObservedObject private var downloads=DownloadQueue.shared
     @State private var format="books"
     @State private var reading:LocalBook?
+    @State private var loadedSummary: String?
+    @State private var loadingSummary = false
     private var local:LocalBook? {library.books.first {$0.catalogID == book.id}}
     private var favorite:Bool {local?.isFavorite == true || CatalogBookmarks.decode(favoritesJSON).contains {$0.id == book.id}}
     private var wished:Bool {CatalogBookmarks.decode(wishlistJSON).contains {$0.id == book.id}}
@@ -26,7 +28,8 @@ struct CatalogBookDetailSheet:View {
                     BookDetailHero(title:book.title,author:book.author,coverURL:book.coverURL,
                                    tags:RecommendationProfile.classify(book.summary ?? "").prefix(2).map {ReaderPreferences.genreName($0,language:language)})
                     ReaderSegmentedControl(items:[("books","Книга"),("audio","Аудиокнига")],selection:$format)
-                    let summary=BookDescription.clean(book.summary ?? "")
+                    let summary=BookDescription.clean(loadedSummary ?? book.summary ?? "")
+                    if loadingSummary && summary.isEmpty { ProgressView().controlSize(.small) }
                     Text(verbatim:L10n.render(summary.isEmpty ? "Описание пока недоступно.":summary,language:localizationLanguage))
                         .font(.system(size:14)).lineSpacing(4)
                         .foregroundStyle(summary.isEmpty ? ReaderStyle.secondary:.white.opacity(0.88))
@@ -77,6 +80,11 @@ struct CatalogBookDetailSheet:View {
                         }.accessibilityLabel(Text(verbatim:L10n.render(wished ? "Убрать из списка чтения":"Хочу прочитать",language:localizationLanguage)))
                     }
                 }.tint(Color(hex:accentHex))
+                .task(id:book.id) {
+                    loadingSummary=true
+                    loadedSummary=await BookDescription.catalog(book,language:language)
+                    loadingSummary=false
+                }
                 .onChange(of:format) {_,value in
                     if value == "audio" {
                         navigation.bookToSearch=book.title;navigation.searchScope="audio";navigation.tab = .search

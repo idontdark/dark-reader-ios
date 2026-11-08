@@ -253,8 +253,20 @@ final class BookshelfStore: ObservableObject {
     func restoreFromFile(_ remote:[LocalBook],staged:[String:URL]) throws {
         let previous=deletions
         for book in remote {deletions.removeValue(forKey:book.id.uuidString)}
-        do {try mergeFromCloud(remote,tombstones:[:],staged:staged)}
+        do {try mergeFromCloud(remote,tombstones:[:],staged:staged);restoreReadingMetadata(remote)}
         catch {deletions=previous;throw error}
+    }
+    /// Metadata-only restoration cannot create entries pointing to missing book files.
+    func restoreReadingMetadata(_ remote: [LocalBook]) {
+        for item in remote {
+            guard let index = books.firstIndex(where: {
+                $0.id == item.id || (item.catalogID != nil && $0.catalogID == item.catalogID)
+            }) else { continue }
+            books[index].locatorJSON = item.locatorJSON
+            books[index].bookmarks = Array(Set((books[index].bookmarks ?? []) + (item.bookmarks ?? []))).sorted()
+            books[index].updatedAt = Date()
+        }
+        persist(localChange: true)
     }
     private func persist(localChange: Bool) {
         if let data = try? JSONEncoder().encode(books) {

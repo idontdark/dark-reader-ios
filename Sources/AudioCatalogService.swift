@@ -51,10 +51,20 @@ enum AudioCatalogService {
         let term = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !term.isEmpty else { throw AudioCatalogError.invalidSearch }
         if source == .knigavuhe || source == .akniga {
-            let found=try await WebAudioSourceService.search(source:source,query:term,byAuthor:byAuthor)
-            return found.filter {matchesLanguage($0.language,choice:language)}
+            var found:[AudioBook]=[];var seen=Set<String>();var succeeded=false;var lastError:Error?
+            for variant in SearchQueryPolicy.variants(term,byAuthor:byAuthor) {
+                do {
+                    let batch=try await WebAudioSourceService.search(source:source,query:variant,byAuthor:byAuthor)
+                    succeeded=true
+                    for book in batch where seen.insert(book.id).inserted {found.append(book)}
+                } catch is CancellationError {throw CancellationError()}
+                catch {lastError=error}
+            }
+            if !succeeded,let lastError {throw lastError}
+            return ranked(found.filter {matchesLanguage($0.language,choice:language)},query:term,byAuthor:byAuthor)
         }
         var variants = searchVariants(term)
+        for value in SearchQueryPolicy.variants(term,byAuthor:byAuthor) where !variants.contains(value) { variants.append(value) }
         if !byAuthor,RecommendationProfile.normalized(term) == "любовь" {variants += ["love","любв"]}
         var results:[AudioBook]=[]
         var seen=Set<String>()
@@ -76,7 +86,15 @@ enum AudioCatalogService {
             catch {lastError=error}
         }
         if !succeeded,let lastError {throw lastError}
-        return Array(results.prefix(100))
+        return Array(ranked(results,query:term,byAuthor:byAuthor).prefix(100))
+    }
+
+    private static func ranked(_ books:[AudioBook],query:String,byAuthor:Bool)->[AudioBook] {
+        books.enumerated().sorted {left,right in
+            let lhs=SearchQueryPolicy.score(title:left.element.title,author:left.element.author,query:query,byAuthor:byAuthor)
+            let rhs=SearchQueryPolicy.score(title:right.element.title,author:right.element.author,query:query,byAuthor:byAuthor)
+            return lhs == rhs ? left.offset < right.offset : lhs > rhs
+        }.map(\.element)
     }
 
     static func matchesLanguage(_ value: String?, choice: String?) -> Bool {

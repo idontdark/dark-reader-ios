@@ -63,7 +63,7 @@ final class ReaderSession: ObservableObject, EPUBNavigatorDelegate {
             fontFamily: font == "sans" ? .sansSerif : .serif,
             fontSize: fontSize,
             publisherStyles: false,
-            scroll: scroll, animated:pageAnimation && !reduceMotion
+            scroll: scroll
         )
         switch theme {
         case "dark", "oled": preferences.theme = .dark
@@ -99,6 +99,7 @@ struct ReaderScreen: View {
     @AppStorage("readerScroll") private var scroll = false
     @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
     @AppStorage("readerProgressDisplay") private var progressDisplay = "percent"
+    @AppStorage("readerPersistentProgress") private var persistentProgress = false
 
     let bookID: UUID
     let initialLocation: String?
@@ -141,7 +142,7 @@ struct ReaderScreen: View {
                     ProgressView("Открываем книгу…")
                 }
                 }
-                if let session {
+                if let session, chrome.visible || persistentProgress {
                     VStack {Spacer();ReadingProgressFooter(session:session,format:progressDisplay,theme:effectiveTheme)}.allowsHitTesting(false)
                 }
                 if chrome.visible || session == nil {readerControls}
@@ -163,10 +164,7 @@ struct ReaderScreen: View {
         }
         .task {
             await load()
-            if session != nil && !hintReaderShown {
-                hintReaderShown = true
-                showReaderTip = true
-            }
+            // The reading surface starts with text only. Its first-use tip appears after the first menu tap.
             while !Task.isCancelled {
                 do { try await Task.sleep(nanoseconds: 20_000_000_000) }
                 catch { break }
@@ -175,6 +173,11 @@ struct ReaderScreen: View {
         }
         .onDisappear { persist() }
         .onChange(of: scenePhase) { _, phase in if phase != .active { persist() } }
+        .onChange(of:chrome.visible) {_,visible in
+            if visible && !hintReaderShown {hintReaderShown=true;showReaderTip=true}
+            if !visible {showReaderTip=false}
+        }
+        .onChange(of:persistentProgress) {_,value in sync.settingsChanged(key:"readerPersistentProgress",value:String(value))}
         .onChange(of:pageAnimation) {_,value in apply();sync.settingsChanged(key:"readerPageAnimation",value:String(value))}
         .onChange(of:reduceMotion) {_,_ in apply()}
         .onChange(of: progressDisplay) { _,value in sync.settingsChanged(key:"readerProgressDisplay",value:value) }
@@ -242,7 +245,7 @@ struct ReaderScreen: View {
             fontSize: fontSize,
             font: font,
             theme: theme == "system" ? (colorScheme == .dark ? "dark" : "light") : theme,
-            scroll: scroll
+            scroll: scroll, animated: pageAnimation && !reduceMotion
         )
     }
 
@@ -322,6 +325,7 @@ private struct ReaderAppearanceSheet: View {
     @AppStorage("readerScroll") private var scroll = false
     @AppStorage("readerPageAnimation") private var pageAnimation=true
     @AppStorage("readerProgressDisplay") private var progressDisplay = "percent"
+    @AppStorage("readerPersistentProgress") private var persistentProgress = false
     @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
 
     private let options: [(String, String, SwiftUI.Color, SwiftUI.Color)] = [
@@ -388,6 +392,7 @@ private struct ReaderAppearanceSheet: View {
                         Slider(value: $fontSize, in: 0.7...3.0, step: 0.1)
                             .tint(SwiftUI.Color(hex: accentHex))
                         ReaderDivider()
+                        Toggle("Всегда показывать прогресс",isOn:$persistentProgress).padding(.vertical,10)
                         Toggle("Анимация перелистывания",isOn:$pageAnimation).padding(.vertical,10).disabled(scroll)
                         Text(verbatim:L10n.text("Плавное перелистывание по нажатию. В режиме прокрутки и при уменьшении движения анимация не используется.")).font(.caption).foregroundStyle(ReaderStyle.secondary)
                         ReaderDivider()

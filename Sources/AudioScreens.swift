@@ -11,7 +11,11 @@ struct AudioCatalogScreen: View {
     @AppStorage("disabledAudioSources") private var disabledSources = ""
     @AppStorage("preferredBookLanguage") private var bookLanguage = "auto"
     @AppStorage("appLanguage") private var language = "ru"
-    @State private var query = ""
+    @FocusState private var queryFocused: Bool
+    private var query: String {
+        get { navigation.searchQuery }
+        nonmutating set { navigation.searchQuery = newValue }
+    }
     @State private var byAuthor = false
     @State private var books: [AudioBook] = []
     @State private var searching = false
@@ -53,7 +57,7 @@ struct AudioCatalogScreen: View {
                                 Button("Открыть поиск на сайте",systemImage:"safari") {webCatalog=AudioWebCatalog.search(host:source == .knigavuhe ? "knigavuhe.org":"akniga.org",query:query)}
                             }
                         } label:{ReaderSearchSourceLabel(title:sourceName,icon:"headphones")}
-                        ReaderQueryField(query:$query) {if !searching {startSearch()}}
+                        ReaderQueryField(query:$navigation.searchQuery, focus:$queryFocused) {if !searching {startSearch()}}
                         ReaderSegmentedControl(items:[("title","По названию"),("author","По автору")],selection:Binding(
                             get:{byAuthor ? "author":"title"},set:{byAuthor=$0 == "author"}))
                         ReaderSearchLanguage(selection:$bookLanguage)
@@ -168,21 +172,33 @@ struct AudioCatalogScreen: View {
                 AudioPlayerScreen()
                     .environmentObject(player)
             }
+            .onChange(of:navigation.searchScope) { _, scope in
+                queryFocused = false
+                if scope == "audio" { handlePendingSearch() }
+            }
             .onAppear {
                 if bookLanguage == "auto" {bookLanguage=language}
-                if let title=navigation.bookToSearch {
-                    navigation.bookToSearch=nil;query=title;byAuthor=false;startSearch()
-                } else if let author=navigation.authorToSearch {
-                    navigation.authorToSearch=nil;query=author;byAuthor=true;startSearch()
-                }
+                handlePendingSearch()
             }
+            .onChange(of:navigation.bookToSearch) {_,_ in handlePendingSearch()}
+            .onChange(of:navigation.authorToSearch) {_,_ in handlePendingSearch()}
             .onChange(of: source) { _, _ in
                 cancelSearch()
                 didSearch = false
                 message = nil
                 books = []
             }
+            .task(id:books.prefix(8).map(\.id)) { await CoverCache.shared.prefetch(books.prefix(8).compactMap(\.coverURL)) }
             .onDisappear { if searching { cancelSearch() } }
+        }
+    }
+
+    private func handlePendingSearch() {
+        guard navigation.searchScope == "audio", navigation.tab == .search else { return }
+        if let title=navigation.bookToSearch {
+            navigation.bookToSearch=nil;query=title;byAuthor=false;startSearch()
+        } else if let author=navigation.authorToSearch {
+            navigation.authorToSearch=nil;query=author;byAuthor=true;startSearch()
         }
     }
 
@@ -197,6 +213,7 @@ struct AudioCatalogScreen: View {
     }
 
     private func startSearch() {
+        queryFocused = false
         cancelSearch()
         guard customCatalog != nil || (!disabledSources.components(separatedBy:",").contains(source.rawValue) && source != .local) else {
             message = "Включите выбранный источник в настройках источников."

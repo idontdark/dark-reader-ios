@@ -5,6 +5,7 @@ import Foundation
 struct OPDSClient {
     let searchEndpoint: String
     let queryParameter: String
+    var session: URLSession = .shared
 
     func search(_ query: String) async throws -> [CatalogBook] {
         let term = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -29,7 +30,7 @@ struct OPDSClient {
         guard var components = URLComponents(url: endpoint, resolvingAgainstBaseURL: true) else { throw ReaderError.invalidCatalogURL }
         components.queryItems = (components.queryItems ?? []).filter { $0.name != queryParameter } +
             [URLQueryItem(name: queryParameter.isEmpty ? "searchTerm" : queryParameter, value: term)]
-        return try await browse(components.url!)
+        return try await browse(components.url!, maxPages: 5)
     }
 
     private func searchTemplate(_ template: String, query: String, base: URL) async throws -> [CatalogBook] {
@@ -40,12 +41,27 @@ struct OPDSClient {
         guard !expanded.contains("{"), let url = URL(string: expanded, relativeTo: base)?.absoluteURL else {
             throw ReaderError.invalidCatalogURL
         }
-        return try await browse(url)
+        return try await browse(url, maxPages: 5)
     }
 
-    func browse(_ url: URL) async throws -> [CatalogBook] {
-        let (data, base) = try await fetch(url)
-        return try Self.parse(data, baseURL: base).books
+    func browse(_ url: URL, maxPages: Int = 1) async throws -> [CatalogBook] {
+        var next: URL? = url
+        var visited = Set<URL>()
+        var seen = Set<String>()
+        var books: [CatalogBook] = []
+        for _ in 0..<max(1, min(10, maxPages)) {
+            try Task.checkCancellation()
+            guard let current = next, visited.insert(current).inserted else { break }
+            do {
+                let (data, base) = try await fetch(current)
+                let feed = try Self.parse(data, baseURL: base)
+                for book in feed.books where seen.insert(book.id).inserted { books.append(book) }
+                next = feed.nextURL
+                if books.count >= 200 { break }
+            } catch is CancellationError { throw CancellationError() }
+            catch { if books.isEmpty { throw error }; break }
+        }
+        return Array(books.prefix(200))
     }
 
     private func fetch(_ url: URL) async throws -> (Data, URL) {
@@ -53,7 +69,7 @@ struct OPDSClient {
         var request = URLRequest(url: url)
         request.timeoutInterval = 25
         request.setValue("application/atom+xml, application/opensearchdescription+xml, application/xml;q=0.9", forHTTPHeaderField: "Accept")
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
               data.count < 5_000_000 else { throw ReaderError.invalidCatalogURL }
         return (data, http.url ?? url)
@@ -73,6 +89,7 @@ final class OPDSFeedParser: NSObject, XMLParserDelegate {
     let baseURL: URL
     var books: [CatalogBook] = []
     var searchTemplate: String?
+    var nextURL: URL?
     var isAtom = false
     private var feedBase: URL?
     private var entryBase: URL?
@@ -101,6 +118,9 @@ final class OPDSFeedParser: NSObject, XMLParserDelegate {
         if name == "link", !currentEntry, attributeDict["rel"] == "search", let href = attributeDict["href"] {
             searchTemplate = href
         }
+        if name == "link", !currentEntry, attributeDict["rel"] == "next", let href = attributeDict["href"],
+           let url = URL(string: href, relativeTo: feedBase ?? baseURL)?.absoluteURL,
+           ["http", "https"].contains(url.scheme ?? "") { nextURL = url }
         if name == "entry" {
             entryBase = attributeDict["xml:base"].flatMap { URL(string: $0, relativeTo: feedBase ?? baseURL)?.absoluteURL } ?? feedBase ?? baseURL
             currentEntry = true
