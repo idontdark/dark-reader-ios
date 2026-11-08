@@ -143,7 +143,7 @@ struct AppearanceScreen: View {
     @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
     @AppStorage("appAppearance") private var appearance = "dark"
     @AppStorage("readerBackgroundHex") private var readerBackgroundHex = "#101018"
-    @State private var customColor = Color(hex: accentHex)
+    @State private var customColor = Color(hex: ReaderStyle.defaultAccent)
     @State private var hexText = ReaderStyle.defaultAccent
     @FocusState private var editingHex: Bool
 
