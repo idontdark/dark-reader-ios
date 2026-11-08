@@ -41,10 +41,10 @@ struct AudioCatalogScreen: View {
                     VStack(alignment: .leading, spacing: ReaderMetrics.formSpacing) {
                         Menu {
                             ForEach(AudioSource.online.filter {!disabledSources.components(separatedBy:",").contains($0.rawValue)}) {item in
-                                Button(item.title) {customCatalogID="";source=item}
+                                Button(item.title,systemImage:"headphones") {customCatalogID="";source=item}
                             }
                             ForEach(OPDSSources.decode(savedCatalogs).filter {$0.isAudio}) {item in
-                                Button(item.name) {customCatalogID=item.id.uuidString}
+                                Button(item.name,systemImage:"headphones") {customCatalogID=item.id.uuidString}
                             }
                             Divider()
                             Button("Настроить каталоги") {showCatalogs=true}
@@ -321,7 +321,7 @@ struct AudioBookDetailScreen:View {
                         } label:{Image(systemName:saved ? "bookmark.fill":"bookmark").font(.system(size:17))}
                             .accessibilityLabel(Text(verbatim:L10n.render(saved ? "Удалить из библиотеки":"Добавить в библиотеку",language:localizationLanguage)))
                     }
-                }.tint(Color(hex:"#D2C5DE"))
+                }.tint(Color(hex:accentHex))
                 .task {defer{loading=false};do{chapters=try await AudioCatalogService.chapters(for:book)}catch{message="Не удалось загрузить главы. Проверьте подключение."}}
                 .onChange(of:format) {_,value in
                     if value == "books" {navigation.bookToSearch=book.title;navigation.searchScope="books";navigation.tab = .search;dismiss()}

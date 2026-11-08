@@ -54,7 +54,7 @@ enum AudioCatalogService {
         for variant in variants {
             let found: [AudioBook]
             switch source {
-            case .librivox: found = try await searchLibriVox(variant, byAuthor: byAuthor)
+            case .librivox: found = try await searchArchive(variant, byAuthor: byAuthor, language: language, librivoxOnly:true)
             case .archive: found = try await searchArchive(variant, byAuthor: byAuthor, language: language)
             case .local,.opds: return []
             }
@@ -93,39 +93,28 @@ enum AudioCatalogService {
 
     static func featured(source: AudioSource, language: String? = nil, genres: [String] = [], newest: Bool = false) async throws -> [AudioBook] {
         switch source {
-        case .librivox:
-            var components = URLComponents(string: "https://librivox.org/api/feed/audiobooks/")!
-            components.queryItems = [
-                .init(name: "format", value: "json"),
-                .init(name: "limit", value: "50"),
-                .init(name: "sort_order", value: "desc"),
-                .init(name: "coverart", value: "1"),
-                .init(name: "extended", value: "1")
-            ]
-            if let genre = genres.first, let topic = audioGenreQuery(genre, archive: false) {
-                components.queryItems?.append(.init(name: "genre", value: topic))
-            }
-            guard let url = components.url else { throw AudioCatalogError.invalidReply }
-            let object = try await requestObject(url)
-            return parseLibriVox(object).filter { matchesLanguage($0.language, choice: language) }
-        case .archive:
+        case .librivox: return try await archiveFeatured(language:language,genres:genres,newest:newest,librivoxOnly:true)
+        case .archive: return try await archiveFeatured(language:language,genres:genres,newest:newest,librivoxOnly:false)
+        case .local,.opds: return []
+        }
+    }
+
+    private static func archiveFeatured(language:String?,genres:[String],newest:Bool,librivoxOnly:Bool) async throws -> [AudioBook] {
             var components = URLComponents(string: "https://archive.org/advancedsearch.php")!
             components.queryItems = [
-                .init(name: "q", value: "mediatype:audio AND (collection:librivoxaudio OR collection:audio_bookspoetry OR subject:audiobooks OR subject:аудиокниги)" + languageQuery(language) + (genres.first.flatMap { audioGenreQuery($0, archive: true) } ?? "")),
+                .init(name: "q", value: "mediatype:audio AND " + (librivoxOnly ? "collection:librivoxaudio":"(collection:librivoxaudio OR collection:audio_bookspoetry OR subject:audiobooks OR subject:аудиокниги)") + languageQuery(language) + (genres.first.flatMap { audioGenreQuery($0, archive: true) } ?? "")),
                 .init(name: "fl[]", value: "language"),
                 .init(name: "fl[]", value: "subject"),
                 .init(name: "fl[]", value: "identifier"),
                 .init(name: "fl[]", value: "title"),
                 .init(name: "fl[]", value: "creator"),
-                .init(name: "rows", value: "15"),
+                .init(name: "rows", value: "30"),
                 .init(name: "sort[]", value: newest ? "publicdate desc" : "downloads desc"),
                 .init(name: "output", value: "json")
             ]
             guard let url = components.url else { throw AudioCatalogError.invalidReply }
             let object = try await requestObject(url)
             return parseArchive(object)
-        case .local,.opds: return []
-        }
     }
 
     static func chapters(for book: AudioBook) async throws -> [AudioChapter] {
@@ -222,9 +211,10 @@ enum AudioCatalogService {
         }
     }
 
-    private static func searchArchive(_ term: String, byAuthor: Bool, language: String?) async throws -> [AudioBook] {
+    private static func searchArchive(_ term: String, byAuthor: Bool, language: String?, librivoxOnly:Bool=false) async throws -> [AudioBook] {
         guard let words = archiveSearchExpression(term, byAuthor: byAuthor) else { return [] }
-        let query = "mediatype:audio AND (subject:audiobooks OR subject:аудиокниги OR subject:\"audio books\" OR collection:librivoxaudio OR collection:audio_bookspoetry) AND (\(words))" + languageQuery(language)
+        let scope=librivoxOnly ? "collection:librivoxaudio":"(subject:audiobooks OR subject:аудиокниги OR subject:\"audio books\" OR collection:librivoxaudio OR collection:audio_bookspoetry)"
+        let query = "mediatype:audio AND \(scope) AND (\(words))" + languageQuery(language)
         var components = URLComponents(string: "https://archive.org/advancedsearch.php")!
         components.queryItems = [
             .init(name: "q", value: query),
@@ -243,7 +233,7 @@ enum AudioCatalogService {
         return parseArchive(object)
     }
 
-    private static func parseArchive(_ object: [String: Any]) -> [AudioBook] {
+    static func parseArchive(_ object: [String: Any]) -> [AudioBook] {
         guard let result = object["response"] as? [String: Any] else { return [] }
         let docs = result["docs"] as? [[String: Any]] ?? []
         return docs.compactMap { item in
@@ -270,12 +260,15 @@ enum AudioCatalogService {
         return tokens.map { "\(field):\($0)*" }.joined(separator: " AND ")
     }
 
-    private static func audioGenreQuery(_ genre: String, archive: Bool) -> String? {
+    static func audioGenreQuery(_ genre: String, archive: Bool) -> String? {
         let topics = ["detective":"mystery", "fantasy":"science fiction", "romance":"romance", "classics":"classics",
                       "adventure":"adventure", "history":"history", "biography":"biography",
                       "nonfiction":"non fiction", "children":"children", "thriller":"thriller"]
         guard let topic = topics[genre] else { return nil }
-        if archive { return " AND subject:\"\(topic)\"" }
+        if archive {
+            let queries=["romance":"romance OR novel OR роман OR романы","fantasy":"fantasy OR science fiction OR фантастика OR фэнтези","detective":"mystery OR detective OR детектив","classics":"classics OR classic OR классика","adventure":"adventure OR приключения","children":"children OR fairy tales OR сказки"]
+            return " AND subject:(\(queries[genre] ?? topic))"
+        }
         return topic
     }
 

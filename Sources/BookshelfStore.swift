@@ -250,6 +250,12 @@ final class BookshelfStore: ObservableObject {
         persist(localChange: false)
     }
 
+    func restoreFromFile(_ remote:[LocalBook],staged:[String:URL]) throws {
+        let previous=deletions
+        for book in remote {deletions.removeValue(forKey:book.id.uuidString)}
+        do {try mergeFromCloud(remote,tombstones:[:],staged:staged)}
+        catch {deletions=previous;throw error}
+    }
     private func persist(localChange: Bool) {
         if let data = try? JSONEncoder().encode(books) {
             try? data.write(to: indexURL, options: .atomic)

@@ -10,6 +10,7 @@ struct DiscoveryBook: Identifiable, Codable, Hashable, Sendable {
     let coverURL: URL
     let detailURL: URL
     let genre: String
+    var firstPublishYear:Int? = nil
 }
 
 enum DiscoveryService {
@@ -36,6 +37,7 @@ enum DiscoveryService {
     }
     private struct Work: Decodable {
         let key: String
+        let first_publish_year:Int?
         let author_name: [String]?
         let cover_i: Int?
         let editions: Editions?
@@ -43,20 +45,22 @@ enum DiscoveryService {
 
     /// Require a matching edition. A work's default title can be in another language.
     static func books(genres: [String], language: String, limit: Int = 24, sort: String = "readinglog") async throws -> [DiscoveryBook] {
-        let code = language == "en" ? "eng" : "rus"
-        let selected = Array((genres.isEmpty ? ["classics", "adventure"] : genres).prefix(3))
+        let code = language == "all" ? "":language == "en" ? "eng" : "rus"
+        let selected = Array((genres.isEmpty ? ["all"] : genres).prefix(3))
         var result: [DiscoveryBook] = []
         var lastError: Error?
         for genre in selected {
             try Task.checkCancellation()
-            guard let slug = genreSlugs[genre] else { continue }
+            let slug=genreSlugs[genre]
+            let year=Calendar.current.component(.year,from:Date())
+            let query=[code.isEmpty ? nil:"language:\(code)",slug.map {"subject:\($0)"},sort == "new" ? "first_publish_year:[\(year-2) TO \(year)]":nil].compactMap {$0}.joined(separator:" ")
             var components = URLComponents(string: "https://openlibrary.org/search.json")!
             components.queryItems = [
-                .init(name: "q", value: "language:\(code) subject:\(slug)"),
+                .init(name: "q", value: query.isEmpty ? "*:*":query),
                 .init(name: "lang", value: language),
                 .init(name: "sort", value: sort),
-                .init(name: "fields", value: "key,author_name,cover_i,editions,editions.key,editions.title,editions.language,editions.cover_i"),
-                .init(name: "limit", value: "24")
+                .init(name: "fields", value: "key,first_publish_year,author_name,cover_i,editions,editions.key,editions.title,editions.language,editions.cover_i"),
+                .init(name: "limit", value: "60")
             ]
             var request = URLRequest(url: components.url!)
             request.timeoutInterval = 18
@@ -67,14 +71,16 @@ enum DiscoveryService {
                       data.count < 3_000_000 else { throw ReaderError.noResults }
                 let feed = try JSONDecoder().decode(SearchFeed.self, from: data)
                 for item in feed.docs {
-                    guard let edition = item.editions?.docs.first(where: { $0.language?.contains(code) == true }),
-                          let cover = edition.cover_i, cover > 0 else { continue }
+                    guard let edition = item.editions?.docs.first(where: {code.isEmpty || $0.language?.contains(code) == true || $0.language == nil}) else {continue}
+                    guard !edition.title.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty,edition.title.count <= 300 else {continue}
+                    let cover=edition.cover_i ?? item.cover_i ?? 0
+                    if sort == "new", !(year-2...year).contains(item.first_publish_year ?? 0) {continue}
                     if code == "rus", edition.title.range(of: "[А-Яа-яЁё]", options: .regularExpression) == nil { continue }
                     result.append(DiscoveryBook(
                         id: "openlibrary:\(item.key)", title: edition.title,
                         author: (item.author_name ?? []).joined(separator: ", "),
                         coverURL: URL(string: "https://covers.openlibrary.org/b/id/\(cover)-M.jpg")!,
-                        detailURL: URL(string: "https://openlibrary.org\(edition.key)")!, genre: genre
+                        detailURL: URL(string: "https://openlibrary.org\(edition.key)")!, genre: genre,firstPublishYear:item.first_publish_year
                     ))
                 }
             } catch is CancellationError { throw CancellationError() }
@@ -130,6 +136,8 @@ struct DiscoveryArtwork: View {
 }
 
 struct DiscoveryBookDetail:View {
+    @AppStorage("accentHex") private var accentHex=ReaderStyle.defaultAccent
+
     @AppStorage("appLanguage") private var localizationLanguage="ru"
 
     let book:DiscoveryBook
@@ -168,7 +176,7 @@ struct DiscoveryBookDetail:View {
                         Button {toggleWishlist()} label:{Image(systemName:DiscoveryService.saved(wishlistJSON).contains {$0.id == book.id} ? "bookmark.fill":"bookmark").font(.system(size:17))}
                             .accessibilityLabel(Text(verbatim:L10n.render("Хочу прочитать",language:localizationLanguage)))
                     }
-                }.tint(Color(hex:"#D2C5DE"))
+                }.tint(Color(hex:accentHex))
                 .task {summary=await BookDescription.discovery(book,language:language)}
                 .onChange(of:format) {_,value in if value == "audio" {find("audio")}}
         }

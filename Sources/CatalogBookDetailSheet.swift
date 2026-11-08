@@ -76,7 +76,7 @@ struct CatalogBookDetailSheet:View {
                             Image(systemName:wished ? "bookmark.fill":"bookmark").font(.system(size:17))
                         }.accessibilityLabel(Text(verbatim:L10n.render(wished ? "Убрать из списка чтения":"Хочу прочитать",language:localizationLanguage)))
                     }
-                }.tint(Color(hex:"#D2C5DE"))
+                }.tint(Color(hex:accentHex))
                 .onChange(of:format) {_,value in
                     if value == "audio" {
                         navigation.bookToSearch=book.title;navigation.searchScope="audio";navigation.tab = .search

@@ -53,6 +53,8 @@ enum ReaderPreferences {
 }
 
 struct LanguageSettingsScreen: View {
+    @AppStorage("accentHex") private var accentHex=ReaderStyle.defaultAccent
+
     @AppStorage("appLanguage") private var localizationLanguage="ru"
 
     @AppStorage("appLanguage") private var appLanguage = "ru"
@@ -99,7 +101,7 @@ struct LanguageSettingsScreen: View {
                 Text(label).foregroundStyle(.white)
                 Spacer()
                 if bookLanguage == code || (bookLanguage == "auto" && appLanguage == code) {
-                    Image(systemName:"checkmark.circle.fill").foregroundStyle(Color(hex:ReaderStyle.defaultAccent))
+                    Image(systemName:"checkmark.circle.fill").foregroundStyle(Color(hex:accentHex))
                 }
             }.padding(.vertical,13).contentShape(Rectangle())
         }.buttonStyle(.plain)
@@ -114,7 +116,7 @@ struct LanguageSettingsScreen: View {
                 Text(label).foregroundStyle(.white)
                 Spacer()
                 if appLanguage == code {
-                    Image(systemName: "checkmark.circle.fill").foregroundStyle(Color(hex: ReaderStyle.defaultAccent))
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(Color(hex: accentHex))
                 }
             }
             .padding(.vertical, 13)
@@ -125,6 +127,8 @@ struct LanguageSettingsScreen: View {
 }
 
 struct FavoriteAuthorsScreen: View {
+    @AppStorage("accentHex") private var accentHex=ReaderStyle.defaultAccent
+
     @AppStorage("appLanguage") private var localizationLanguage="ru"
 
     @EnvironmentObject private var navigation: ReaderNavigation
@@ -203,7 +207,7 @@ struct FavoriteAuthorsScreen: View {
                                 Text(verbatim:L10n.authorName(author)).foregroundStyle(.white)
                                 Spacer()
                                 Image(systemName: favorites.contains(author) ? "checkmark.circle.fill" : "plus.circle")
-                                    .foregroundStyle(Color(hex: ReaderStyle.defaultAccent))
+                                    .foregroundStyle(Color(hex: accentHex))
                             }
                             .padding(.vertical, 11)
                         }
@@ -238,6 +242,8 @@ struct FavoriteAuthorsScreen: View {
 }
 
 struct GenreSettingsScreen: View {
+    @AppStorage("accentHex") private var accentHex=ReaderStyle.defaultAccent
+
     @AppStorage("appLanguage") private var localizationLanguage="ru"
 
     @AppStorage("preferredGenresJSON") private var genresJSON = "[]"
@@ -259,13 +265,13 @@ struct GenreSettingsScreen: View {
                     } label: {
                         HStack {
                             Image(systemName: item.icon)
-                                .foregroundStyle(Color(hex: ReaderStyle.defaultAccent))
+                                .foregroundStyle(Color(hex: accentHex))
                                 .frame(width: 30)
                             Text(ReaderPreferences.genreName(item.id, language: language))
                                 .foregroundStyle(.white)
                             Spacer()
                             Image(systemName: chosen.contains(item.id) ? "checkmark.circle.fill" : "circle")
-                                .foregroundStyle(Color(hex: ReaderStyle.defaultAccent))
+                                .foregroundStyle(Color(hex: accentHex))
                         }
                         .padding(15)
                         .background(ReaderStyle.surface, in: RoundedRectangle(cornerRadius: 14))

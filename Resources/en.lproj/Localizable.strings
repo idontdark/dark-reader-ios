@@ -570,3 +570,12 @@
 "%d закладки" = "%d bookmarks";
 "%d закладок" = "%d bookmarks";
 "В библиотеке выберите Флибусту или Project Gutenberg, найдите книгу по названию или автору и нажмите кнопку скачивания." = "Choose Flibusta or Project Gutenberg in your library, search by title or author, then tap Download.";
+
+"Копия в файле" = "Backup file";
+"Архив ZIP: электронные книги, закладки, прогресс и настройки. Аудиофайлы не включаются." = "ZIP archive: ebooks, bookmarks, reading progress and settings. Audio files are not included.";
+"Сохранить в файл" = "Export backup";
+"Восстановить из файла" = "Restore from file";
+"Восстановить библиотеку из файла?" = "Restore library from file?";
+"Книги будут добавлены к библиотеке. Существующие книги не удаляются. Настройки будут восстановлены из копии." = "Books will be added to your library. Existing books will not be deleted. Settings will be restored from the backup.";
+
+"Копия сохранена в файл." = "Backup exported.";

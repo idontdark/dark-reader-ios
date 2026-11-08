@@ -117,7 +117,7 @@ struct ReaderHeader:View {
         Button(action:action) {
             Image(systemName:name).font(.system(size:15,weight:.medium))
                 .foregroundStyle(Color.white.opacity(0.84)).frame(width:36,height:36)
-                .background(Color(hex:ReaderStyle.defaultAccent).opacity(0.15),in:RoundedRectangle(cornerRadius:10))
+                .background(Color(hex:accentHex).opacity(0.15),in:RoundedRectangle(cornerRadius:10))
                 .overlay(RoundedRectangle(cornerRadius:10).strokeBorder(ReaderStyle.line,lineWidth:0.7))
         }.frame(minWidth:44,minHeight:44).accessibilityLabel(Text(verbatim:L10n.render(name == "plus" ? "Добавить книгу" : "Поиск",language:localizationLanguage)))
     }
@@ -226,6 +226,8 @@ struct ReaderRow<Content:View>:View {
 }
 struct ReaderDivider:View { var body:some View { Rectangle().fill(Color.white.opacity(0.065)).frame(height:0.6) } }
 struct LibraryMenuRow:View {
+    @AppStorage("accentHex") private var accentHex=ReaderStyle.defaultAccent
+
     @AppStorage("appLanguage") private var localizationLanguage="ru"
 
     let icon:String
@@ -233,7 +235,7 @@ struct LibraryMenuRow:View {
     let count:Int
     var body:some View {
         HStack(spacing:10) {
-            Image(systemName:icon).font(.system(size:18,weight:.regular)).foregroundStyle(Color(hex:ReaderStyle.defaultAccent).shade(0.25)).frame(width:23)
+            Image(systemName:icon).font(.system(size:18,weight:.regular)).foregroundStyle(Color(hex:accentHex).shade(0.25)).frame(width:23)
             Text(verbatim:L10n.render(title,language:localizationLanguage)).font(.system(size:14,weight:.medium))
             Spacer()
             Text("\(count)").font(.system(size:12)).foregroundStyle(ReaderStyle.secondary)

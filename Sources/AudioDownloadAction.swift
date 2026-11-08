@@ -2,6 +2,8 @@ import SwiftUI
 
 /// Downloading is independent of the current player and survives closing this view.
 struct AudioDownloadAction: View {
+    @AppStorage("accentHex") private var accentHex=ReaderStyle.defaultAccent
+
     let book: AudioBook
     let chapters: [AudioChapter]
     @EnvironmentObject private var player: AudioPlayerModel
@@ -15,7 +17,7 @@ struct AudioDownloadAction: View {
         VStack(alignment: .leading, spacing: 10) {
             if player.downloadingBookID == book.id {
                 ProgressView(value: Double(player.completedDownloads), total: Double(max(1, player.totalDownloads)))
-                    .tint(Color(hex: ReaderStyle.defaultAccent))
+                    .tint(Color(hex: accentHex))
                 HStack {
                     Text(verbatim: String(format: L10n.text("Скачано глав: %d из %d", language: language), player.completedDownloads, player.totalDownloads))
                         .font(.caption).foregroundStyle(ReaderStyle.secondary)

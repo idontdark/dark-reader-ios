@@ -177,6 +177,8 @@ struct ImportScreen: View {
 }
 
 struct ImportTutorialScreen: View {
+    @AppStorage("accentHex") private var accentHex=ReaderStyle.defaultAccent
+
     @AppStorage("appLanguage") private var localizationLanguage="ru"
 
     private let steps: [(String, String, String)] = [
@@ -214,7 +216,7 @@ struct ImportTutorialScreen: View {
                                 .font(.subheadline.weight(.bold))
                                 .foregroundStyle(.white)
                                 .frame(width: 29, height: 29)
-                                .background(Color(hex: ReaderStyle.defaultAccent), in: Circle())
+                                .background(Color(hex: accentHex), in: Circle())
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(verbatim:L10n.render(step.1,language:localizationLanguage)).font(.subheadline.weight(.semibold))
                                 Text(verbatim:L10n.render(step.2,language:localizationLanguage))

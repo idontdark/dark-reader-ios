@@ -65,7 +65,7 @@ struct CatalogScreen: View {
 
                     VStack(alignment: .leading, spacing: ReaderMetrics.formSpacing) {
                         Menu {
-                            Button("Флибуста", systemImage: "books.vertical") { provider = "flibusta" }
+                            Button("Флибуста", systemImage: "book.closed") { provider = "flibusta" }
                             Button("Gutendex · Project Gutenberg", systemImage: "book.closed") { provider = "gutendex" }
                             if !OPDSSources.decode(savedOPDSCatalogs).filter {!$0.isAudio}.isEmpty {
                                 Divider()
@@ -78,7 +78,7 @@ struct CatalogScreen: View {
                             if provider == "custom" {
                                 Button("Другой OPDS", systemImage: "server.rack") { provider = "custom" }
                             }
-                        } label: {ReaderSearchSourceLabel(title:providerName,icon:"square.stack")}
+                        } label: {ReaderSearchSourceLabel(title:providerName,icon:"book.closed")}
 
 
                         ReaderQueryField(query:$query) {if !searching {startSearch()}}
