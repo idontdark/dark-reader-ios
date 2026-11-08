@@ -192,7 +192,7 @@ struct AppearanceScreen: View {
                                         }
                                 }
                                 .buttonStyle(.plain)
-                                .accessibilityLabel("Выбрать цвет \(hex)")
+                                .accessibilityLabel(Text(verbatim:L10n.render("Выбрать цвет \(hex)",language:localizationLanguage)))
                             }
                         }
                         .padding(.vertical, 15)

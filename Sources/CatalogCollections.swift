@@ -4,7 +4,11 @@ struct DiscoveryCollectionScreen:View {
     let title:String
     let genres:[String]
     var sort:String="readinglog"
+    var personalized=false
+    @EnvironmentObject private var library:BookshelfStore
     @AppStorage("appLanguage") private var language="ru"
+    @AppStorage("preferredBookLanguage") private var bookLanguage="auto"
+    private var contentLanguage:String {bookLanguage == "auto" ? language:bookLanguage}
     @State private var books:[DiscoveryBook]=[]
     @State private var loading=true
     @State private var message:String?
@@ -15,7 +19,7 @@ struct DiscoveryCollectionScreen:View {
         ScrollView {
             LazyVStack(spacing:12) {
                 if loading && books.isEmpty {CatalogSkeletons()}
-                if loading && !books.isEmpty {ProgressView().accessibilityLabel("Обновляем подборку")}
+                if loading && !books.isEmpty {ProgressView().accessibilityLabel(Text(verbatim:L10n.render("Обновляем подборку",language:language)))}
                 if let message {
                     ReaderCard {
                         Text(verbatim:L10n.render(message)).font(.subheadline).foregroundStyle(ReaderStyle.secondary)
@@ -27,7 +31,7 @@ struct DiscoveryCollectionScreen:View {
                 }
             }.padding(ReaderMetrics.screenInset)
         }.readerCanvas().readerNavigationTitle(title).navigationBarTitleDisplayMode(.inline)
-            .task(id:language+sort+genres.joined(separator:",")) {await load()}
+            .task(id:contentLanguage+sort+String(personalized)+genres.joined(separator:",")) {await load()}
             .refreshable {await load()}
             .fullScreenCover(item:$selected) {DiscoveryBookDetail(book:$0)}
     }
@@ -35,11 +39,11 @@ struct DiscoveryCollectionScreen:View {
         let token=UUID();requestID=token;loading=true;message=nil;failed=false
         defer {if requestID == token {loading=false}}
         do {
-            let found=try await DiscoveryService.books(genres:genres,language:language,limit:24,sort:sort)
+            let found=try await DiscoveryService.books(genres:genres,language:contentLanguage,limit:24,sort:sort)
             try Task.checkCancellation()
             guard requestID == token else{return}
-            books=found
-            if found.isEmpty {message="На выбранном языке пока нет подходящих книг."}
+            books=personalized ? RecommendationProfile.rank(found,excluding:library.books.map(\.title)):found
+            if books.isEmpty {message="На выбранном языке пока нет подходящих книг."}
         } catch is CancellationError {} catch {
             guard !Task.isCancelled,requestID == token else{return}
             failed=true;message="Не удалось загрузить подборку. Проверьте подключение и повторите попытку."
@@ -50,8 +54,11 @@ struct AudioCollectionScreen:View {
     let title:String
     var newest=false
     var genres:[String]=[]
+    var personalized=false
     @EnvironmentObject private var player:AudioPlayerModel
     @AppStorage("appLanguage") private var language="ru"
+    @AppStorage("preferredBookLanguage") private var bookLanguage="auto"
+    private var contentLanguage:String {bookLanguage == "auto" ? language:bookLanguage}
     @AppStorage("preferredAudioSource") private var source:AudioSource = .archive
     @AppStorage("disabledAudioSources") private var disabled=""
     @State private var books:[AudioBook]=[]
@@ -64,7 +71,7 @@ struct AudioCollectionScreen:View {
         ScrollView {
             LazyVStack(spacing:12) {
                 if loading && books.isEmpty {CatalogSkeletons()}
-                if loading && !books.isEmpty {ProgressView().accessibilityLabel("Обновляем подборку")}
+                if loading && !books.isEmpty {ProgressView().accessibilityLabel(Text(verbatim:L10n.render("Обновляем подборку",language:language)))}
                 if let message {
                     ReaderCard {
                         Text(verbatim:L10n.render(message)).font(.subheadline).foregroundStyle(ReaderStyle.secondary)
@@ -76,7 +83,7 @@ struct AudioCollectionScreen:View {
                 }
             }.padding(ReaderMetrics.screenInset)
         }.readerCanvas().readerNavigationTitle(title).navigationBarTitleDisplayMode(.inline)
-            .task(id:language+source.rawValue+disabled+genres.joined(separator:",")) {await load()}
+            .task(id:contentLanguage+source.rawValue+disabled+String(personalized)+genres.joined(separator:",")) {await load()}
             .refreshable {await load()}
             .fullScreenCover(item:$selected) {AudioBookDetailScreen(book:$0){}.environmentObject(player)}
     }
@@ -85,11 +92,11 @@ struct AudioCollectionScreen:View {
         defer {if requestID == token {loading=false}}
         guard !disabled.components(separatedBy:",").contains(source.rawValue) else {message="Включите источник аудиокниг.";return}
         do {
-            let found=try await AudioCatalogService.featured(source:source,language:language,genres:genres,newest:newest)
+            let found=try await AudioCatalogService.featured(source:source,language:contentLanguage,genres:genres,newest:newest)
             try Task.checkCancellation()
             guard requestID == token else{return}
             books=found
-            if found.isEmpty {message="На выбранном языке пока нет подходящих записей."}
+            if books.isEmpty {message="На выбранном языке пока нет подходящих записей."}
         } catch is CancellationError {} catch {
             guard !Task.isCancelled,requestID == token else{return}
             failed=true;message="Не удалось загрузить аудиокниги. Проверьте подключение и повторите попытку."

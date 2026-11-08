@@ -35,7 +35,7 @@ struct CatalogBookDetailSheet:View {
                     if let task,busy {
                         HStack(spacing:9) {
                             ProgressView().tint(Color(hex:accentHex))
-                            Text(task.state.title).font(.system(size:12)).foregroundStyle(ReaderStyle.secondary)
+                            Text(verbatim:L10n.render(task.state.title,language:localizationLanguage)).font(.system(size:12)).foregroundStyle(ReaderStyle.secondary)
                             Spacer()
 
                         }
@@ -66,7 +66,7 @@ struct CatalogBookDetailSheet:View {
                 .toolbar {
                     ToolbarItem(placement:.topBarLeading) {
                         Button(action:onClose) {Image(systemName:"chevron.left").font(.system(size:18,weight:.medium))}
-                            .accessibilityLabel("Назад")
+                            .accessibilityLabel(Text(verbatim:L10n.render("Назад",language:localizationLanguage)))
                     }
                     ToolbarItemGroup(placement:.topBarTrailing) {
                         if let url=book.epubURL ?? book.navigationURL {
@@ -74,7 +74,7 @@ struct CatalogBookDetailSheet:View {
                         }
                         Button {CatalogBookmarks.toggle(book,key:CatalogBookmarks.wishlistKey)} label:{
                             Image(systemName:wished ? "bookmark.fill":"bookmark").font(.system(size:17))
-                        }.accessibilityLabel(wished ? "Убрать из списка чтения":"Хочу прочитать")
+                        }.accessibilityLabel(Text(verbatim:L10n.render(wished ? "Убрать из списка чтения":"Хочу прочитать",language:localizationLanguage)))
                     }
                 }.tint(Color(hex:"#D2C5DE"))
                 .onChange(of:format) {_,value in

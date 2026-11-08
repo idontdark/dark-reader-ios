@@ -186,6 +186,8 @@ private struct BNBMark: Shape {
 }
 
 private struct WalletRow: View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     let name: String
     let code: String
     let address: String
@@ -216,7 +218,7 @@ private struct WalletRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Скопировать адрес \(name)")
+        .accessibilityLabel(Text(verbatim:L10n.render("Скопировать адрес \(name)",language:localizationLanguage)))
     }
 }
 

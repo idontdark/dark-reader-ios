@@ -86,6 +86,11 @@ struct ReaderScreen: View {
     @AppStorage("readerProgressDisplay") private var progressDisplay = "percent"
 
     let bookID: UUID
+    let initialLocation: String?
+    init(bookID: UUID, initialLocation: String? = nil) {
+        self.bookID = bookID
+        self.initialLocation = initialLocation
+    }
     @State private var session: ReaderSession?
     @State private var error: String?
     @State private var appearanceOpen = false
@@ -131,7 +136,7 @@ struct ReaderScreen: View {
                     }
                     Button {if let book {store.toggleFavorite(book)}} label: {
                         Image(systemName:book?.isFavorite == true ? "star.fill":"star")
-                    }.accessibilityLabel("Избранное")
+                    }.accessibilityLabel(Text(verbatim:L10n.render("Избранное",language:localizationLanguage)))
                     Button { appearanceOpen = true } label: {
                         Image(systemName: "textformat.size")
                     }
@@ -188,7 +193,7 @@ struct ReaderScreen: View {
         guard session == nil, let book else { return }
         do {
             session = try await ReaderSession.open(
-                fileURL: store.fileURL(for: book), previousLocation: book.locatorJSON
+                fileURL: store.fileURL(for: book), previousLocation: initialLocation ?? book.locatorJSON
             )
             let id=bookID
             let store=store

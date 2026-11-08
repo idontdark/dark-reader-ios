@@ -121,11 +121,11 @@ struct AudioCatalogScreen: View {
                                                 .font(.subheadline.weight(.semibold))
                                                 .foregroundStyle(.white)
                                                 .lineLimit(2)
-                                            Text(book.author)
+                                            Text(verbatim:L10n.authorName(book.author))
                                                 .font(.footnote)
                                                 .foregroundStyle(ReaderStyle.secondary)
                                                 .lineLimit(2)
-                                            Text(book.source.title)
+                                            Text(verbatim:L10n.render(book.source.title,language:localizationLanguage))
                                                 .font(.caption2)
                                                 .foregroundStyle(color)
                                         }
@@ -308,7 +308,7 @@ struct AudioBookDetailScreen:View {
                 .toolbar {
                     ToolbarItem(placement:.topBarLeading) {
                         Button {dismiss()} label:{Image(systemName:"chevron.left").font(.system(size:18,weight:.medium))}
-                            .accessibilityLabel("Назад")
+                            .accessibilityLabel(Text(verbatim:L10n.render("Назад",language:localizationLanguage)))
                     }
                     ToolbarItemGroup(placement:.topBarTrailing) {
                         if let track=chapters.first,!track.url.isFileURL {
@@ -319,7 +319,7 @@ struct AudioBookDetailScreen:View {
                             if saved {values.removeAll {$0.id == book.id}} else {values.insert(book,at:0)}
                             historyJSON=encode(values)
                         } label:{Image(systemName:saved ? "bookmark.fill":"bookmark").font(.system(size:17))}
-                            .accessibilityLabel(saved ? "Удалить из библиотеки":"Добавить в библиотеку")
+                            .accessibilityLabel(Text(verbatim:L10n.render(saved ? "Удалить из библиотеки":"Добавить в библиотеку",language:localizationLanguage)))
                     }
                 }.tint(Color(hex:"#D2C5DE"))
                 .task {defer{loading=false};do{chapters=try await AudioCatalogService.chapters(for:book)}catch{message="Не удалось загрузить главы. Проверьте подключение."}}
@@ -349,7 +349,7 @@ struct AudioPlayerScreen:View {
                 VStack(spacing:0) {
                     HStack {
                         Button {dismiss()} label:{Image(systemName:"chevron.down").font(.system(size:18,weight:.medium))}
-                            .accessibilityLabel("Свернуть плеер")
+                            .accessibilityLabel(Text(verbatim:L10n.render("Свернуть плеер",language:localizationLanguage)))
                         Spacer()
                         Menu {
                             if let book=player.book {
@@ -372,7 +372,7 @@ struct AudioPlayerScreen:View {
                         }.frame(maxWidth:.infinity).frame(height:coverHeight+5)
                         Text(book.title).font(.system(size:21,weight:.semibold)).tracking(-0.3).lineLimit(2)
                             .multilineTextAlignment(.center).padding(.top,15)
-                        Text(book.author).font(.system(size:13)).foregroundStyle(ReaderStyle.secondary)
+                        Text(verbatim:L10n.authorName(book.author)).font(.system(size:13)).foregroundStyle(ReaderStyle.secondary)
                             .multilineTextAlignment(.center).lineLimit(2).padding(.top,6)
                     } else {
                         Image("HeroHeadphones").resizable().scaledToFit().frame(height:280)
@@ -382,16 +382,16 @@ struct AudioPlayerScreen:View {
                     timeline
                     HStack(spacing:47) {
                         Button {player.skip(by:-15)} label:{Image(systemName:"gobackward.15").font(.system(size:27,weight:.regular))}
-                            .disabled(!player.canSeek).accessibilityLabel("Назад на 15 секунд")
+                            .disabled(!player.canSeek).accessibilityLabel(Text(verbatim:L10n.render("Назад на 15 секунд",language:localizationLanguage)))
                         Button {player.toggle()} label:{
                             Image(systemName:player.isPlaying ? "pause.fill":"play.fill").font(.system(size:30,weight:.semibold))
                                 .offset(x:player.isPlaying ? 0:2).foregroundStyle(.white)
                                 .frame(width:75,height:75).background(ReaderStyle.actionGradient(accentHex),in:Circle())
                                 .overlay(Circle().strokeBorder(Color.white.opacity(0.13),lineWidth:0.7))
                                 .shadow(color:color.opacity(0.22),radius:15,y:4)
-                        }.disabled(player.book == nil).accessibilityLabel(player.isPlaying ? "Пауза":"Воспроизвести")
+                        }.disabled(player.book == nil).accessibilityLabel(Text(verbatim:L10n.render(player.isPlaying ? "Пауза":"Воспроизвести",language:localizationLanguage)))
                         Button {player.skip(by:30)} label:{Image(systemName:"goforward.30").font(.system(size:27,weight:.regular))}
-                            .disabled(!player.canSeek).accessibilityLabel("Вперёд на 30 секунд")
+                            .disabled(!player.canSeek).accessibilityLabel(Text(verbatim:L10n.render("Вперёд на 30 секунд",language:localizationLanguage)))
                     }.foregroundStyle(Color(hex:"#E4DEEC")).buttonStyle(.plain).padding(.top,24)
                     Spacer(minLength:22).frame(maxHeight:44)
                     bottomControls
@@ -412,7 +412,7 @@ struct AudioPlayerScreen:View {
                 set:{scrubPosition=$0}
             ),in:player.seekLowerBound...max(player.seekUpperBound,player.seekLowerBound+1),
                    onEditingChanged:{editing in scrubbing=editing;if !editing {player.seek(to:scrubPosition)}})
-                .tint(color).disabled(!player.canSeek).accessibilityLabel("Позиция воспроизведения")
+                .tint(color).disabled(!player.canSeek).accessibilityLabel(Text(verbatim:L10n.render("Позиция воспроизведения",language:localizationLanguage)))
             HStack {
                 Text(timeText(scrubbing ? scrubPosition:player.position))
                 Spacer()
@@ -445,7 +445,7 @@ struct AudioPlayerScreen:View {
                     Button(chapter.title) {player.playChapter(index)}
                 }
             } label:{Image(systemName:"list.bullet").font(.system(size:21,weight:.regular)).frame(width:42,height:34)}
-                .accessibilityLabel("Главы и закладки")
+                .accessibilityLabel(Text(verbatim:L10n.render("Главы и закладки",language:localizationLanguage)))
             Spacer()
             Menu {
                 Button("Отключить таймер") {player.setSleepTimer(minutes:nil)}
@@ -455,7 +455,7 @@ struct AudioPlayerScreen:View {
             } label:{
                 Image(systemName:"timer").font(.system(size:23,weight:.light))
                     .foregroundStyle(player.sleepTimerRemaining == nil ? ReaderStyle.secondary:color).frame(width:42,height:34)
-            }.accessibilityLabel("Таймер сна")
+            }.accessibilityLabel(Text(verbatim:L10n.render("Таймер сна",language:localizationLanguage)))
         }.foregroundStyle(ReaderStyle.secondary)
     }
     private func rateText(_ rate:Float)->String {

@@ -44,14 +44,14 @@ struct CatalogScreen: View {
 
     private var providerName: String {
         switch provider {
-        case "flibusta": return "Флибуста"
+        case "flibusta": return L10n.text("Флибуста",language:language)
         case "gutenberg": return "Project Gutenberg"
         case "gutendex": return "Gutendex"
         default:
             if let selected = OPDSSources.decode(savedOPDSCatalogs).first(where: { "opds:" + $0.id.uuidString == provider }) {
                 return selected.name
             }
-            return "Другой OPDS"
+            return L10n.text("Другой OPDS",language:language)
         }
     }
 
@@ -134,7 +134,7 @@ struct CatalogScreen: View {
                                                     .font(.caption.weight(.semibold))
                                                     .foregroundStyle(.white)
                                                     .lineLimit(2)
-                                                Text(book.author)
+                                                Text(verbatim:L10n.authorName(book.author))
                                                     .font(.caption2)
                                                     .foregroundStyle(ReaderStyle.secondary)
                                                     .lineLimit(1)
@@ -280,7 +280,7 @@ struct CatalogScreen: View {
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.white)
                         .lineLimit(2)
-                    Text(book.author)
+                    Text(verbatim:L10n.authorName(book.author))
                         .font(.footnote)
                         .foregroundStyle(ReaderStyle.secondary)
                         .lineLimit(1)
@@ -291,7 +291,7 @@ struct CatalogScreen: View {
                             ProgressView(value: task.progress).progressViewStyle(.linear)
                             .tint(Color(hex: accentHex))
                         }
-                        Text(task.state.title)
+                        Text(verbatim:L10n.render(task.state.title,language:localizationLanguage))
                             .font(.caption2)
                             .foregroundStyle(ReaderStyle.secondary)
                     } else {
@@ -315,14 +315,14 @@ struct CatalogScreen: View {
                                 .foregroundStyle(Color(hex: accentHex))
                         }
                     }
-                    .accessibilityLabel(local != nil ? "Читать \(book.title)":"Загрузка \(book.title)")
+                    .accessibilityLabel(Text(verbatim:L10n.render(local != nil ? "Читать \(book.title)":"Загрузка \(book.title)",language:localizationLanguage)))
                 } else if book.navigationURL != nil {
                     Button { Task { await browse(book) } } label: {
                         Image(systemName: "chevron.right")
                             .foregroundStyle(ReaderStyle.secondary)
                     }
                     .disabled(searching)
-                    .accessibilityLabel("Открыть раздел \(book.title)")
+                    .accessibilityLabel(Text(verbatim:L10n.render("Открыть раздел \(book.title)",language:localizationLanguage)))
                 }
             }
         }.fixedSize(horizontal:false,vertical:true)

@@ -3,7 +3,7 @@ import UniformTypeIdentifiers
 import GoogleSignIn
 
 enum ReaderTab: Int, CaseIterable, Hashable {
-    case library, catalog, search, settings
+    case library, search, settings
 }
 
 @MainActor
@@ -14,7 +14,6 @@ final class ReaderNavigation: ObservableObject {
     @Published var genreToBrowse: String?
     @Published var searchScope = "books"
     @Published var libraryScope = "books"
-    @Published var catalogScope = "books"
 }
 
 @main
@@ -62,12 +61,8 @@ private struct RootTabs: View {
     var body: some View {
         TabView(selection: $navigation.tab) {
             LibraryScreen()
-                .tabItem { Label("Библиотека", systemImage: "books.vertical") }
+                .tabItem { Label("Библиотека", systemImage: "book") }
                 .tag(ReaderTab.library)
-
-            CatalogHomeScreen()
-                .tabItem { Label("Каталог", systemImage: "square.stack.3d.up") }
-                .tag(ReaderTab.catalog)
 
             UnifiedSearchScreen()
                 .tabItem { Label("Поиск", systemImage: "magnifyingglass") }
@@ -183,7 +178,7 @@ private struct RootReaderView: View {
             )) {
                 Button("Понятно", role: .cancel) {}
             } message: {
-                Text(importError ?? "")
+                Text(verbatim:L10n.render(importError ?? "",language:appLanguage))
             }
             .onChange(of: scenePhase) { _, phase in
                 switch phase {

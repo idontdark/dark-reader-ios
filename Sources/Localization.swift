@@ -57,6 +57,18 @@ enum L10n {
         }
         return message
     }
+    static func authorName(_ value:String)->String {
+        value == "Неизвестный автор" ? text(value):value
+    }
+    static func bookmarkCount(_ count:Int,language:String?=nil)->String {
+        let code=language ?? self.language
+        let key:String
+        if code == "en" {key=count == 1 ? "%d закладка":"%d закладок"}
+        else if count % 10 == 1 && count % 100 != 11 {key="%d закладка"}
+        else if (2...4).contains(count % 10) && !(12...14).contains(count % 100) {key="%d закладки"}
+        else {key="%d закладок"}
+        return String(format:text(key,language:code),count)
+    }
     static func date(_ date:Date)->String {
         let formatter=DateFormatter();formatter.locale=Locale(identifier:language)
         formatter.dateStyle = .medium;formatter.timeStyle = .short
@@ -75,6 +87,7 @@ private struct ReaderNavigationTitle:ViewModifier {
     @AppStorage("appLanguage") private var language="ru"
     func body(content:Content)->some View {
         content.navigationTitle(Text(verbatim:localized ? L10n.render(title,language:language):title))
+            .toolbar(.visible,for:.navigationBar)
             .background(LocalizedNavigationBridge(language:language).frame(width:0,height:0).allowsHitTesting(false))
     }
 }

@@ -9,6 +9,7 @@ final class AudioPlayerModel: ObservableObject {
         var id = UUID()
         var chapterID: String
         var position: Double
+        var title: String? = nil
     }
     @Published private(set) var bookmarks: [Bookmark] = []
     @Published private(set) var book: AudioBook?
@@ -56,7 +57,7 @@ final class AudioPlayerModel: ObservableObject {
         setUpRemoteCommands()
     }
 
-    func open(_ selected: AudioBook, tracks: [AudioChapter]) {
+    func open(_ selected: AudioBook, tracks: [AudioChapter], bookmark: Bookmark? = nil) {
         pause()
         guard !tracks.isEmpty else { error = AudioCatalogError.noTracks.localizedDescription; return }
         stopObserver()
@@ -70,7 +71,8 @@ final class AudioPlayerModel: ObservableObject {
         let savedChapter = settings.integer(forKey: "audio.chapter.\(selected.id)")
         let savedID = settings.string(forKey: "audio.chapterID.\(selected.id)")
         chapterIndex = tracks.firstIndex(where: { $0.id == savedID }) ?? max(0, min(savedChapter, max(0, tracks.count - 1)))
-        playChapter(chapterIndex)
+        if let bookmark, let index = tracks.firstIndex(where: { $0.id == bookmark.chapterID }) { chapterIndex = index }
+        playChapter(chapterIndex, resumePosition: bookmark?.position)
     }
 
     /// Save real played items so the Audiobooks section of Library survives relaunch.
@@ -86,7 +88,7 @@ final class AudioPlayerModel: ObservableObject {
         }
     }
 
-    func playChapter(_ index: Int) {
+    func playChapter(_ index: Int, resumePosition: Double? = nil) {
         guard let book, chapters.indices.contains(index) else { return }
         if player != nil { saveProgress() }
         stopObserver()
@@ -115,7 +117,7 @@ final class AudioPlayerModel: ObservableObject {
         } catch {
             self.error = "Не удалось включить воспроизведение звука."
         }
-        let saved = settings.object(forKey: "audio.trackPosition.\(book.id).\(track.id)") as? Double
+        let saved = resumePosition ?? (settings.object(forKey: "audio.trackPosition.\(book.id).\(track.id)") as? Double)
             ?? settings.double(forKey: "audio.position.\(book.id).\(index)")
         pendingRestore = saved
         statusObserver = item.observe(\.status, options: [.initial, .new]) { [weak self] item, _ in
@@ -386,17 +388,35 @@ final class AudioPlayerModel: ObservableObject {
         updateNowPlaying()
     }
 
+    func savedBookmarks(for selected: AudioBook) -> [Bookmark] {
+        if book?.id == selected.id { return bookmarks }
+        return settings.data(forKey: "audio.bookmarks.\(selected.id)")
+            .flatMap { try? JSONDecoder().decode([Bookmark].self, from: $0) } ?? []
+    }
+    private func saveBookmarks(_ marks: [Bookmark], for selected: AudioBook) {
+        guard let data = try? JSONEncoder().encode(marks) else { return }
+        settings.set(data, forKey: "audio.bookmarks.\(selected.id)")
+        if book?.id == selected.id { bookmarks = marks }
+        else { objectWillChange.send() }
+    }
     func addBookmark() {
         guard let book, chapters.indices.contains(chapterIndex) else { return }
-        bookmarks.append(Bookmark(chapterID: chapters[chapterIndex].id, position: position))
-        settings.set(try? JSONEncoder().encode(bookmarks), forKey: "audio.bookmarks.\(book.id)")
+        var marks = savedBookmarks(for: book)
+        marks.append(Bookmark(chapterID: chapters[chapterIndex].id, position: position))
+        saveBookmarks(marks, for: book)
+    }
+    func renameBookmark(_ id: UUID, for selected: AudioBook, name: String) {
+        var marks = savedBookmarks(for: selected)
+        guard let index = marks.firstIndex(where: { $0.id == id }) else { return }
+        marks[index].title = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        saveBookmarks(marks, for: selected)
+    }
+    func deleteBookmark(_ id: UUID, for selected: AudioBook) {
+        saveBookmarks(savedBookmarks(for: selected).filter { $0.id != id }, for: selected)
     }
     func openBookmark(_ bookmark: Bookmark) {
-        guard let book, let index = chapters.firstIndex(where: { $0.id == bookmark.chapterID }) else { return }
-        if index == chapterIndex { seek(to: bookmark.position); return }
-        pause()
-        settings.set(bookmark.position, forKey: "audio.trackPosition.\(book.id).\(bookmark.chapterID)")
-        playChapter(index)
+        guard let index = chapters.firstIndex(where: { $0.id == bookmark.chapterID }) else { return }
+        playChapter(index, resumePosition: bookmark.position)
     }
 
     private func saveProgress() {

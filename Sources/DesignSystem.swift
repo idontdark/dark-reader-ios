@@ -102,7 +102,7 @@ struct ReaderHeader:View {
                     Spacer()
                     if let secondaryIcon,let secondaryAction { headerButton(secondaryIcon,secondaryAction) }
                     if let trailingIcon,let trailingAction { headerButton(trailingIcon,trailingAction) }
-                }.frame(height:28)
+                }.frame(minHeight:44)
                 Text(verbatim:L10n.render(title,language:localizationLanguage)).font(.system(size:25,weight:.bold)).tracking(-0.6)
             } else {
                 HStack {
@@ -116,10 +116,10 @@ struct ReaderHeader:View {
     private func headerButton(_ name:String,_ action:@escaping()->Void)->some View {
         Button(action:action) {
             Image(systemName:name).font(.system(size:15,weight:.medium))
-                .foregroundStyle(Color.white.opacity(0.84)).frame(width:29,height:29)
-                .background(Color.white.opacity(0.045),in:Circle())
-                .overlay(Circle().strokeBorder(Color.white.opacity(0.06),lineWidth:0.6))
-        }.accessibilityLabel(name == "plus" ? "Добавить книгу" : "Поиск")
+                .foregroundStyle(Color.white.opacity(0.84)).frame(width:36,height:36)
+                .background(Color(hex:ReaderStyle.defaultAccent).opacity(0.15),in:RoundedRectangle(cornerRadius:10))
+                .overlay(RoundedRectangle(cornerRadius:10).strokeBorder(ReaderStyle.line,lineWidth:0.7))
+        }.frame(minWidth:44,minHeight:44).accessibilityLabel(Text(verbatim:L10n.render(name == "plus" ? "Добавить книгу" : "Поиск",language:localizationLanguage)))
     }
 }
 
@@ -181,8 +181,8 @@ struct BookArtwork:View {
     var body:some View {
         Group {
             if let coverURL {
-                CachedCover(url:CoverSize.url(coverURL,detailed:width>115)) { $0.resizable().scaledToFill() }
-                    placeholder: { fallback }
+                CachedCover(url:CoverSize.url(coverURL,detailed:width>115),
+                            content: { $0.resizable().scaledToFill() }, placeholder: { fallback })
             } else { fallback }
         }.frame(width:width,height:height)
             .clipShape(RoundedRectangle(cornerRadius:5))
@@ -233,7 +233,7 @@ struct LibraryMenuRow:View {
     let count:Int
     var body:some View {
         HStack(spacing:10) {
-            Image(systemName:icon).font(.system(size:17,weight:.regular)).frame(width:23)
+            Image(systemName:icon).font(.system(size:18,weight:.regular)).foregroundStyle(Color(hex:ReaderStyle.defaultAccent).shade(0.25)).frame(width:23)
             Text(verbatim:L10n.render(title,language:localizationLanguage)).font(.system(size:14,weight:.medium))
             Spacer()
             Text("\(count)").font(.system(size:12)).foregroundStyle(ReaderStyle.secondary)

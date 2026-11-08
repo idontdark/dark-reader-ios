@@ -549,3 +549,24 @@
 "Скачано глав: %d из %d" = "Chapters downloaded: %d of %d";
 "Дождитесь завершения текущей загрузки." = "Wait for the current download to finish.";
 "Не удалось скачать аудиокнигу. Сохранённые главы доступны. Повторите загрузку, чтобы продолжить." = "Could not download the audiobook. Saved chapters are available. Retry to continue.";
+
+"Закладка %d" = "Bookmark %d";
+"Страница %d" = "Page %d";
+"Место в книге" = "Location in book";
+"Закладка недоступна" = "Bookmark unavailable";
+"Мои закладки" = "My bookmarks";
+"Выберите место, чтобы продолжить" = "Choose where to continue";
+"Открываем аудиокнигу…" = "Opening audiobook…";
+"Нажмите на закладку, чтобы продолжить с сохранённого момента." = "Tap a bookmark to resume from the saved moment.";
+"Нажмите на закладку, чтобы открыть нужное место в книге." = "Tap a bookmark to open that location in the book.";
+"Добавьте закладку в плеере, чтобы сохранить важный момент." = "Add a bookmark in the player to save a moment.";
+"Добавьте закладку во время чтения, чтобы вернуться к важному месту." = "Add a bookmark while reading to return to an important passage.";
+"Откройте новое" = "Discover";
+"Популярное" = "Popular";
+"Все аудиокниги" = "All audiobooks";
+"Слушаю" = "Listening";
+"Истории, которые\nждут вас" = "Stories waiting\nfor you";
+"%d закладка" = "%d bookmark";
+"%d закладки" = "%d bookmarks";
+"%d закладок" = "%d bookmarks";
+"В библиотеке выберите Флибусту или Project Gutenberg, найдите книгу по названию или автору и нажмите кнопку скачивания." = "Choose Flibusta or Project Gutenberg in your library, search by title or author, then tap Download.";

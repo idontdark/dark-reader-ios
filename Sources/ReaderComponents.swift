@@ -20,6 +20,8 @@ struct ReaderSearchSourceLabel:View {
     }
 }
 struct ReaderQueryField:View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     @Binding var query:String
     let search:()->Void
     var body:some View {
@@ -29,7 +31,7 @@ struct ReaderQueryField:View {
                 .submitLabel(.search).onSubmit(search).foregroundStyle(.white)
             if !query.isEmpty {
                 Button {query=""} label:{Image(systemName:"xmark.circle.fill").foregroundStyle(ReaderStyle.secondary)}
-                    .frame(minWidth:44,minHeight:44).accessibilityLabel("Очистить поиск")
+                    .frame(minWidth:44,minHeight:44).accessibilityLabel(Text(verbatim:L10n.render("Очистить поиск",language:localizationLanguage)))
             }
         }.padding(.leading,14).padding(.trailing,query.isEmpty ? 14:2).frame(minHeight:48)
             .background(ReaderStyle.surface,in:RoundedRectangle(cornerRadius:12))
@@ -86,7 +88,7 @@ struct CatalogResultRow:View {
                 BookArtwork(title:title,author:author,coverURL:coverURL,width:56,height:80)
                 VStack(alignment:.leading,spacing:6) {
                     Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(.white).lineLimit(2)
-                    Text(author).font(.caption).foregroundStyle(ReaderStyle.secondary).lineLimit(2)
+                    Text(verbatim:L10n.authorName(author)).font(.caption).foregroundStyle(ReaderStyle.secondary).lineLimit(2)
                 }.frame(maxWidth:.infinity,alignment:.leading).fixedSize(horizontal:false,vertical:true)
                 Image(systemName:"chevron.right").font(.caption2).foregroundStyle(ReaderStyle.secondary)
             }.frame(minHeight:80)
@@ -94,6 +96,8 @@ struct CatalogResultRow:View {
     }
 }
 struct CatalogSkeletons:View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var pulse=false
     var body:some View {
@@ -113,6 +117,6 @@ struct CatalogSkeletons:View {
         }.opacity(reduceMotion ? 0.8:pulse ? 1:0.55)
             .animation(reduceMotion ? nil:.easeInOut(duration:1.1).repeatForever(autoreverses:true),value:pulse)
             .onAppear {pulse=true}.onDisappear {pulse=false}
-            .accessibilityElement(children:.ignore).accessibilityLabel("Загрузка каталога")
+            .accessibilityElement(children:.ignore).accessibilityLabel(Text(verbatim:L10n.render("Загрузка каталога",language:localizationLanguage)))
     }
 }

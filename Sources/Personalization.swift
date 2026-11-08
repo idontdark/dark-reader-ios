@@ -183,7 +183,7 @@ struct FavoriteAuthorsScreen: View {
                                     Image(systemName: "xmark.circle.fill")
                                         .foregroundStyle(ReaderStyle.secondary)
                                 }
-                                .accessibilityLabel("Удалить автора")
+                                .accessibilityLabel(Text(verbatim:L10n.render("Удалить автора",language:localizationLanguage)))
                             }
                             .padding(.vertical, 11)
                             if favorites.last != author { ReaderDivider() }
@@ -200,7 +200,7 @@ struct FavoriteAuthorsScreen: View {
                             toggle(author)
                         } label: {
                             HStack {
-                                Text(author).foregroundStyle(.white)
+                                Text(verbatim:L10n.authorName(author)).foregroundStyle(.white)
                                 Spacer()
                                 Image(systemName: favorites.contains(author) ? "checkmark.circle.fill" : "plus.circle")
                                     .foregroundStyle(Color(hex: ReaderStyle.defaultAccent))

@@ -127,7 +127,7 @@ struct DownloadsScreen: View {
                 ForEach(queue.items) { item in
                     ReaderCard {
                         Text(item.book.title).font(.headline)
-                        Text(item.state.title).font(.caption).foregroundStyle(ReaderStyle.secondary).padding(.vertical, 8)
+                        Text(verbatim:L10n.render(item.state.title,language:localizationLanguage)).font(.caption).foregroundStyle(ReaderStyle.secondary).padding(.vertical, 8)
                         if item.state == .downloading { ProgressView(value: item.progress) }
                         HStack {
                             if [.failed, .paused].contains(item.state) {

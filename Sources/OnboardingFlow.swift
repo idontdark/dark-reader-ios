@@ -114,7 +114,7 @@ struct OnboardingFlow: View {
                     .font(.headline)
                 Spacer()
                 if step < 4 {
-                    Button(english ? "Skip" : "Пропустить") {
+                    Button(L10n.render(english ? "Skip" : "Пропустить",language:localizationLanguage)) {
                         
                         withAnimation(.easeInOut(duration: 0.18)) { step += 1 }
                     }
@@ -306,7 +306,7 @@ struct OnboardingFlow: View {
                     Text(verbatim:L10n.render(suggestionError ?? (english ? "No books available yet." : "Подборка пока недоступна."),language:localizationLanguage))
                         .font(.subheadline)
                         .foregroundStyle(ReaderStyle.secondary)
-                    Button(english ? "Try again" : "Повторить") {
+                    Button(L10n.render(english ? "Try again" : "Повторить",language:localizationLanguage)) {
                         Task { await loadBookSuggestions() }
                     }
                     .font(.subheadline.weight(.medium))
@@ -336,7 +336,7 @@ struct OnboardingFlow: View {
                                     .font(.caption.weight(.semibold))
                                     .foregroundStyle(.white)
                                     .lineLimit(2)
-                                Text(book.author)
+                                Text(verbatim:L10n.authorName(book.author))
                                     .font(.caption2)
                                     .foregroundStyle(ReaderStyle.secondary)
                                     .lineLimit(1)
@@ -389,11 +389,11 @@ struct OnboardingFlow: View {
                 .padding(35)
                 .background(ReaderStyle.surface, in: RoundedRectangle(cornerRadius: 23))
             VStack(spacing: 12) {
-                Label(english ? "Reading without the internet" : "Читайте без интернета",
+                Label(L10n.render(english ? "Reading without the internet" : "Читайте без интернета",language:localizationLanguage),
                       systemImage: "checkmark.circle.fill")
-                Label(english ? "Your own library" : "Ваша библиотека",
+                Label(L10n.render(english ? "Your own library" : "Ваша библиотека",language:localizationLanguage),
                       systemImage: "checkmark.circle.fill")
-                Label(english ? "Recommendations for your interests" : "Подборки по вашим интересам",
+                Label(L10n.render(english ? "Recommendations for your interests" : "Подборки по вашим интересам",language:localizationLanguage),
                       systemImage: "checkmark.circle.fill")
             }
             .font(.subheadline)

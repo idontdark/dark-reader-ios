@@ -161,12 +161,12 @@ struct DiscoveryBookDetail:View {
                 .toolbar {
                     ToolbarItem(placement:.topBarLeading) {
                         Button {dismiss()} label:{Image(systemName:"chevron.left").font(.system(size:18,weight:.medium))}
-                            .accessibilityLabel("Назад")
+                            .accessibilityLabel(Text(verbatim:L10n.render("Назад",language:localizationLanguage)))
                     }
                     ToolbarItemGroup(placement:.topBarTrailing) {
                         ShareLink(item:book.detailURL) {Image(systemName:"square.and.arrow.up").font(.system(size:17))}
                         Button {toggleWishlist()} label:{Image(systemName:DiscoveryService.saved(wishlistJSON).contains {$0.id == book.id} ? "bookmark.fill":"bookmark").font(.system(size:17))}
-                            .accessibilityLabel("Хочу прочитать")
+                            .accessibilityLabel(Text(verbatim:L10n.render("Хочу прочитать",language:localizationLanguage)))
                     }
                 }.tint(Color(hex:"#D2C5DE"))
                 .task {summary=await BookDescription.discovery(book,language:language)}

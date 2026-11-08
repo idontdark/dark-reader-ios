@@ -12,7 +12,7 @@ struct BookDetailHero:View {
             BookArtwork(title:title,author:author,coverURL:coverURL,width:118,height:178)
             VStack(alignment:.leading,spacing:10) {
                 Text(title).font(.system(size:21,weight:.bold)).tracking(-0.4).foregroundStyle(.white).lineLimit(4)
-                Text(author).font(.system(size:12)).foregroundStyle(ReaderStyle.secondary).lineLimit(3)
+                Text(verbatim:L10n.authorName(author)).font(.system(size:12)).foregroundStyle(ReaderStyle.secondary).lineLimit(3)
                 if !tags.isEmpty {
                     ViewThatFits(in:.horizontal) {
                         HStack(spacing:5) {ForEach(tags.prefix(2),id:\.self) {tag in tagLabel(tag)}}
@@ -29,11 +29,13 @@ struct BookDetailHero:View {
     }
 }
 struct BookFavoriteButton:View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     let favorite:Bool
     let action:()->Void
     var body:some View {
         Button(action:action) {
-            Label(favorite ? "Удалить из избранного":"Добавить в избранное",systemImage:favorite ? "star.fill":"star")
+            Label(L10n.render(favorite ? "Удалить из избранного":"Добавить в избранное",language:localizationLanguage),systemImage:favorite ? "star.fill":"star")
                 .font(.system(size:13,weight:.medium)).foregroundStyle(.white.opacity(0.9))
                 .frame(maxWidth:.infinity).frame(height:42)
                 .background(Color.white.opacity(0.018),in:RoundedRectangle(cornerRadius:9))
