@@ -293,15 +293,24 @@ struct ReaderScreen: View {
                 if !visible { showReaderTip = false }
             }
     }
+    private var syncedPreferences: [String: String] {
+        ["readerPersistentProgress": String(persistentProgress),
+         "readerPageAnimation": String(pageAnimation),
+         "readerProgressDisplay": progressDisplay,
+         "readerFontSize": String(fontSize),
+         "readerFont": font,
+         "readerTheme": theme,
+         "readerScroll": String(scroll)]
+    }
     private var preferenceObservers: some View {
-        readingLifecycle
-            .onChange(of: persistentProgress) { _, value in sync.settingsChanged(key: "readerPersistentProgress", value: String(value)) }
-            .onChange(of: pageAnimation) { _, value in sync.settingsChanged(key: "readerPageAnimation", value: String(value)) }
-            .onChange(of: progressDisplay) { _, value in sync.settingsChanged(key: "readerProgressDisplay", value: value) }
-            .onChange(of: fontSize) { _, value in sync.settingsChanged(key: "readerFontSize", value: String(value)) }
-            .onChange(of: font) { _, value in sync.settingsChanged(key: "readerFont", value: value) }
-            .onChange(of: theme) { _, value in sync.settingsChanged(key: "readerTheme", value: value) }
-            .onChange(of: scroll) { _, value in sync.settingsChanged(key: "readerScroll", value: String(value)) }
+        readingLifecycle.onChange(of: syncedPreferences) { previous, current in
+            syncPreferences(previous: previous, current: current)
+        }
+    }
+    private func syncPreferences(previous: [String: String], current: [String: String]) {
+        for (key, value) in current where previous[key] != value {
+            sync.settingsChanged(key: key, value: value)
+        }
     }
 
     private var readerControls:some View {
