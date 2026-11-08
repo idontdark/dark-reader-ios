@@ -27,6 +27,7 @@ struct BackupFilePicker: UIViewControllerRepresentable {
     @MainActor final class Coordinator: NSObject, UIDocumentPickerDelegate {
         var parent: BackupFilePicker
         private var active = false
+        private var finishing = false
         init(parent: BackupFilePicker) { self.parent = parent }
         func presentIfNeeded(from host: UIViewController) {
             guard parent.isPresented, !active, host.viewIfLoaded?.window != nil,
@@ -53,12 +54,22 @@ struct BackupFilePicker: UIViewControllerRepresentable {
             }
         }
         private func finish(_ result: Result<URL?, Error>, controller: UIDocumentPickerViewController) {
-            guard active else { return }
-            parent.isPresented = false
-            controller.dismiss(animated: true) { [self] in
+            guard active, !finishing else { return }
+            finishing = true
+            let complete = { [self] in
                 active = false
+                finishing = false
+                parent.isPresented = false
                 parent.selected(result)
             }
+            // Providers may dismiss the picker themselves before staging ends.
+            // Do not depend on dismiss() invoking a completion for a controller
+            // which has already left the presentation hierarchy.
+            if controller.isBeingDismissed, let transition = controller.transitionCoordinator {
+                transition.animate(alongsideTransition: nil) { _ in complete() }
+            } else if controller.presentingViewController != nil {
+                controller.dismiss(animated: true, completion: complete)
+            } else { complete() }
         }
         nonisolated private static func materialize(_ url: URL) throws -> URL {
             let scoped = url.startAccessingSecurityScopedResource()

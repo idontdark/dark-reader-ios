@@ -17,3 +17,5 @@ Read-only SSH inspection confirmed build 82. Two converted EPUBs had one HTML re
 Initial Readium preferences now include theme and font. Position counting no longer blocks presentation twice. New conversions split text into approximately 64 KiB resources and preserve embedded FB2 covers, title and author. Existing imported EPUBs can recover embedded covers locally. Only recognized old converter output with no progress or bookmarks may be optimized; the original file remains on disk.
 
 Validation runs production catalog regressions, macOS import/backup round trips and generic iPhone compilation. No simulator or IPA publication. Native picker interaction, theme transitions and font changes still need verification on an iPhone running the updated binary.
+
+On-device text preparation benchmark: 11,362,120-byte legacy XHTML, 39,329 paragraphs, 175 chunks, 1.146 seconds. Text order was preserved exactly. This does not measure WebKit rendering or the native file picker. Temporary diagnostic files were removed; the installed app and library were unchanged.

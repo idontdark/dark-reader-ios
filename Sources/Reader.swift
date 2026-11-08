@@ -74,7 +74,7 @@ final class ReaderSession: ObservableObject, EPUBNavigatorDelegate {
         let locator = previousLocation.flatMap { try? Locator(jsonString: $0) }
         let navigator = try EPUBNavigatorViewController(publication: publication, initialLocation: locator, config: .init(
             preferences: options.preferences,
-            contentInset: [.compact: (top: 34, bottom: 34), .regular: (top: 40, bottom: 40)],
+            contentInset: [.compact: (top: 64, bottom: 40), .regular: (top: 64, bottom: 40)],
             preloadPreviousPositionCount: 0, preloadNextPositionCount: 1
         ))
         return ReaderSession(navigator: navigator, publication: publication, options: options)
@@ -113,8 +113,8 @@ final class ReaderSession: ObservableObject, EPUBNavigatorDelegate {
                         if (Math.abs(size - percent) < 0.01 && color && normalize(color) === expectedColor) break;
                         await new Promise(resolve => setTimeout(resolve, 32));
                     }
-                    await document.fonts.ready;
-                    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+                    await Promise.race([document.fonts.ready, new Promise(resolve => setTimeout(resolve, 500))]);
+                    await Promise.race([new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))), new Promise(resolve => setTimeout(resolve, 250))]);
                     return true;
                     """,
                     arguments: ["percent": next.fontSize * 100, "background": ReaderPaper(theme: next.theme).backgroundHex], in: nil, contentWorld: .page
@@ -273,6 +273,9 @@ struct ReaderScreen: View {
                 persist()
             }
         }
+        .task(id: readerOptions) { [options = readerOptions] in
+            session?.apply(options)
+        }
         .onDisappear { persist(); session?.cancelUpdates() }
         .onChange(of: scenePhase) { _, phase in if phase != .active { persist() } }
         .onChange(of:chrome.visible) {_,visible in
@@ -280,24 +283,18 @@ struct ReaderScreen: View {
             if !visible {showReaderTip=false}
         }
         .onChange(of:persistentProgress) {_,value in sync.settingsChanged(key:"readerPersistentProgress",value:String(value))}
-        .onChange(of:pageAnimation) {_,value in apply();sync.settingsChanged(key:"readerPageAnimation",value:String(value))}
-        .onChange(of:reduceMotion) {_,_ in apply()}
+        .onChange(of:pageAnimation) {_,value in sync.settingsChanged(key:"readerPageAnimation",value:String(value))}
         .onChange(of: progressDisplay) { _,value in sync.settingsChanged(key:"readerProgressDisplay",value:value) }
         .onChange(of: fontSize) { _, value in
-            apply()
             sync.settingsChanged(key: "readerFontSize", value: String(value))
         }
         .onChange(of: font) { _, value in
-            apply()
             sync.settingsChanged(key: "readerFont", value: value)
         }
         .onChange(of: theme) { _, value in
-            apply()
             sync.settingsChanged(key: "readerTheme", value: value)
         }
-        .onChange(of: colorScheme) { _, _ in if theme == "system" { apply() } }
         .onChange(of: scroll) { _, value in
-            apply()
             sync.settingsChanged(key: "readerScroll", value: String(value))
         }
     }

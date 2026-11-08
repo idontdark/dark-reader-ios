@@ -627,6 +627,6 @@
 
 "Сборка %@ · %@" = "Build %@ · %@";
 
-"Книги, закладки, прогресс и настройки в одном файле. Аудиофайлы сохраняются отдельно." = "Books, bookmarks, reading progress and settings in one file. Audio files are saved separately.";
+"Книги, закладки, прогресс и настройки в одном файле. Аудиофайлы в копию не входят." = "Books, bookmarks, reading progress and settings in one file. Audio files are not included.";
 "Проверяем копию…" = "Checking backup…";
 "Настройки, прогресс и закладки восстановлены для книг в библиотеке." = "Settings, progress and bookmarks have been restored for books in your library.";

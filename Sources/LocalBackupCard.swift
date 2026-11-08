@@ -27,7 +27,7 @@ struct LocalBackupCard: View {
     var body: some View {
         ReaderCard {
             Label("Копия в файле", systemImage: "externaldrive").font(.headline)
-            Text(verbatim: L10n.text("Книги, закладки, прогресс и настройки в одном файле. Аудиофайлы сохраняются отдельно.", language: language))
+            Text(verbatim: L10n.text("Книги, закладки, прогресс и настройки в одном файле. Аудиофайлы в копию не входят.", language: language))
                 .font(.footnote).foregroundStyle(ReaderStyle.secondary).padding(.vertical, 12)
             PurpleAction(title: "Создать копию", icon: "square.and.arrow.up") { Task { await export() } }.disabled(busy || importing)
             Button("Восстановить из файла") { cleanupRestore(); status = ""; importing = true }
@@ -89,7 +89,10 @@ struct LocalBackupCard: View {
         do {
             // File restore is additive: backup tombstones must not delete current books.
             if restore.metadataOnly { library.restoreReadingMetadata(restore.snapshot.books) }
-            else { try library.restoreFromFile(restore.snapshot.books, staged: restore.files) }
+            else {
+                try library.restoreFromFile(restore.snapshot.books, staged: restore.files)
+                Task { await library.recoverEmbeddedCovers() }
+            }
             settings.restoreSettings(restore.snapshot.settings, changedAt: restore.snapshot.settingsChangedAt)
             status = L10n.text(restore.metadataOnly ? "Настройки, прогресс и закладки восстановлены для книг в библиотеке." : "Копия восстановлена. Книги доступны в библиотеке.")
         } catch { status = L10n.errorDescription(error) }
