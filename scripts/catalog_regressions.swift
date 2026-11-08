@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 // Runs the production OPDS client and query policy on macOS, without an iOS simulator.
 final class CatalogFixtureProtocol: URLProtocol {

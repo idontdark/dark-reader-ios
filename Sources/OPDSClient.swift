@@ -1,4 +1,10 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
+#if canImport(FoundationXML)
+import FoundationXML
+#endif
 
 /// OPDS 1.x (Atom) catalog reader. Navigation entries are kept so the UI can
 /// traverse author pages and book detail pages, not just flat acquisition feeds.
