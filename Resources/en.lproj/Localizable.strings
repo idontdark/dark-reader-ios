@@ -593,3 +593,16 @@
 "Показаны первые 100 результатов. Уточните название или автора." = "Showing the first 100 results. Refine your title or author.";
 
 "МБ" = "MB";
+
+"Открыть поиск на сайте" = "Open search on website";
+"Показана часть выдачи сайта. Уточните запрос, если нужной книги нет." = "Showing part of the website results. Refine your search if your book is missing.";
+"Открыть книгу на сайте" = "Open book on website";
+"Русскоязычные аудиокниги. Встроенный плеер и загрузка." = "Russian audiobooks with in-app playback and downloads.";
+"Поиск по русскоязычному каталогу. Прослушивание на сайте." = "Search a Russian catalog. Listen on the original website.";
+"Показать панель чтения" = "Show reading controls";
+"Только вы и книга" = "Just you and your book";
+"Коснитесь середины страницы, чтобы показать или скрыть панель. Нажимайте по краям для перелистывания. Долгое нажатие выделяет текст." = "Tap the center of the page to show or hide controls. Tap an edge to turn the page. Touch and hold to select text.";
+"Закрыть книгу" = "Close book";
+"Анимация перелистывания" = "Page-turn animation";
+"Плавное перелистывание по нажатию. В режиме прокрутки и при уменьшении движения анимация не используется." = "Animate page turns when tapping. Animation is disabled in scrolling mode and when Reduce Motion is enabled.";
+"Источник не предоставил аудиофайлы приложению. Откройте книгу на сайте." = "The source did not provide audio files to the app. Open the book on its website.";

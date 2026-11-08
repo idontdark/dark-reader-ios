@@ -2,6 +2,7 @@ import SwiftUI
 import ReadiumShared
 import ReadiumStreamer
 import ReadiumNavigator
+import UIKit
 
 @MainActor
 final class ReaderSession: ObservableObject, EPUBNavigatorDelegate {
@@ -11,6 +12,9 @@ final class ReaderSession: ObservableObject, EPUBNavigatorDelegate {
     @Published private(set) var location:Locator?
     @Published var errorMessage:String?
     var onLocationChange:((Locator)->Void)?
+    var onToggleChrome:(()->Void)?
+    var onPageTurn:(()->Void)?
+    private var pageNavigation:DirectionalNavigationAdapter?
     var fraction:Double? {
         if let value=location?.locations.totalProgression {return value}
         guard let position=location?.locations.position,totalPositions>1 else{return nil}
@@ -21,6 +25,12 @@ final class ReaderSession: ObservableObject, EPUBNavigatorDelegate {
         self.totalPositions=totalPositions
         self.location=navigator.currentLocation
         navigator.delegate=self
+        let adapter=DirectionalNavigationAdapter(animatedTransition:true,onNavigation:{[weak self] in self?.onPageTurn?()})
+        pageNavigation=adapter;adapter.bind(to:navigator)
+        navigator.addObserver(.tap { [weak self] _ in
+            self?.onToggleChrome?()
+            return true
+        })
     }
     func navigator(_ navigator:Navigator,locationDidChange locator:Locator) {
         location=locator
@@ -43,23 +53,28 @@ final class ReaderSession: ObservableObject, EPUBNavigatorDelegate {
         let publication = try await opener.open(asset: asset, allowUserInteraction: true).get()
         guard publication.conforms(to: .epub) else { throw ReaderError.unsupportedPublication }
         let locator = previousLocation.flatMap { try? Locator(jsonString: $0) }
-        let navigator = try EPUBNavigatorViewController(publication: publication, initialLocation: locator)
+        let navigator = try EPUBNavigatorViewController(publication: publication, initialLocation: locator, config:.init(contentInset:[.compact:(top:64,bottom:56),.regular:(top:64,bottom:56)]))
         let positions=(try? await publication.positions().get()) ?? []
         return ReaderSession(navigator:navigator,totalPositions:positions.count)
     }
 
-    func applyPreferences(fontSize: Double, font: String, theme: String, scroll: Bool) {
+    func applyPreferences(fontSize: Double, font: String, theme: String, scroll: Bool, animated:Bool=true) {
         var preferences = EPUBPreferences(
             fontFamily: font == "sans" ? .sansSerif : .serif,
             fontSize: fontSize,
             publisherStyles: false,
-            scroll: scroll
+            scroll: scroll, animated:pageAnimation && !reduceMotion
         )
         switch theme {
         case "dark", "oled": preferences.theme = .dark
         case "sepia": preferences.theme = .sepia
         default: preferences.theme = .light
         }
+        let palette=ReaderPaper(theme:theme)
+        preferences.backgroundColor=ReadiumNavigator.Color(hex:palette.backgroundHex)
+        preferences.textColor=ReadiumNavigator.Color(hex:palette.textHex)
+        navigator.view.backgroundColor=UIColor(palette.background)
+        pageNavigation?.animatedTransition=animated && !UIAccessibility.isReduceMotionEnabled
         navigator.submitPreferences(preferences)
     }
 }
@@ -92,9 +107,12 @@ struct ReaderScreen: View {
         self.initialLocation = initialLocation
     }
     @State private var session: ReaderSession?
+    @StateObject private var chrome=ReaderChrome()
+    @AppStorage("readerPageAnimation") private var pageAnimation=true
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var error: String?
     @State private var appearanceOpen = false
-    @AppStorage("hintReaderShown") private var hintReaderShown = false
+    @AppStorage("hintReaderFocusShown") private var hintReaderShown = false
     @State private var showReaderTip = false
     @State private var showBookmarks=false
     @State private var namingBookmark=false
@@ -103,15 +121,16 @@ struct ReaderScreen: View {
 
     private var book: LocalBook? { store.books.first(where: { $0.id == bookID }) }
 
+    private var effectiveTheme:String {theme == "system" ? (colorScheme == .dark ? "dark":"light"):theme}
+    private var paper:ReaderPaper {ReaderPaper(theme:effectiveTheme)}
     var body: some View {
         NavigationStack {
-            Group {
+            ZStack {
+                paper.background.ignoresSafeArea()
+                Group {
                 if let session {
-                    ReaderContainer(navigator: session.navigator)
-                        .safeAreaInset(edge:.bottom,spacing:0) {
-                            ReadingProgressFooter(session:session,format:progressDisplay,
-                                                  theme:theme == "system" ? (colorScheme == .dark ? "dark":"light"):theme)
-                        }
+                    ReaderContainer(navigator: session.navigator).ignoresSafeArea()
+                        .accessibilityAction(named:Text(verbatim:L10n.text("Показать панель чтения"))) {chrome.visible=true}
                 } else if let error {
                     ContentUnavailableView(
                         "Не удалось открыть книгу",
@@ -121,31 +140,22 @@ struct ReaderScreen: View {
                 } else {
                     ProgressView("Открываем книгу…")
                 }
-            }
-            .readerNavigationTitle(book?.title ?? L10n.text("Читалка"),localized:false)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button { persist(); dismiss() } label: {
-                        Image(systemName: "chevron.down")
-                    }
                 }
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    Button {showBookmarks=true} label: {
-                        Image(systemName: "bookmark")
-                    }
-                    Button {if let book {store.toggleFavorite(book)}} label: {
-                        Image(systemName:book?.isFavorite == true ? "star.fill":"star")
-                    }.accessibilityLabel(Text(verbatim:L10n.render("Избранное",language:localizationLanguage)))
-                    Button { appearanceOpen = true } label: {
-                        Image(systemName: "textformat.size")
-                    }
+                if let session {
+                    VStack {Spacer();ReadingProgressFooter(session:session,format:progressDisplay,theme:effectiveTheme)}.allowsHitTesting(false)
                 }
+                if chrome.visible || session == nil {readerControls}
             }
-            .tint(SwiftUI.Color(hex: accentHex))
+            .toolbar(.hidden,for:.navigationBar)
+            .foregroundStyle(paper.text)
+            .tint(SwiftUI.Color(hex:accentHex))
         }
+        .preferredColorScheme(theme == "system" ? nil:(paper.dark ? .dark:.light))
+        .statusBarHidden(session != nil && !chrome.visible)
+        .animation(reduceMotion ? nil:.easeInOut(duration:0.16),value:chrome.visible)
+        .accessibilityAction(.escape) {persist();dismiss()}
         .sheet(isPresented:$showBookmarks) {bookmarksSheet}
-        .readerHint(isPresented:$showReaderTip,title:"Всё для чтения под рукой",message:"Настройте шрифт и тему через Aa. Сохраните важное место кнопкой закладки — оно появится в «Моих закладках».",icon:"book")
+        .readerHint(isPresented:$showReaderTip,title:"Только вы и книга",message:"Коснитесь середины страницы, чтобы показать или скрыть панель. Нажимайте по краям для перелистывания. Долгое нажатие выделяет текст.",icon:"book")
         .sheet(isPresented: $appearanceOpen) {
             ReaderAppearanceSheet()
                 .presentationDetents([.medium, .large])
@@ -165,6 +175,8 @@ struct ReaderScreen: View {
         }
         .onDisappear { persist() }
         .onChange(of: scenePhase) { _, phase in if phase != .active { persist() } }
+        .onChange(of:pageAnimation) {_,value in apply();sync.settingsChanged(key:"readerPageAnimation",value:String(value))}
+        .onChange(of:reduceMotion) {_,_ in apply()}
         .onChange(of: progressDisplay) { _,value in sync.settingsChanged(key:"readerProgressDisplay",value:value) }
         .onChange(of: fontSize) { _, value in
             apply()
@@ -185,15 +197,39 @@ struct ReaderScreen: View {
         }
     }
 
+    private var readerControls:some View {
+        VStack {
+            HStack(spacing:8) {
+                readerButton("chevron.down",label:"Закрыть книгу") {persist();dismiss()}
+                Text(verbatim:book?.title ?? L10n.text("Читалка")).font(.subheadline.weight(.semibold)).lineLimit(2)
+                    .frame(maxWidth:.infinity,alignment:.leading)
+                readerButton("bookmark",label:"Мои закладки") {showBookmarks=true}
+                readerButton("textformat.size",label:"Оформление чтения") {appearanceOpen=true}
+            }.padding(8).background(paper.background.opacity(0.97),in:RoundedRectangle(cornerRadius:16))
+                .overlay(RoundedRectangle(cornerRadius:16).strokeBorder(paper.text.opacity(0.12),lineWidth:0.8))
+                .padding(.horizontal,12).padding(.top,8)
+            Spacer()
+        }
+    }
+    private func readerButton(_ icon:String,label:String,action:@escaping()->Void)->some View {
+        Button(action:action) {Image(systemName:icon).font(.title3).foregroundStyle(SwiftUI.Color(hex:accentHex)).frame(width:44,height:44)}
+            .buttonStyle(.plain).accessibilityLabel(Text(verbatim:L10n.text(label)))
+    }
+
     private func load() async {
         guard session == nil, let book else { return }
         do {
             session = try await ReaderSession.open(
                 fileURL: store.fileURL(for: book), previousLocation: initialLocation ?? book.locatorJSON
             )
+            let chrome=chrome
+            session?.onToggleChrome={ [weak chrome] in chrome?.visible.toggle() }
+            session?.onPageTurn={ [weak chrome] in chrome?.visible=false }
+            if UIAccessibility.isVoiceOverRunning {chrome.visible=true}
             let id=bookID
             let store=store
-            session?.onLocationChange={ [weak store] locator in
+            session?.onLocationChange={ [weak store,weak chrome] locator in
+                if !UIAccessibility.isVoiceOverRunning {chrome?.visible=false}
                 guard let json=try? locator.jsonString() else{return}
                 store?.savePosition(bookID:id,locatorJSON:json)
             }
@@ -232,7 +268,7 @@ struct ReaderScreen: View {
                             Label(markTitle(marks[index],index:index),systemImage:"bookmark.fill").foregroundStyle(.primary)
                         }.swipeActions {
                             Button("Удалить",role:.destructive) {store.deleteBookmark(bookID:bookID,index:index)}
-                            Button("Переименовать") {editingBookmark=index;bookmarkName=markTitle(marks[index],index:index);namingBookmark=true}.tint(.purple)
+                            Button("Переименовать") {editingBookmark=index;bookmarkName=markTitle(marks[index],index:index);namingBookmark=true}.tint(SwiftUI.Color(hex:accentHex))
                         }
                     }
                 } else {
@@ -284,13 +320,14 @@ private struct ReaderAppearanceSheet: View {
     @AppStorage("readerFont") private var font = "serif"
     @AppStorage("readerFontSize") private var fontSize = 1.1
     @AppStorage("readerScroll") private var scroll = false
+    @AppStorage("readerPageAnimation") private var pageAnimation=true
     @AppStorage("readerProgressDisplay") private var progressDisplay = "percent"
     @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
 
     private let options: [(String, String, SwiftUI.Color, SwiftUI.Color)] = [
-        ("light", "Светлая", SwiftUI.Color(red: 0.97, green: 0.97, blue: 0.95), .black),
-        ("sepia", "Сепия", SwiftUI.Color(red: 0.94, green: 0.85, blue: 0.69), .black),
-        ("dark", "Тёмная", SwiftUI.Color(red: 0.18, green: 0.18, blue: 0.20), .white),
+        ("light", "Светлая", ReaderPaper(theme:"light").background, .black),
+        ("sepia", "Сепия", ReaderPaper(theme:"sepia").background, .black),
+        ("dark", "Тёмная", ReaderPaper(theme:"dark").background, .white),
         ("oled", "OLED", .black, .white)
     ]
 
@@ -321,7 +358,7 @@ private struct ReaderAppearanceSheet: View {
                                                         ? SwiftUI.Color(hex: accentHex) : .white.opacity(0.15),
                                                         lineWidth: theme == item.0 ? 2 : 1)
                                             )
-                                        Text(item.1)
+                                        Text(verbatim:L10n.text(item.1))
                                             .font(.caption)
                                             .foregroundStyle(.white)
                                     }
@@ -350,6 +387,9 @@ private struct ReaderAppearanceSheet: View {
                         }
                         Slider(value: $fontSize, in: 0.7...3.0, step: 0.1)
                             .tint(SwiftUI.Color(hex: accentHex))
+                        ReaderDivider()
+                        Toggle("Анимация перелистывания",isOn:$pageAnimation).padding(.vertical,10).disabled(scroll)
+                        Text(verbatim:L10n.text("Плавное перелистывание по нажатию. В режиме прокрутки и при уменьшении движения анимация не используется.")).font(.caption).foregroundStyle(ReaderStyle.secondary)
                         ReaderDivider()
                         Toggle("Вертикальная прокрутка", isOn: $scroll)
                             .padding(.vertical, 10)
@@ -381,17 +421,10 @@ private struct ReadingProgressFooter:View {
     let format:String
     let theme:String
     @AppStorage("appLanguage") private var language="ru"
-    private var dark:Bool {theme == "dark" || theme == "oled"}
-    private var paper:SwiftUI.Color {
-        switch theme {
-        case "sepia":SwiftUI.Color(hex:"#F5EAD1")
-        case "oled":.black
-        case "dark":SwiftUI.Color(hex:"#1C1C1E")
-        default:SwiftUI.Color(hex:"#FAFAF7")
-        }
-    }
+    private var dark:Bool {ReaderPaper(theme:theme).dark}
+    private var paper:SwiftUI.Color {ReaderPaper(theme:theme).background}
     var body:some View {
-        Text(ReadingProgressDisplay.stored(format).text(fraction:session.fraction,position:session.location?.locations.position,
+        Text(verbatim:ReadingProgressDisplay.stored(format).text(fraction:session.fraction,position:session.location?.locations.position,
                                                       total:session.totalPositions,language:language))
             .font(.system(size:12,weight:.regular)).italic()
             .foregroundStyle((dark ? SwiftUI.Color.white:SwiftUI.Color.black).opacity(0.42))

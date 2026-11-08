@@ -44,6 +44,12 @@ struct LibraryDiscoverySection: View {
                     source("Project Gutenberg", icon: "building.columns") { openBooks("gutendex") }
                 }
             }
+            if audio {
+                HStack(spacing:10) {
+                    source("Книга в ухе",icon:"headphones") {openAudio(.knigavuhe)}
+                    source("Аудиокниги Клуб",icon:"headphones") {openAudio(.akniga)}
+                }
+            }
         }
     }
 

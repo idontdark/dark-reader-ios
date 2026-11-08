@@ -1,10 +1,10 @@
 import Foundation
 
 enum AudioSource: String, CaseIterable, Identifiable, Codable {
-    case librivox, archive, local, opds
+    case librivox, archive, knigavuhe, akniga, local, opds
     var id: String { rawValue }
-    var title: String { switch self { case .librivox: "LibriVox"; case .archive: "Internet Archive"; case .local: "Импортированные";case .opds:"OPDS" } }
-    static var online: [AudioSource] { [.librivox, .archive] }
+    var title: String { switch self { case .librivox: "LibriVox"; case .archive: "Internet Archive"; case .knigavuhe:"Книга в ухе"; case .akniga:"Аудиокниги Клуб"; case .local: "Импортированные";case .opds:"OPDS" } }
+    static var online: [AudioSource] { [.librivox, .archive, .knigavuhe, .akniga] }
 }
 
 struct AudioBook: Identifiable, Hashable, Sendable, Codable {
@@ -50,6 +50,10 @@ enum AudioCatalogService {
     static func search(source: AudioSource, query: String, byAuthor: Bool = false, language: String? = nil) async throws -> [AudioBook] {
         let term = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !term.isEmpty else { throw AudioCatalogError.invalidSearch }
+        if source == .knigavuhe || source == .akniga {
+            let found=try await WebAudioSourceService.search(source:source,query:term,byAuthor:byAuthor)
+            return found.filter {matchesLanguage($0.language,choice:language)}
+        }
         var variants = searchVariants(term)
         if !byAuthor,RecommendationProfile.normalized(term) == "любовь" {variants += ["love","любв"]}
         var results:[AudioBook]=[]
@@ -62,7 +66,7 @@ enum AudioCatalogService {
                 switch source {
                 case .librivox: found=try await searchArchive(variant,byAuthor:byAuthor,language:language,librivoxOnly:true)
                 case .archive: found=try await searchArchive(variant,byAuthor:byAuthor,language:language)
-                case .local,.opds: return []
+                case .local,.opds,.knigavuhe,.akniga: return []
                 }
                 try Task.checkCancellation()
                 succeeded=true
@@ -106,6 +110,9 @@ enum AudioCatalogService {
         switch source {
         case .librivox: return try await archiveFeatured(language:language,genres:genres,newest:newest,librivoxOnly:true)
         case .archive: return try await archiveFeatured(language:language,genres:genres,newest:newest,librivoxOnly:false)
+        case .knigavuhe,.akniga:
+            let found=try await WebAudioSourceService.featured(source:source,genres:genres,newest:newest)
+            return found.filter {matchesLanguage($0.language,choice:language)}
         case .local,.opds: return []
         }
     }
@@ -129,7 +136,7 @@ enum AudioCatalogService {
     }
 
     static func chapters(for book: AudioBook) async throws -> [AudioChapter] {
-        if book.source != .local, let cached = AudioTrackCache.load(book), !cached.isEmpty { return cached }
+        if ![AudioSource.local,.knigavuhe,.akniga].contains(book.source), let cached = AudioTrackCache.load(book), !cached.isEmpty { return cached }
         let found: [AudioChapter]
         switch book.source {
         case .opds:
@@ -143,6 +150,9 @@ enum AudioCatalogService {
                 }
             } else {throw AudioCatalogError.noTracks}
         case .local: return try AudioImportStore.chapters(for: book)
+        case .knigavuhe,.akniga:
+            do {found=try await WebAudioSourceService.chapters(for:book)}
+            catch {if book.source == .knigavuhe,let cached=AudioTrackCache.load(book),!cached.isEmpty {return cached};throw error}
         case .librivox:
             let url = URL(string: "https://librivox.org/api/feed/audiotracks/?project_id=\(book.sourceID)&format=json")!
             let object = try await requestObject(url)
@@ -183,7 +193,7 @@ enum AudioCatalogService {
             }
         }
         guard !found.isEmpty else { throw AudioCatalogError.noTracks }
-        let sorted = found.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+        let sorted = [AudioSource.knigavuhe,.akniga].contains(book.source) ? found:found.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
         AudioTrackCache.save(sorted, for: book)
         return sorted
     }

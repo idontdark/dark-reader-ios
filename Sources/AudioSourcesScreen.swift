@@ -19,7 +19,7 @@ struct AudioSourcesScreen: View {
                             Label(source.title, systemImage: "headphones").font(.headline)
                         }
                         .accessibilityIdentifier("audio-source-"+source.rawValue)
-                        Text(verbatim:L10n.render(source == .librivox ? "Записи добровольцев, преимущественно классика" : "Архив аудиозаписей; доступность зависит от прав и региона",language:localizationLanguage))
+                        Text(verbatim:L10n.render(source == .librivox ? "Записи добровольцев, преимущественно классика" : source == .knigavuhe ? "Русскоязычные аудиокниги. Встроенный плеер и загрузка." : source == .akniga ? "Поиск по русскоязычному каталогу. Прослушивание на сайте." : "Архив аудиозаписей; доступность зависит от прав и региона",language:localizationLanguage))
                             .font(.caption).foregroundStyle(ReaderStyle.secondary).padding(.vertical, 8)
                         Text(verbatim:L10n.render(status[source] ?? "Ещё не проверен",language:localizationLanguage)).font(.caption)
                         Button("Проверить подключение") {

@@ -37,7 +37,7 @@ final class CloudSyncManager: ObservableObject {
     }
     private func collectSettings() -> [String: String] {
         let keys = [
-            "readerTheme", "readerFont", "readerFontSize", "readerScroll", "readerProgressDisplay",
+            "readerTheme", "readerFont", "readerFontSize", "readerScroll", "readerProgressDisplay", "readerPageAnimation",
             "appTheme", "appAppearance", "accentHex", "readerBackgroundHex", "readerTextHex",
             "appLanguage", "preferredBookLanguage", "preferredGenresJSON",
             "preferredAuthorsJSON", "wantsBooks", "wantsAudiobooks", "savedOPDSCatalogs", "favoriteBooksJSON",
@@ -63,7 +63,7 @@ final class CloudSyncManager: ObservableObject {
                 if let size = Double(value), size >= 0.7, size <= 3.0 {
                     defaults.set(size, forKey: key)
                 }
-            case "readerScroll", "wantsBooks", "wantsAudiobooks":
+            case "readerScroll", "readerPageAnimation", "wantsBooks", "wantsAudiobooks":
                 defaults.set(value == "1" || value.lowercased() == "true", forKey: key)
             case "readerTheme", "readerFont", "appTheme", "appAppearance", "accentHex",
                  "readerBackgroundHex", "readerTextHex", "appLanguage",

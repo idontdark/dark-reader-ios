@@ -29,7 +29,7 @@ struct AudioCatalogScreen: View {
     @State private var webCatalog:AudioWebCatalog?
     private var customCatalog:NamedOPDSCatalog? {OPDSSources.decode(savedCatalogs).first {$0.isAudio && $0.id.uuidString == customCatalogID}}
     private var color: Color { Color(hex: accentHex) }
-    private var sourceName:String {customCatalog?.name ?? source.title}
+    private var sourceName:String {customCatalog?.name ?? L10n.text(source.title)}
     private var languageName:String {bookLanguage == "all" ? "Все":bookLanguage == "en" ? "English":"Русский"}
 
     var body: some View {
@@ -42,16 +42,15 @@ struct AudioCatalogScreen: View {
                     VStack(alignment: .leading, spacing: ReaderMetrics.formSpacing) {
                         Menu {
                             ForEach(AudioSource.online.filter {!disabledSources.components(separatedBy:",").contains($0.rawValue)}) {item in
-                                Button(item.title,systemImage:"headphones") {customCatalogID="";source=item}
+                                Button(L10n.text(item.title),systemImage:"headphones") {customCatalogID="";source=item}
                             }
                             ForEach(OPDSSources.decode(savedCatalogs).filter {$0.isAudio}) {item in
                                 Button(item.name,systemImage:"headphones") {customCatalogID=item.id.uuidString}
                             }
                             Divider()
                             Button("Настроить каталоги") {showCatalogs=true}
-                            Section("Веб-каталоги · открываются на сайте") {
-                                Button("Аудиокниги Клуб",systemImage:"safari") {webCatalog=AudioWebCatalog.search(host:"akniga.org",query:query)}
-                                Button("Книга в ухе",systemImage:"safari") {webCatalog=AudioWebCatalog.search(host:"knigavuhe.org",query:query)}
+                            if source == .knigavuhe || source == .akniga {
+                                Button("Открыть поиск на сайте",systemImage:"safari") {webCatalog=AudioWebCatalog.search(host:source == .knigavuhe ? "knigavuhe.org":"akniga.org",query:query)}
                             }
                         } label:{ReaderSearchSourceLabel(title:sourceName,icon:"headphones")}
                         ReaderQueryField(query:$query) {if !searching {startSearch()}}
@@ -89,6 +88,7 @@ struct AudioCatalogScreen: View {
                     }
                     HStack {
                         SectionLabel(text:"Результаты")
+                        if !books.isEmpty && [.knigavuhe,.akniga].contains(source) {Text(verbatim:L10n.text("Показана часть выдачи сайта. Уточните запрос, если нужной книги нет.")).font(.caption).foregroundStyle(ReaderStyle.secondary)}
                         if books.count>=100 {Text(verbatim:L10n.text("Показаны первые 100 результатов. Уточните название или автора.")).font(.caption).foregroundStyle(ReaderStyle.secondary)}
                         Spacer()
                         if didSearch {
@@ -282,6 +282,7 @@ struct AudioBookDetailScreen:View {
                         player.open(book,tracks:chapters);showPlayer=true;onPlay()
                     }.disabled(chapters.isEmpty || loading)
                     AudioDownloadAction(book:book,chapters:chapters)
+                    if [.knigavuhe,.akniga].contains(book.source),let url=book.feedURL {Link("Открыть книгу на сайте",destination:url).font(.subheadline).frame(minHeight:44)}
                     BookFavoriteButton(favorite:favorite) {
                         var values=decode(favoritesJSON)
                         if favorite {values.removeAll {$0.id == book.id}}
@@ -329,7 +330,7 @@ struct AudioBookDetailScreen:View {
                             .accessibilityLabel(Text(verbatim:L10n.render(saved ? "Удалить из библиотеки":"Добавить в библиотеку",language:localizationLanguage)))
                     }
                 }.tint(Color(hex:accentHex))
-                .task {defer{loading=false};do{chapters=try await AudioCatalogService.chapters(for:book)}catch{message="Не удалось загрузить главы. Проверьте подключение."}}
+                .task {defer{loading=false};do{chapters=try await AudioCatalogService.chapters(for:book)}catch{message=L10n.errorDescription(error)}}
                 .onChange(of:format) {_,value in
                     if value == "books" {navigation.bookToSearch=book.title;navigation.searchScope="books";navigation.tab = .search;dismiss()}
                 }

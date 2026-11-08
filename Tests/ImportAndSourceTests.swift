@@ -49,6 +49,6 @@ final class ImportAndSourceTests: XCTestCase {
 
     func testBothAudioSourcesConfigured() {
         XCTAssertEqual(Set(AudioSource.online.map(\.rawValue)),
-                       Set(["librivox", "archive"]))
+                       Set(["librivox", "archive", "knigavuhe", "akniga"]))
     }
 }
