@@ -579,3 +579,17 @@
 "Книги будут добавлены к библиотеке. Существующие книги не удаляются. Настройки будут восстановлены из копии." = "Books will be added to your library. Existing books will not be deleted. Settings will be restored from the backup.";
 
 "Копия сохранена в файл." = "Backup exported.";
+
+"Найдите свою следующую книгу" = "Find your next book";
+"Выберите источник и язык, затем введите название или автора. Найденную книгу можно скачать в библиотеку." = "Choose a source and language, then enter a title or author. Download a book to add it to your library.";
+"Начните свою библиотеку" = "Start your library";
+"Нажмите «+», чтобы добавить файл. Новую книгу можно найти ниже, в разделе «Откройте новое»." = "Tap + to import a file, or find your next book in Discover below.";
+"Всё для чтения под рукой" = "Your reading tools, close at hand";
+"Настройте шрифт и тему через Aa. Сохраните важное место кнопкой закладки — оно появится в «Моих закладках»." = "Use Aa to adjust the font and theme. Bookmark a passage to find it later in My bookmarks.";
+"Закрыть подсказку" = "Dismiss tip";
+"Веб-каталоги · открываются на сайте" = "Web catalogs · open on the website";
+"Аудиокниги Клуб" = "Audioknigi Club";
+"Книга в ухе" = "Kniga v Ukhe";
+"Показаны первые 100 результатов. Уточните название или автора." = "Showing the first 100 results. Refine your title or author.";
+
+"МБ" = "MB";

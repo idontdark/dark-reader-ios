@@ -228,11 +228,7 @@ struct CatalogScreen: View {
                     UINotificationFeedbackGenerator().notificationOccurred(.success)
                 }
             }
-            .alert("Поиск книг", isPresented: $showCatalogTip) {
-                Button("Понятно") {}
-            } message: {
-                Text(verbatim:L10n.render("Ищите книги по названию или автору. Поддерживаются EPUB, FB2 и MOBI, если каталог отдаёт файл.",language:localizationLanguage))
-            }
+            .readerHint(isPresented:$showCatalogTip,title:"Найдите свою следующую книгу",message:"Выберите источник и язык, затем введите название или автора. Найденную книгу можно скачать в библиотеку.",icon:"magnifyingglass")
             .onChange(of: provider) { _, _ in
                 cancelSearch()
                 history = []

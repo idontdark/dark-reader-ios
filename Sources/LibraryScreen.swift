@@ -55,9 +55,7 @@ struct LibraryScreen:View {
                 }.padding(.horizontal,20).padding(.top,8).padding(.bottom,24)
             }.readerCanvas().toolbar(.hidden,for:.navigationBar)
                 .onAppear { offerHint() }
-                .alert("Ваша библиотека",isPresented:$showLibraryTip) {
-                    Button("Понятно") { hintLibraryShown=true }
-                } message: { Text(verbatim:L10n.render("Здесь хранятся ваши книги. Чтобы добавить новую, нажмите +.",language:localizationLanguage)) }
+                .readerHint(isPresented:$showLibraryTip,title:"Начните свою библиотеку",message:"Нажмите «+», чтобы добавить файл. Новую книгу можно найти ниже, в разделе «Откройте новое».",icon:"books.vertical")
                 .fullScreenCover(item:$selected) { ReaderScreen(bookID:$0.id) }
                 .sheet(isPresented:$showingImport) { ImportScreen().environmentObject(books).environmentObject(navigation) }
                 .sheet(isPresented:$showingAudioImport) { AudioImportScreen() }

@@ -26,6 +26,7 @@ struct AudioCatalogScreen: View {
     @AppStorage("savedOPDSCatalogs") private var savedCatalogs="[]"
     @AppStorage("preferredAudioCatalogID") private var customCatalogID=""
     @State private var showCatalogs=false
+    @State private var webCatalog:AudioWebCatalog?
     private var customCatalog:NamedOPDSCatalog? {OPDSSources.decode(savedCatalogs).first {$0.isAudio && $0.id.uuidString == customCatalogID}}
     private var color: Color { Color(hex: accentHex) }
     private var sourceName:String {customCatalog?.name ?? source.title}
@@ -48,6 +49,10 @@ struct AudioCatalogScreen: View {
                             }
                             Divider()
                             Button("Настроить каталоги") {showCatalogs=true}
+                            Section("Веб-каталоги · открываются на сайте") {
+                                Button("Аудиокниги Клуб",systemImage:"safari") {webCatalog=AudioWebCatalog.search(host:"akniga.org",query:query)}
+                                Button("Книга в ухе",systemImage:"safari") {webCatalog=AudioWebCatalog.search(host:"knigavuhe.org",query:query)}
+                            }
                         } label:{ReaderSearchSourceLabel(title:sourceName,icon:"headphones")}
                         ReaderQueryField(query:$query) {if !searching {startSearch()}}
                         ReaderSegmentedControl(items:[("title","По названию"),("author","По автору")],selection:Binding(
@@ -84,6 +89,7 @@ struct AudioCatalogScreen: View {
                     }
                     HStack {
                         SectionLabel(text:"Результаты")
+                        if books.count>=100 {Text(verbatim:L10n.text("Показаны первые 100 результатов. Уточните название или автора.")).font(.caption).foregroundStyle(ReaderStyle.secondary)}
                         Spacer()
                         if didSearch {
                             Text("\(books.count)")
@@ -152,6 +158,7 @@ struct AudioCatalogScreen: View {
             .readerCanvas()
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(isPresented:$showCatalogs) {CustomOPDSCatalogsScreen()}
+            .sheet(item:$webCatalog) {AudioWebCatalogScreen(url:$0.url)}
             .onChange(of:customCatalogID) {_,_ in cancelSearch();didSearch=false;books=[];message=nil}
             .fullScreenCover(item: $selected) { book in
                 AudioBookDetailScreen(book: book) {}

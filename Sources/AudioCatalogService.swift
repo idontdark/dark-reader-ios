@@ -50,18 +50,29 @@ enum AudioCatalogService {
     static func search(source: AudioSource, query: String, byAuthor: Bool = false, language: String? = nil) async throws -> [AudioBook] {
         let term = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !term.isEmpty else { throw AudioCatalogError.invalidSearch }
-        let variants = searchVariants(term)
+        var variants = searchVariants(term)
+        if !byAuthor,RecommendationProfile.normalized(term) == "любовь" {variants += ["love","любв"]}
+        var results:[AudioBook]=[]
+        var seen=Set<String>()
+        var lastError:Error?
+        var succeeded=false
         for variant in variants {
-            let found: [AudioBook]
-            switch source {
-            case .librivox: found = try await searchArchive(variant, byAuthor: byAuthor, language: language, librivoxOnly:true)
-            case .archive: found = try await searchArchive(variant, byAuthor: byAuthor, language: language)
-            case .local,.opds: return []
-            }
-            let filtered = found.filter { matchesLanguage($0.language, choice: language) }
-            if !filtered.isEmpty { return filtered }
+            do {
+                let found:[AudioBook]
+                switch source {
+                case .librivox: found=try await searchArchive(variant,byAuthor:byAuthor,language:language,librivoxOnly:true)
+                case .archive: found=try await searchArchive(variant,byAuthor:byAuthor,language:language)
+                case .local,.opds: return []
+                }
+                try Task.checkCancellation()
+                succeeded=true
+                for book in found where matchesLanguage(book.language,choice:language) && seen.insert(book.id).inserted {results.append(book)}
+                if results.count>=100 {break}
+            } catch is CancellationError {throw CancellationError()}
+            catch {lastError=error}
         }
-        return []
+        if !succeeded,let lastError {throw lastError}
+        return Array(results.prefix(100))
     }
 
     static func matchesLanguage(_ value: String?, choice: String?) -> Bool {
@@ -224,7 +235,7 @@ enum AudioCatalogService {
             .init(name: "fl[]", value: "description"),
             .init(name: "fl[]", value: "language"),
             .init(name: "fl[]", value: "subject"),
-            .init(name: "rows", value: "20"),
+            .init(name: "rows", value: "100"),
             .init(name: "page", value: "1"),
             .init(name: "output", value: "json")
         ]

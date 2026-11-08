@@ -145,11 +145,7 @@ struct ReaderScreen: View {
             .tint(SwiftUI.Color(hex: accentHex))
         }
         .sheet(isPresented:$showBookmarks) {bookmarksSheet}
-        .alert("Удобное чтение", isPresented: $showReaderTip) {
-            Button("Понятно") {}
-        } message: {
-            Text(verbatim:L10n.render("Нажмите Aa для темы и шрифта, а закладку можно добавить в верхнем меню.",language:localizationLanguage))
-        }
+        .readerHint(isPresented:$showReaderTip,title:"Всё для чтения под рукой",message:"Настройте шрифт и тему через Aa. Сохраните важное место кнопкой закладки — оно появится в «Моих закладках».",icon:"book")
         .sheet(isPresented: $appearanceOpen) {
             ReaderAppearanceSheet()
                 .presentationDetents([.medium, .large])

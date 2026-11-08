@@ -27,6 +27,8 @@ final class AudioPlayerModel: ObservableObject {
     private var sleepTask: Task<Void, Never>?
     @Published private(set) var downloadingChapter: String?
     @Published private(set) var downloaded: Set<String> = []
+    @Published private(set) var downloadBytes:Int64=0
+    @Published private(set) var downloadExpectedBytes:Int64=0
     @Published private(set) var downloadingBookID: String?
     @Published private(set) var completedDownloads = 0
     @Published private(set) var totalDownloads = 0
@@ -276,6 +278,7 @@ final class AudioPlayerModel: ObservableObject {
     func startDownload(_ selected: AudioBook, tracks: [AudioChapter]) {
         guard downloadTask == nil, !tracks.isEmpty else { return }
         downloadError = nil
+        downloadBytes=0;downloadExpectedBytes=0
         downloadingBookID = selected.id
         totalDownloads = tracks.count
         completedDownloads = tracks.filter { localURL(for: $0) != nil }.count
@@ -312,24 +315,37 @@ final class AudioPlayerModel: ObservableObject {
     private func download(_ track: AudioChapter) async throws {
         var request = URLRequest(url: track.url)
         request.setValue("DarkReader/1.0 (iOS; audiobook download)", forHTTPHeaderField: "User-Agent")
-        let (temporary, response) = try await downloadSession.download(for: request)
+        downloadBytes=0;downloadExpectedBytes=0
+        let progress=AudioTransferProgress { [weak self] bytes,expected in
+            Task { @MainActor in
+                guard let self,self.downloadingChapter == track.id else {return}
+                self.downloadBytes=bytes;self.downloadExpectedBytes=expected
+            }
+        }
+        let (temporary, response) = try await downloadSession.download(for: request,delegate:progress)
         defer { try? FileManager.default.removeItem(at: temporary) }
         try Task.checkCancellation()
         guard let http = response as? HTTPURLResponse,
               (200..<300).contains(http.statusCode) else {
             throw AudioCatalogError.unavailable
         }
-        // Validate before publishing the file or updating the offline index.
-        let asset = AVURLAsset(url: temporary)
+        // AVFoundation identifies local formats from the extension: URLSession's .tmp
+        // URL can report zero audio tracks for a valid MP3. Stage with its real suffix.
+        let base=try audioFolder()
+        let staged=base.appendingPathComponent(".partial-"+UUID().uuidString)
+            .appendingPathExtension(URL(fileURLWithPath:safeFilename(for:track)).pathExtension)
+        try FileManager.default.moveItem(at:temporary,to:staged)
+        defer {try? FileManager.default.removeItem(at:staged)}
+        let asset = AVURLAsset(url: staged)
         guard !(try await asset.loadTracks(withMediaType: .audio)).isEmpty else {
             throw AudioCatalogError.noTracks
         }
         try Task.checkCancellation()
         let target = try audioFolder().appendingPathComponent(safeFilename(for: track))
         if FileManager.default.fileExists(atPath: target.path) {
-            _ = try FileManager.default.replaceItemAt(target, withItemAt: temporary)
+            _ = try FileManager.default.replaceItemAt(target, withItemAt: staged)
         } else {
-            try FileManager.default.moveItem(at: temporary, to: target)
+            try FileManager.default.moveItem(at: staged, to: target)
         }
         downloaded.insert(track.id)
         settings.set(Array(downloaded), forKey: downloadKey)

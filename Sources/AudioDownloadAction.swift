@@ -16,8 +16,10 @@ struct AudioDownloadAction: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if player.downloadingBookID == book.id {
-                ProgressView(value: Double(player.completedDownloads), total: Double(max(1, player.totalDownloads)))
+                ProgressView(value: min(Double(player.totalDownloads),Double(player.completedDownloads)+(player.downloadExpectedBytes>0 ? min(1,Double(player.downloadBytes)/Double(player.downloadExpectedBytes)):0)), total: Double(max(1, player.totalDownloads)))
                     .tint(Color(hex: accentHex))
+                Text(verbatim:bytes(player.downloadBytes)+(player.downloadExpectedBytes>0 ? " / "+bytes(player.downloadExpectedBytes):""))
+                    .font(.caption.monospacedDigit()).foregroundStyle(ReaderStyle.secondary)
                 HStack {
                     Text(verbatim: String(format: L10n.text("Скачано глав: %d из %d", language: language), player.completedDownloads, player.totalDownloads))
                         .font(.caption).foregroundStyle(ReaderStyle.secondary)
@@ -42,4 +44,8 @@ struct AudioDownloadAction: View {
             }
         }
     }
+    private func bytes(_ value:Int64)->String {
+        String(format:"%.1f",locale:Locale(identifier:language),Double(max(0,value))/1_048_576)+" "+L10n.text("МБ",language:language)
+    }
+
 }

@@ -91,6 +91,7 @@ struct LocalBackupCard: View {
     @State private var document: BackupDocument?
     @State private var exporting = false
     @State private var importing = false
+    @State private var pendingImport:URL?
     @State private var confirming = false
     @State private var restore: LocalLibraryBackup.Restored?
     @State private var busy = false
@@ -100,11 +101,11 @@ struct LocalBackupCard: View {
             Label("Копия в файле", systemImage: "externaldrive").font(.headline)
             Text(verbatim: L10n.text("Архив ZIP: электронные книги, закладки, прогресс и настройки. Аудиофайлы не включаются.", language: language))
                 .font(.footnote).foregroundStyle(ReaderStyle.secondary).padding(.vertical, 12)
-            PurpleAction(title: "Сохранить в файл", icon: "square.and.arrow.up") { Task { await export() } }
-            Button("Восстановить из файла") { importing = true }.frame(minHeight: 44).padding(.top, 8)
+            PurpleAction(title: "Сохранить в файл", icon: "square.and.arrow.up") { Task { await export() } }.disabled(busy)
+            Button("Восстановить из файла") { importing = true }.frame(minHeight: 44).padding(.top, 8).disabled(busy)
             if busy { ProgressView().padding(.top, 8) }
             if !status.isEmpty { Text(verbatim: status).font(.footnote).foregroundStyle(ReaderStyle.secondary).padding(.top, 8) }
-        }.disabled(busy)
+        }
             .fileExporter(isPresented: $exporting, document: document, contentType: .zip, defaultFilename: "DarkReader-backup") { result in
                 switch result {
                 case .failure(let error): status = L10n.errorDescription(error)
@@ -112,16 +113,22 @@ struct LocalBackupCard: View {
                 }
                 cleanupExport()
             }
-            .fileImporter(isPresented: $importing, allowedContentTypes: [.zip]) { result in
-                Task {
-                    do { let url = try result.get(); busy = true; defer { busy = false }; restore = try await LocalLibraryBackup.read(url); confirming = true }
-                    catch { status = L10n.errorDescription(error) }
-                }
+            .sheet(isPresented:$importing,onDismiss:readPendingImport) {
+                BackupFilePicker {url in pendingImport=url;importing=false}
             }
             .alert("Восстановить библиотеку из файла?", isPresented: $confirming) {
                 Button("Восстановить") { applyRestore() }
                 Button("Отмена", role: .cancel) { cleanupRestore() }
             } message: { Text("Книги будут добавлены к библиотеке. Существующие книги не удаляются. Настройки будут восстановлены из копии.") }
+    }
+    private func readPendingImport() {
+        guard let url=pendingImport else{return}
+        pendingImport=nil
+        Task { @MainActor in
+            busy=true;status="";defer {busy=false}
+            do {restore=try await LocalLibraryBackup.read(url);confirming=true}
+            catch {status=L10n.errorDescription(error)}
+        }
     }
     private func export() async {
         busy = true; status = ""; defer { busy = false }
