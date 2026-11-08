@@ -44,6 +44,8 @@ enum OPDSSources {
 }
 
 struct CustomOPDSCatalogsScreen: View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     @AppStorage("savedOPDSCatalogs") private var raw = "[]"
     @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
     @State private var name = ""
@@ -59,9 +61,9 @@ struct CustomOPDSCatalogsScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 VStack(alignment: .leading, spacing: 7) {
-                    Text("OPDS-каталоги")
+                    Text(verbatim:L10n.render("OPDS-каталоги",language:localizationLanguage))
                         .font(.system(size: 29, weight: .bold, design: .rounded))
-                    Text("Добавьте название и ссылку HTTP или HTTPS. Можно подключить несколько каталогов.")
+                    Text(verbatim:L10n.render("Добавьте название и ссылку HTTP или HTTPS. Можно подключить несколько каталогов.",language:localizationLanguage))
                         .font(.subheadline)
                         .foregroundStyle(ReaderStyle.secondary)
                 }
@@ -75,7 +77,7 @@ struct CustomOPDSCatalogsScreen: View {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(source.name)
                                         .font(.subheadline.weight(.semibold))
-                                    Text(source.isAudio ? "Аудиокниги":"Книги").font(.caption).foregroundStyle(ReaderStyle.secondary)
+                                    Text(verbatim:L10n.render(source.isAudio ? "Аудиокниги":"Книги",language:localizationLanguage)).font(.caption).foregroundStyle(ReaderStyle.secondary)
                                     Text(source.url)
                                         .font(.caption2)
                                         .lineLimit(1)
@@ -106,7 +108,7 @@ struct CustomOPDSCatalogsScreen: View {
                 }
                 SectionLabel(text: editingID == nil ? "Новый каталог" : "Изменить каталог")
                 ReaderCard {
-                    Text("Тип каталога").font(.system(size:13,weight:.semibold)).padding(.bottom,10)
+                    Text(verbatim:L10n.render("Тип каталога",language:localizationLanguage)).font(.system(size:13,weight:.semibold)).padding(.bottom,10)
                     ReaderSegmentedControl(items:[("books","Книги"),("audio","Аудиокниги")],selection:$kind)
                     ReaderDivider().padding(.top,12)
                     TextField("Название", text: $name)
@@ -120,7 +122,7 @@ struct CustomOPDSCatalogsScreen: View {
                         .padding(.vertical, 13)
                 }
                 if let error {
-                    Text(error)
+                    Text(verbatim:L10n.render(error,language:localizationLanguage))
                         .font(.footnote)
                         .foregroundStyle(.orange)
                 }
@@ -134,14 +136,14 @@ struct CustomOPDSCatalogsScreen: View {
                     }
                     .font(.subheadline)
                 }
-                Text("Если книги не находятся, проверьте адрес OPDS-каталога.")
+                Text(verbatim:L10n.render("Если книги не находятся, проверьте адрес OPDS-каталога.",language:localizationLanguage))
                     .font(.footnote)
                     .foregroundStyle(ReaderStyle.secondary)
             }
             .padding(20)
         }
         .readerCanvas()
-        .navigationTitle("OPDS")
+        .readerNavigationTitle("OPDS")
         .navigationBarTitleDisplayMode(.inline)
     }
 

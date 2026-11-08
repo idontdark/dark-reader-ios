@@ -53,6 +53,8 @@ enum ReaderPreferences {
 }
 
 struct LanguageSettingsScreen: View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     @AppStorage("appLanguage") private var appLanguage = "ru"
     @AppStorage("preferredBookLanguage") private var bookLanguage = "auto"
     @AppStorage("catalogProvider") private var catalogProvider = "flibusta"
@@ -76,7 +78,7 @@ struct LanguageSettingsScreen: View {
                         bookLanguageOption("en","English",symbol:"🇬🇧")
                         ReaderDivider()
                         bookLanguageOption("all","Все языки",symbol:"🌐")
-                        Text("Язык книг настраивается отдельно от языка приложения. Фильтрация зависит от выбранного каталога.")
+                        Text(verbatim:L10n.render("Язык книг настраивается отдельно от языка приложения. Фильтрация зависит от выбранного каталога.",language:localizationLanguage))
                             .font(.footnote)
                             .foregroundStyle(ReaderStyle.secondary)
                             .padding(.top, 9)
@@ -86,7 +88,7 @@ struct LanguageSettingsScreen: View {
             .padding(20)
         }
         .readerCanvas()
-        .navigationTitle(Text(verbatim:appLanguage == "en" ? "Language":"Язык"))
+        .readerNavigationTitle(appLanguage == "en" ? "Language":"Язык")
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -105,9 +107,7 @@ struct LanguageSettingsScreen: View {
     private func languageOption(_ code: String, _ label: String, symbol: String) -> some View {
         Button {
             appLanguage = code
-            if catalogProvider == "flibusta" || catalogProvider == "gutendex" {
-                catalogProvider = code == "en" ? "gutendex" : "flibusta"
-            }
+
         } label: {
             HStack(spacing: 12) {
                 Text(symbol).font(.title3)
@@ -125,6 +125,8 @@ struct LanguageSettingsScreen: View {
 }
 
 struct FavoriteAuthorsScreen: View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     @EnvironmentObject private var navigation: ReaderNavigation
     @AppStorage("preferredAuthorsJSON") private var authorsJSON = "[]"
     @AppStorage("appLanguage") private var language = "ru"
@@ -137,9 +139,9 @@ struct FavoriteAuthorsScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 19) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Любимые авторы")
+                    Text(verbatim:L10n.render("Любимые авторы",language:localizationLanguage))
                         .font(.system(size: 28, weight: .bold, design: .rounded))
-                    Text("Сохраняйте авторов и ищите их книги в одно касание.")
+                    Text(verbatim:L10n.render("Сохраняйте авторов и ищите их книги в одно касание.",language:localizationLanguage))
                         .font(.subheadline)
                         .foregroundStyle(ReaderStyle.secondary)
                 }
@@ -213,7 +215,7 @@ struct FavoriteAuthorsScreen: View {
             .padding(20)
         }
         .readerCanvas()
-        .navigationTitle("Авторы")
+        .readerNavigationTitle("Авторы")
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -236,6 +238,8 @@ struct FavoriteAuthorsScreen: View {
 }
 
 struct GenreSettingsScreen: View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     @AppStorage("preferredGenresJSON") private var genresJSON = "[]"
     @AppStorage("appLanguage") private var language = "ru"
     private var chosen: [String] { ReaderPreferences.array(genresJSON) }
@@ -243,8 +247,8 @@ struct GenreSettingsScreen: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text("Любимые жанры").font(.system(size: 27, weight: .bold, design: .rounded))
-                Text("Выбранные жанры помогут подобрать книги для вас.")
+                Text(verbatim:L10n.render("Любимые жанры",language:localizationLanguage)).font(.system(size: 27, weight: .bold, design: .rounded))
+                Text(verbatim:L10n.render("Выбранные жанры помогут подобрать книги для вас.",language:localizationLanguage))
                     .font(.subheadline).foregroundStyle(ReaderStyle.secondary)
                 ForEach(ReaderPreferences.genres, id: \.id) { item in
                     Button {
@@ -272,7 +276,7 @@ struct GenreSettingsScreen: View {
             .padding(20)
         }
         .readerCanvas()
-        .navigationTitle("Жанры")
+        .readerNavigationTitle("Жанры")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

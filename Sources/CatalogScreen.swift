@@ -6,6 +6,8 @@ private struct CatalogHistoryPage {
 }
 
 struct CatalogScreen: View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     var showsHeader = true
     @EnvironmentObject private var library: BookshelfStore
     @EnvironmentObject private var navigation: ReaderNavigation
@@ -61,7 +63,7 @@ struct CatalogScreen: View {
                         ReaderHeader(title: "Каталог книг", trailingIcon: nil, trailingAction: nil)
                     }
 
-                    VStack(alignment: .leading, spacing: 14) {
+                    VStack(alignment: .leading, spacing: ReaderMetrics.formSpacing) {
                         Menu {
                             Button("Флибуста", systemImage: "books.vertical") { provider = "flibusta" }
                             Button("Gutendex · Project Gutenberg", systemImage: "book.closed") { provider = "gutendex" }
@@ -76,61 +78,13 @@ struct CatalogScreen: View {
                             if provider == "custom" {
                                 Button("Другой OPDS", systemImage: "server.rack") { provider = "custom" }
                             }
-                        } label: {
-                            HStack {
-                                Image(systemName: "square.stack")
-                                    .foregroundStyle(Color(hex: accentHex))
-                                Text(providerName)
-                                    .foregroundStyle(.white)
-                                    .font(.subheadline.weight(.semibold))
-                                Spacer()
-                                Image(systemName: "chevron.up.chevron.down")
-                                    .foregroundStyle(ReaderStyle.secondary)
-                            }
-                            .padding(14)
-                            .background(ReaderStyle.surface, in: RoundedRectangle(cornerRadius: 13))
-                        }
+                        } label: {ReaderSearchSourceLabel(title:providerName,icon:"square.stack")}
 
-                        HStack(spacing: 10) {
-                            Image(systemName: "magnifyingglass")
-                                .foregroundStyle(ReaderStyle.secondary)
-                            TextField("Название или автор", text: $query)
-                                .textInputAutocapitalization(.never)
-                                .autocorrectionDisabled()
-                                .submitLabel(.search)
-                                .onSubmit { if !searching { startSearch() } }
-                                .foregroundStyle(.white)
-                            if !query.isEmpty {
-                                Button { query = "" } label: {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .foregroundStyle(ReaderStyle.secondary)
-                                }
-                            }
-                        }
-                        .padding(14)
-                        .background(ReaderStyle.surface, in: RoundedRectangle(cornerRadius: 13))
 
-                        Picker("Поиск", selection: $mode) {
-                            Text("По названию").tag("title")
-                            Text("По автору").tag("author")
-                        }
-                        .pickerStyle(.segmented)
+                        ReaderQueryField(query:$query) {if !searching {startSearch()}}
 
-                        HStack(spacing: 8) {
-                            Image(systemName: "globe")
-                            Text("Язык книг")
-                            Spacer()
-                            Menu {
-                                Button("Русский") { bookLanguage = "ru" }
-                                Button("English") { bookLanguage = "en" }
-                                Button("Все") { bookLanguage = "all" }
-                            } label: {
-                                Text(languageName)
-                                    .foregroundStyle(Color(hex: accentHex))
-                            }
-                        }
-                        .font(.footnote)
-                        .foregroundStyle(ReaderStyle.secondary)
+                        ReaderSegmentedControl(items:[("title","По названию"),("author","По автору")],selection:$mode)
+                        ReaderSearchLanguage(selection:$bookLanguage)
 
                         PurpleAction(title: searching ? "Отменить поиск" : "Найти книги",
                                      icon: searching ? "xmark" : "magnifyingglass") {
@@ -147,9 +101,10 @@ struct CatalogScreen: View {
                                     .font(.title2)
                                     .foregroundStyle(.green)
                                 VStack(alignment: .leading, spacing: 6) {
-                                    Text("Книга скачана")
+                                    Text(verbatim:L10n.render("Книга скачана",language:localizationLanguage))
                                         .font(.headline)
-                                    Text("«\(completedTitle)» уже в библиотеке. Можно начинать чтение.")
+                                    Text(completedTitle)
+                                    Text(verbatim:L10n.render("Книга уже в библиотеке. Можно начинать чтение.",language:localizationLanguage))
                                         .font(.subheadline)
                                         .foregroundStyle(ReaderStyle.secondary)
                                 }
@@ -204,7 +159,7 @@ struct CatalogScreen: View {
                             }
                         }
                         if !supportsLanguageFiltering && hasSearched {
-                            Text("Этот каталог не поддерживает точную фильтрацию по языку.")
+                            Text(verbatim:L10n.render("Этот каталог не поддерживает точную фильтрацию по языку.",language:localizationLanguage))
                                 .font(.caption)
                                 .foregroundStyle(ReaderStyle.secondary)
                         }
@@ -224,10 +179,10 @@ struct CatalogScreen: View {
                             VStack(alignment: .leading, spacing: 9) {
                                 HStack(spacing: 12) {
                                     ProgressView().tint(Color(hex: accentHex))
-                                    Text("Ищем книги…").foregroundStyle(ReaderStyle.secondary)
+                                    Text(verbatim:L10n.render("Ищем книги…",language:localizationLanguage)).foregroundStyle(ReaderStyle.secondary)
                                 }
                                 if showVPNHint {
-                                    Text("Поиск занимает больше времени обычного. Если каталог не отвечает, попробуйте VPN.")
+                                    Text(verbatim:L10n.render("Поиск занимает больше времени обычного. Если каталог не отвечает, попробуйте VPN.",language:localizationLanguage))
                                         .font(.footnote)
                                         .foregroundStyle(ReaderStyle.secondary)
                                 }
@@ -276,7 +231,7 @@ struct CatalogScreen: View {
             .alert("Поиск книг", isPresented: $showCatalogTip) {
                 Button("Понятно") {}
             } message: {
-                Text("Ищите книги по названию или автору. Поддерживаются EPUB, FB2 и MOBI, если каталог отдаёт файл.")
+                Text(verbatim:L10n.render("Ищите книги по названию или автору. Поддерживаются EPUB, FB2 и MOBI, если каталог отдаёт файл.",language:localizationLanguage))
             }
             .onChange(of: provider) { _, _ in
                 cancelSearch()
@@ -295,15 +250,15 @@ struct CatalogScreen: View {
                 get: { error != nil }, set: { if !$0 { error = nil } }
             )) {
                 Button("Понятно", role: .cancel) { error = nil }
-            } message: { Text(error ?? "") }
+            } message: { Text(verbatim:L10n.render(error ?? "",language:localizationLanguage)) }
         }
     }
 
     private var emptyResults: some View {
         ReaderCard {
             VStack(alignment: .leading, spacing: 7) {
-                Text("Ничего не найдено").font(.headline)
-                Text("Попробуйте другой запрос или переключите каталог.")
+                Text(verbatim:L10n.render("Ничего не найдено",language:localizationLanguage)).font(.headline)
+                Text(verbatim:L10n.render("Попробуйте другой запрос или переключите каталог.",language:localizationLanguage))
                     .font(.subheadline)
                     .foregroundStyle(ReaderStyle.secondary)
             }
@@ -340,7 +295,7 @@ struct CatalogScreen: View {
                             .font(.caption2)
                             .foregroundStyle(ReaderStyle.secondary)
                     } else {
-                        Text(book.epubURL != nil ? "EPUB" : "Открыть раздел")
+                        Text(verbatim:L10n.render(book.epubURL != nil ? "EPUB" : "Открыть раздел",language:localizationLanguage))
                             .font(.caption2.weight(.medium))
                             .foregroundStyle(ReaderStyle.secondary)
                     }
@@ -353,7 +308,7 @@ struct CatalogScreen: View {
                         else if task?.state == .paused {downloads.retry(book.id)}
                         else {downloads.enqueue(book)}
                     } label: {
-                        if local != nil {Text("Читать").font(.system(size:12,weight:.semibold)).foregroundStyle(Color(hex:accentHex))}
+                        if local != nil {Text(verbatim:L10n.render("Читать",language:localizationLanguage)).font(.system(size:12,weight:.semibold)).foregroundStyle(Color(hex:accentHex))}
                         else {
                             Image(systemName:task?.state == .paused ? "play.circle" : task.map {[.connecting,.downloading,.queued].contains($0.state)} == true ? "pause.circle":"arrow.down.to.line")
                                 .font(.system(size: 19, weight: .medium))
@@ -479,7 +434,7 @@ struct CatalogScreen: View {
             heading = book.title
             results = next
         } catch {
-            self.error = error.localizedDescription
+            self.error = L10n.errorDescription(error)
         }
     }
 
@@ -494,7 +449,7 @@ struct CatalogScreen: View {
             completedTitle = book.title
             UINotificationFeedbackGenerator().notificationOccurred(.success)
         } catch {
-            self.error = error.localizedDescription
+            self.error = L10n.errorDescription(error)
         }
     }
 }

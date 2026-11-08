@@ -130,6 +130,8 @@ struct DiscoveryArtwork: View {
 }
 
 struct DiscoveryBookDetail:View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     let book:DiscoveryBook
     @EnvironmentObject private var navigation:ReaderNavigation
     @Environment(\.dismiss) private var dismiss
@@ -146,16 +148,16 @@ struct DiscoveryBookDetail:View {
                     BookDetailHero(title:book.title,author:book.author,coverURL:book.coverURL,
                                    tags:[ReaderPreferences.genreName(book.genre,language:language)])
                     ReaderSegmentedControl(items:[("books","Книга"),("audio","Аудиокнига")],selection:$format)
-                    Text(summary ?? "Описание пока недоступно.")
+                    Text(verbatim:L10n.render(summary ?? "Описание пока недоступно.",language:localizationLanguage))
                         .font(.system(size:14)).lineSpacing(4).foregroundStyle(summary == nil ? ReaderStyle.secondary:.white.opacity(0.88))
                         .frame(maxWidth:.infinity,alignment:.leading).padding(.vertical,3)
                     PurpleAction(title:"Найти книгу для скачивания",icon:"arrow.down.to.line") {find("books")}
                     BookFavoriteButton(favorite:favorite) {toggle()}
                     Link(destination:book.detailURL) {
-                        Text("Сведения об издании · Open Library").font(.system(size:11)).foregroundStyle(ReaderStyle.secondary)
+                        Text(verbatim:L10n.render("Сведения об издании · Open Library",language:localizationLanguage)).font(.system(size:11)).foregroundStyle(ReaderStyle.secondary)
                     }
                 }.padding(.horizontal,20).padding(.top,10).padding(.bottom,30)
-            }.readerCanvas().navigationTitle("").navigationBarTitleDisplayMode(.inline)
+            }.readerCanvas().readerNavigationTitle("").navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement:.topBarLeading) {
                         Button {dismiss()} label:{Image(systemName:"chevron.left").font(.system(size:18,weight:.medium))}

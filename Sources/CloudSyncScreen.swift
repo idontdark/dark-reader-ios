@@ -4,32 +4,32 @@ import UIKit
 import GoogleSignInSwift
 
 struct CloudSyncScreen:View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     @EnvironmentObject private var cloud:CloudSyncManager
     @ObservedObject private var google=GoogleDriveBackup.shared
-    @State private var pickingFolder=false
+    @StateObject private var folderPicker=CloudFolderPickerPresenter()
     @State private var deleteGoogle=false
-    @State private var selectedFolder:URL?
-    @State private var selectedFolderScoped=false
     @State private var connectingICloud=false
     var body:some View {
         ScrollView {
             VStack(alignment:.leading,spacing:19) {
-                Text("Резервные копии").font(.system(size:27,weight:.bold))
-                Text("Сохраняйте электронные книги, закладки, прогресс и настройки. Аудиофайлы в эти копии не входят.")
+                Text(verbatim:L10n.render("Резервные копии",language:localizationLanguage)).font(.system(size:27,weight:.bold))
+                Text(verbatim:L10n.render("Сохраняйте электронные книги, закладки, прогресс и настройки. Аудиофайлы в эти копии не входят.",language:localizationLanguage))
                     .font(.system(size:13)).foregroundStyle(ReaderStyle.secondary)
                 ReaderCard {
                     Label("iCloud Drive",systemImage:"icloud").font(.headline)
                     Toggle("Сохранять в iCloud",isOn:Binding(get:{cloud.enabled},set:{value in
                         connectingICloud=true
                         Task {
-                            if !(await cloud.setEnabled(value)) {pickingFolder=true}
+                            if !(await cloud.setEnabled(value)) {presentFolderPicker()}
                             connectingICloud=false
                         }
-                    })).disabled(connectingICloud || cloud.isSyncing).padding(.top,14)
-                    if connectingICloud || cloud.isSyncing {ProgressView().padding(.top,8)}
-                    Text(cloud.enabled ? "Резервные копии сохраняются в папке Dark Reader.":"Папка Dark Reader будет создана после включения сохранения.")
+                    })).disabled(connectingICloud || cloud.isSyncing || cloud.isConnecting || folderPicker.presented).padding(.top,14)
+                    if connectingICloud || cloud.isSyncing || cloud.isConnecting {ProgressView().padding(.top,8)}
+                    Text(verbatim:L10n.render(cloud.enabled ? "Резервные копии сохраняются в папке Dark Reader.":"Папка Dark Reader будет создана после включения сохранения.",language:localizationLanguage))
                         .font(.system(size:13)).foregroundStyle(ReaderStyle.secondary).padding(.vertical,12)
-                    Text("При первом включении iOS может попросить выбрать место в iCloud Drive. Папка Dark Reader создастся автоматически. Повторно выбирать её не потребуется.")
+                    Text(verbatim:L10n.render("При первом включении iOS может попросить выбрать место в iCloud Drive. Папка Dark Reader создастся автоматически. Повторно выбирать её не потребуется.",language:localizationLanguage))
                         .font(.system(size:11)).foregroundStyle(ReaderStyle.secondary).padding(.vertical,12)
                     if cloud.enabled,cloud.isConnected {
                         HStack {
@@ -37,14 +37,14 @@ struct CloudSyncScreen:View {
                             Spacer()
                             Button("Восстановить") {Task {_ = await cloud.syncNow()}}
                         }.font(.system(size:13,weight:.semibold)).padding(.vertical,10).disabled(cloud.isSyncing)
-                        Button("Изменить папку") {pickingFolder=true}.font(.system(size:12)).foregroundStyle(ReaderStyle.secondary)
+                        Button("Изменить папку") {presentFolderPicker()}.font(.system(size:12)).foregroundStyle(ReaderStyle.secondary)
                     }
-                    Text(cloud.status).font(.system(size:12)).foregroundStyle(ReaderStyle.secondary).padding(.top,12)
-                    if let date=cloud.lastSavedAt {Text(date.formatted(date:.abbreviated,time:.shortened)).font(.caption2).foregroundStyle(ReaderStyle.secondary).padding(.top,6)}
+                    Text(verbatim:L10n.render(cloud.status,language:localizationLanguage)).font(.system(size:12)).foregroundStyle(ReaderStyle.secondary).padding(.top,12)
+                    if let date=cloud.lastSavedAt {Text(L10n.date(date)).font(.caption2).foregroundStyle(ReaderStyle.secondary).padding(.top,6)}
                 }
                 ReaderCard {
                     Label("Google Drive",systemImage:"externaldrive").font(.headline)
-                    Text("Копия хранится в скрытой области Dark Reader. Доступ к остальным файлам вашего Диска не запрашивается.")
+                    Text(verbatim:L10n.render("Копия хранится в скрытой области Dark Reader. Доступ к остальным файлам вашего Диска не запрашивается.",language:localizationLanguage))
                         .font(.system(size:13)).foregroundStyle(ReaderStyle.secondary).padding(.vertical,12)
                     if google.connected {
                         Text(google.account).font(.system(size:12)).foregroundStyle(ReaderStyle.secondary).padding(.bottom,10)
@@ -60,51 +60,26 @@ struct CloudSyncScreen:View {
                         GoogleSignInButton {Task {await google.connect()}}
                     }
                     if google.busy {ProgressView().padding(.top,12)}
-                    Text(google.status).font(.system(size:12)).foregroundStyle(ReaderStyle.secondary).padding(.top,12)
-                    if let date=google.lastSaved {Text(date.formatted(date:.abbreviated,time:.shortened)).font(.caption2).foregroundStyle(ReaderStyle.secondary).padding(.top,6)}
+                    Text(verbatim:L10n.render(google.status,language:localizationLanguage)).font(.system(size:12)).foregroundStyle(ReaderStyle.secondary).padding(.top,12)
+                    if let date=google.lastSaved {Text(L10n.date(date)).font(.caption2).foregroundStyle(ReaderStyle.secondary).padding(.top,6)}
                 }.disabled(google.busy)
-                Text("iOS сама определяет время фоновой передачи. Для больших библиотек оставьте приложение открытым до завершения сохранения.")
+                Text(verbatim:L10n.render("iOS сама определяет время фоновой передачи. Для больших библиотек оставьте приложение открытым до завершения сохранения.",language:localizationLanguage))
                     .font(.system(size:11)).foregroundStyle(ReaderStyle.secondary)
             }.padding(20)
-        }.readerCanvas().navigationTitle("Резервные копии").navigationBarTitleDisplayMode(.inline)
-            .sheet(isPresented:$pickingFolder,onDismiss:connectSelectedFolder) {
-                CloudFolderPicker {result in
-                    if case .success(let url)=result {
-                        selectedFolder=url;selectedFolderScoped=url.startAccessingSecurityScopedResource()
-                    }
-                    pickingFolder=false
-                }.ignoresSafeArea()
-            }
+        }.readerCanvas().readerNavigationTitle("Резервные копии").navigationBarTitleDisplayMode(.inline)
             .alert("Удалить копию Google Drive?",isPresented:$deleteGoogle) {
                 Button("Удалить",role:.destructive) {Task {await google.deleteBackup()}}
                 Button("Отмена",role:.cancel) {}
-            } message:{Text("Копия в облаке будет удалена. Книги на этом устройстве останутся.")}
+            } message:{Text(verbatim:L10n.render("Копия в облаке будет удалена. Книги на этом устройстве останутся.",language:localizationLanguage))}
     }
-    private func connectSelectedFolder() {
-        guard let url=selectedFolder else{return}
-        let scoped=selectedFolderScoped
-        selectedFolder=nil;selectedFolderScoped=false
+    private func presentFolderPicker() {
+        folderPicker.present {url in
+        guard let url else{return}
+        let scoped=url.startAccessingSecurityScopedResource()
         Task {
             await cloud.chooseFolder(url)
             if scoped {url.stopAccessingSecurityScopedResource()}
         }
-    }
-}
-private struct CloudFolderPicker:UIViewControllerRepresentable {
-    let result:(Result<URL,Error>)->Void
-    func makeCoordinator()->Coordinator {Coordinator(result)}
-    func makeUIViewController(context:Context)->UIDocumentPickerViewController {
-        let picker=UIDocumentPickerViewController(forOpeningContentTypes:[.folder],asCopy:false)
-        picker.allowsMultipleSelection=false;picker.delegate=context.coordinator
-        return picker
-    }
-    func updateUIViewController(_ uiViewController:UIDocumentPickerViewController,context:Context) {}
-    final class Coordinator:NSObject,UIDocumentPickerDelegate {
-        let result:(Result<URL,Error>)->Void
-        init(_ result:@escaping(Result<URL,Error>)->Void) {self.result=result}
-        func documentPicker(_ controller:UIDocumentPickerViewController,didPickDocumentsAt urls:[URL]) {
-            if let url=urls.first {result(.success(url))}
         }
-        func documentPickerWasCancelled(_ controller:UIDocumentPickerViewController) {result(.failure(CocoaError(.userCancelled)))}
     }
 }

@@ -2,6 +2,8 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct ImportScreen: View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     @EnvironmentObject private var books: BookshelfStore
     @EnvironmentObject private var navigation: ReaderNavigation
     @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
@@ -55,7 +57,7 @@ struct ImportScreen: View {
                     VStack(alignment: .leading, spacing: 12) {
                         SectionLabel(text: "По прямой ссылке")
                         ReaderCard {
-                            Text("Вставьте ссылку на книгу")
+                            Text(verbatim:L10n.render("Вставьте ссылку на книгу",language:localizationLanguage))
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(.white)
                             HStack {
@@ -71,7 +73,7 @@ struct ImportScreen: View {
 
                             if downloading {
                                 ProgressView(value: progress).tint(Color(hex: accentHex))
-                                Text(downloads.items.first(where:{$0.id == queuedID})?.state.title ?? "В очереди")
+                                Text(verbatim:L10n.render(downloads.items.first(where:{$0.id == queuedID})?.state.title ?? "В очереди",language:localizationLanguage))
                                     .font(.caption)
                                     .foregroundStyle(ReaderStyle.secondary)
                                     .padding(.top, 7)
@@ -92,8 +94,8 @@ struct ImportScreen: View {
                                     .foregroundStyle(.green)
                                     .font(.title2)
                                 VStack(alignment: .leading, spacing: 5) {
-                                    Text("Книга добавлена").font(.headline)
-                                    Text("Книга уже в библиотеке. Приятного чтения!")
+                                    Text(verbatim:L10n.render("Книга добавлена",language:localizationLanguage)).font(.headline)
+                                    Text(verbatim:L10n.render("Книга уже в библиотеке. Приятного чтения!",language:localizationLanguage))
                                         .font(.subheadline)
                                         .foregroundStyle(ReaderStyle.secondary)
                                 }
@@ -105,7 +107,7 @@ struct ImportScreen: View {
                         }
                     }
 
-                    Text("EPUB, FB2, MOBI и ZIP с книгой внутри. Защищённые DRM-файлы не поддерживаются.")
+                    Text(verbatim:L10n.render("EPUB, FB2, MOBI и ZIP с книгой внутри. Защищённые DRM-файлы не поддерживаются.",language:localizationLanguage))
                         .font(.footnote)
                         .foregroundStyle(ReaderStyle.secondary)
                 }
@@ -131,13 +133,13 @@ struct ImportScreen: View {
                                 )
                                 added = true
                             } catch {
-                                self.error = error.localizedDescription
+                                self.error = L10n.errorDescription(error)
                             }
                         }
                         if added { completed = true }
                     }
                 case .failure(let failure):
-                    error = failure.localizedDescription
+                    error = L10n.errorDescription(failure)
                 }
             }
             .onReceive(downloads.$items) {items in
@@ -153,7 +155,7 @@ struct ImportScreen: View {
                 set: { if !$0 { error = nil } }
             )) {
                 Button("Понятно", role: .cancel) {}
-            } message: { Text(error ?? "") }
+            } message: { Text(verbatim:L10n.render(error ?? "",language:localizationLanguage)) }
         }
     }
 
@@ -175,6 +177,8 @@ struct ImportScreen: View {
 }
 
 struct ImportTutorialScreen: View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     private let steps: [(String, String, String)] = [
         ("1", "Скачайте книгу", "Подойдут EPUB, FB2, MOBI и ZIP с книгой внутри."),
         ("2", "Откройте «Файлы»", "Найдите скачанную книгу в «Загрузках» или iCloud Drive."),
@@ -186,9 +190,9 @@ struct ImportTutorialScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 VStack(alignment: .leading, spacing: 7) {
-                    Text("Как добавить книгу")
+                    Text(verbatim:L10n.render("Как добавить книгу",language:localizationLanguage))
                         .font(.system(size: 29, weight: .bold, design: .rounded))
-                    Text("Три удобных способа")
+                    Text(verbatim:L10n.render("Три удобных способа",language:localizationLanguage))
                         .font(.subheadline)
                         .foregroundStyle(ReaderStyle.secondary)
                 }
@@ -196,7 +200,7 @@ struct ImportTutorialScreen: View {
                 ReaderCard {
                     Label("Из «Файлов»", systemImage: "folder")
                         .font(.headline)
-                    Text("Выберите «Из приложения Файлы», затем одну или несколько книг. Поддерживаются EPUB, FB2, MOBI и ZIP.")
+                    Text(verbatim:L10n.render("Выберите «Из приложения Файлы», затем одну или несколько книг. Поддерживаются EPUB, FB2, MOBI и ZIP.",language:localizationLanguage))
                         .font(.subheadline)
                         .foregroundStyle(ReaderStyle.secondary)
                         .padding(.top, 7)
@@ -212,8 +216,8 @@ struct ImportTutorialScreen: View {
                                 .frame(width: 29, height: 29)
                                 .background(Color(hex: ReaderStyle.defaultAccent), in: Circle())
                             VStack(alignment: .leading, spacing: 3) {
-                                Text(LocalizedStringKey(step.1)).font(.subheadline.weight(.semibold))
-                                Text(LocalizedStringKey(step.2))
+                                Text(verbatim:L10n.render(step.1,language:localizationLanguage)).font(.subheadline.weight(.semibold))
+                                Text(verbatim:L10n.render(step.2,language:localizationLanguage))
                                     .font(.subheadline)
                                     .foregroundStyle(ReaderStyle.secondary)
                             }
@@ -227,7 +231,7 @@ struct ImportTutorialScreen: View {
                 ReaderCard {
                     Label("AirDrop и iCloud Drive", systemImage: "icloud")
                         .font(.headline)
-                    Text("При получении EPUB через AirDrop выберите Dark Reader в меню «Поделиться». Файлы из iCloud Drive импортируются тем же способом.")
+                    Text(verbatim:L10n.render("При получении EPUB через AirDrop выберите Dark Reader в меню «Поделиться». Файлы из iCloud Drive импортируются тем же способом.",language:localizationLanguage))
                         .font(.subheadline)
                         .foregroundStyle(ReaderStyle.secondary)
                         .padding(.top, 7)
@@ -236,7 +240,7 @@ struct ImportTutorialScreen: View {
                 ReaderCard {
                     Label("Скачать напрямую с Флибусты", systemImage: "books.vertical")
                         .font(.headline)
-                    Text("Откройте вкладку «Каталог», выберите Флибусту, найдите книгу по названию или автору и нажмите значок загрузки.")
+                    Text(verbatim:L10n.render("Откройте вкладку «Каталог», выберите Флибусту, найдите книгу по названию или автору и нажмите значок загрузки.",language:localizationLanguage))
                         .font(.subheadline)
                         .foregroundStyle(ReaderStyle.secondary)
                         .padding(.top, 7)
@@ -245,7 +249,7 @@ struct ImportTutorialScreen: View {
             .padding(20)
         }
         .readerCanvas()
-        .navigationTitle("Импорт книг")
+        .readerNavigationTitle("Импорт книг")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

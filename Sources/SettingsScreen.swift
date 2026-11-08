@@ -137,6 +137,8 @@ struct SettingsScreen: View {
 }
 
 struct AppearanceScreen: View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     @EnvironmentObject private var sync: CloudSyncManager
     @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
     @AppStorage("appAppearance") private var appearance = "dark"
@@ -154,12 +156,12 @@ struct AppearanceScreen: View {
                 SectionLabel(text: "Приложение")
                 ReaderCard {
                     HStack {
-                        Text("Тема приложения")
+                        Text(verbatim:L10n.render("Тема приложения",language:localizationLanguage))
                         Spacer()
                         Picker("Тема", selection: $appearance) {
-                            Text("Тёмная").tag("dark")
-                            Text("Светлая").tag("light")
-                            Text("Системная").tag("system")
+                            Text(verbatim:L10n.render("Тёмная",language:localizationLanguage)).tag("dark")
+                            Text(verbatim:L10n.render("Светлая",language:localizationLanguage)).tag("light")
+                            Text(verbatim:L10n.render("Системная",language:localizationLanguage)).tag("system")
                         }
                         .tint(chosenAccent)
                     }
@@ -168,7 +170,7 @@ struct AppearanceScreen: View {
                 VStack(alignment: .leading, spacing: 10) {
                     SectionLabel(text: "Цвет интерфейса")
                     ReaderCard {
-                        Text("Фирменный фиолетовый выбран по умолчанию.")
+                        Text(verbatim:L10n.render("Фирменный фиолетовый выбран по умолчанию.",language:localizationLanguage))
                             .font(.footnote)
                             .foregroundStyle(ReaderStyle.secondary)
                         HStack(spacing: 12) {
@@ -227,12 +229,12 @@ struct AppearanceScreen: View {
                 VStack(alignment: .leading, spacing: 10) {
                     SectionLabel(text: "Предпросмотр")
                     ReaderCard {
-                        Text("Моя библиотека")
+                        Text(verbatim:L10n.render("Моя библиотека",language:localizationLanguage))
                             .font(.headline)
                         HStack {
                             Image(systemName: "book.closed")
                                 .foregroundStyle(chosenAccent)
-                            Text("Книга для чтения")
+                            Text(verbatim:L10n.render("Книга для чтения",language:localizationLanguage))
                                 .font(.subheadline)
                             Spacer()
                             Text("68%").foregroundStyle(ReaderStyle.secondary)
@@ -250,7 +252,7 @@ struct AppearanceScreen: View {
 
                 ReaderCard {
                     HStack {
-                        Text("Вернуть цвет ipa_dark")
+                        Text(verbatim:L10n.render("Вернуть цвет ipa_dark",language:localizationLanguage))
                         Spacer()
                         Button("Сбросить") {
                             accentHex = ReaderStyle.defaultAccent
@@ -265,7 +267,7 @@ struct AppearanceScreen: View {
             .padding(20)
         }
         .readerCanvas()
-        .navigationTitle("Оформление")
+        .readerNavigationTitle("Оформление")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             customColor = Color(hex: accentHex)
@@ -297,6 +299,8 @@ struct AppearanceScreen: View {
 }
 
 struct TypographyScreen: View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     @EnvironmentObject private var sync: CloudSyncManager
     @AppStorage("readerTheme") private var theme = "system"
     @AppStorage("readerFont") private var font = "serif"
@@ -310,29 +314,29 @@ struct TypographyScreen: View {
                 SectionLabel(text: "Читалка")
                 ReaderCard {
                     HStack {
-                        Text("Тема страницы")
+                        Text(verbatim:L10n.render("Тема страницы",language:localizationLanguage))
                         Spacer()
                         Picker("Тема страницы", selection: $theme) {
-                            Text("Системная").tag("system")
-                            Text("Светлая").tag("light")
-                            Text("Тёмная").tag("dark")
-                            Text("Сепия").tag("sepia")
+                            Text(verbatim:L10n.render("Системная",language:localizationLanguage)).tag("system")
+                            Text(verbatim:L10n.render("Светлая",language:localizationLanguage)).tag("light")
+                            Text(verbatim:L10n.render("Тёмная",language:localizationLanguage)).tag("dark")
+                            Text(verbatim:L10n.render("Сепия",language:localizationLanguage)).tag("sepia")
                             Text("OLED").tag("oled")
                         }.tint(.white)
                     }
                     ReaderDivider()
                     HStack {
-                        Text("Шрифт")
+                        Text(verbatim:L10n.render("Шрифт",language:localizationLanguage))
                         Spacer()
                         Picker("Шрифт", selection: $font) {
-                            Text("С засечками").tag("serif")
-                            Text("Без засечек").tag("sans")
+                            Text(verbatim:L10n.render("С засечками",language:localizationLanguage)).tag("serif")
+                            Text(verbatim:L10n.render("Без засечек",language:localizationLanguage)).tag("sans")
                         }.tint(.white)
                     }
                     ReaderDivider()
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            Text("Размер текста")
+                            Text(verbatim:L10n.render("Размер текста",language:localizationLanguage))
                             Spacer()
                             Text("\(Int(fontSize * 100))%").foregroundStyle(ReaderStyle.secondary)
                         }
@@ -344,21 +348,21 @@ struct TypographyScreen: View {
                 }
                 ReaderCard {
                     VStack(alignment:.leading,spacing:11) {
-                        Text("Прогресс чтения").font(.system(size:14,weight:.semibold))
+                        Text(verbatim:L10n.render("Прогресс чтения",language:localizationLanguage)).font(.system(size:14,weight:.semibold))
                         ReaderSegmentedControl(items:[("percent","Процент прочтения"),("pages","Текущая страница")],selection:$progressDisplay)
-                        Text("Выберите, что показывать внизу книги.").font(.system(size:11)).foregroundStyle(ReaderStyle.secondary)
+                        Text(verbatim:L10n.render("Выберите, что показывать внизу книги.",language:localizationLanguage)).font(.system(size:11)).foregroundStyle(ReaderStyle.secondary)
                         if progressDisplay == "pages" {
-                            Text("В EPUB номера страниц рассчитываются приложением и могут отличаться от печатного издания.")
+                            Text(verbatim:L10n.render("В EPUB номера страниц рассчитываются приложением и могут отличаться от печатного издания.",language:localizationLanguage))
                                 .font(.system(size:11)).foregroundStyle(ReaderStyle.secondary)
                         }
                     }
                 }
-                Text("Настройки применяются при чтении. Скачанные книги остаются в том формате, в котором были добавлены.")
+                Text(verbatim:L10n.render("Настройки применяются при чтении. Скачанные книги остаются в том формате, в котором были добавлены.",language:localizationLanguage))
                     .font(.footnote).foregroundStyle(ReaderStyle.secondary)
             }.padding(20)
         }
         .readerCanvas()
-        .navigationTitle("Чтение")
+        .readerNavigationTitle("Чтение")
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: progressDisplay) { _,value in sync.settingsChanged(key:"readerProgressDisplay",value:value) }
         .onChange(of: theme) { _, value in sync.settingsChanged(key: "readerTheme", value: value) }

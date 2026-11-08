@@ -221,6 +221,8 @@ private struct WalletRow: View {
 }
 
 struct SupportProjectScreen: View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     @State private var network: USDTNetwork = .erc20
     @State private var copied: String?
     @State private var revision = 0
@@ -230,9 +232,9 @@ struct SupportProjectScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 7) {
-                    Text("Поддержать проект")
+                    Text(verbatim:L10n.render("Поддержать проект",language:localizationLanguage))
                         .font(.system(size: 28, weight: .bold, design: .rounded))
-                    Text("Dark Reader бесплатный. Если приложение полезно, вы можете поддержать его развитие.")
+                    Text(verbatim:L10n.render("Dark Reader бесплатный. Если приложение полезно, вы можете поддержать его развитие.",language:localizationLanguage))
                         .font(.subheadline)
                         .foregroundStyle(ReaderStyle.secondary)
                 }
@@ -244,7 +246,7 @@ struct SupportProjectScreen: View {
                             CryptoMark(code: "USDT")
                             VStack(alignment: .leading, spacing: 3) {
                                 Text("Tether USDT").font(.headline)
-                                Text("Выберите сеть перевода")
+                                Text(verbatim:L10n.render("Выберите сеть перевода",language:localizationLanguage))
                                     .font(.caption).foregroundStyle(ReaderStyle.secondary)
                             }
                         }
@@ -287,11 +289,11 @@ struct SupportProjectScreen: View {
             .padding(20)
         }
         .readerCanvas()
-        .navigationTitle("Поддержать проект")
+        .readerNavigationTitle("Поддержать проект")
         .navigationBarTitleDisplayMode(.inline)
         .overlay(alignment: .bottom) {
             if let copied {
-                Label("Адрес \(copied) скопирован", systemImage: "checkmark.circle.fill")
+                Label(L10n.render("Адрес \(copied) скопирован",language:localizationLanguage), systemImage: "checkmark.circle.fill")
                     .font(.subheadline.weight(.semibold))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)

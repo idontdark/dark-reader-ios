@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct BookDetailHero:View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     let title:String
     let author:String
     let coverURL:URL?
@@ -22,7 +24,7 @@ struct BookDetailHero:View {
         }
     }
     private func tagLabel(_ value:String)->some View {
-        Text(LocalizedStringKey(value)).font(.system(size:10,weight:.medium)).foregroundStyle(.white.opacity(0.78))
+        Text(verbatim:L10n.render(value,language:localizationLanguage)).font(.system(size:10,weight:.medium)).foregroundStyle(.white.opacity(0.78))
             .padding(.horizontal,7).padding(.vertical,4).background(Color.white.opacity(0.07),in:Capsule())
     }
 }

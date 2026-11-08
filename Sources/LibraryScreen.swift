@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct LibraryScreen:View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     @EnvironmentObject private var books:BookshelfStore
     @EnvironmentObject private var navigation:ReaderNavigation
     @EnvironmentObject private var audioPlayer:AudioPlayerModel
@@ -76,7 +78,7 @@ struct LibraryScreen:View {
                 .onChange(of:recent.count) {_,count in if featureIndex>=count {featureIndex=0}}
                 .alert("Ваша библиотека",isPresented:$showLibraryTip) {
                     Button("Понятно") { hintLibraryShown=true }
-                } message: { Text("Здесь хранятся ваши книги. Чтобы добавить новую, нажмите +.") }
+                } message: { Text(verbatim:L10n.render("Здесь хранятся ваши книги. Чтобы добавить новую, нажмите +.",language:localizationLanguage)) }
                 .fullScreenCover(item:$selected) { ReaderScreen(bookID:$0.id) }
                 .sheet(isPresented:$showingImport) { ImportScreen().environmentObject(books).environmentObject(navigation) }
                 .sheet(isPresented:$showingAudioImport) { AudioImportScreen() }
@@ -105,6 +107,9 @@ struct LibraryScreen:View {
                     }.tabViewStyle(.page(indexDisplayMode:.never)).frame(height:190)
                     if recent.count>1 { pageDots(count:recent.count,index:featureIndex) }
                 }
+            }
+            if books.books.isEmpty && !showSearch {
+                LibraryActions(audio:false,search:{navigation.searchScope="books";navigation.tab = .search},importFiles:{showingImport=true})
             }
             if !showSearch {
                 ReaderInsetGroup {
@@ -168,6 +173,9 @@ struct LibraryScreen:View {
             if let book=audioPlayer.book ?? allAudio.first(where:{played($0)}) {
                 audioFeatured(book)
             } else { welcome(audio:true) }
+            if allAudio.isEmpty {
+                LibraryActions(audio:true,search:{navigation.searchScope="audio";navigation.tab = .search},importFiles:{showingAudioImport=true})
+            }
             ReaderInsetGroup {
                 NavigationLink { audioCollection("Добавленные",items:allAudio) } label: {
                     LibraryMenuRow(icon:"headphones",title:"Добавленные",count:allAudio.count)
@@ -185,13 +193,7 @@ struct LibraryScreen:View {
                     LibraryMenuRow(icon:"checkmark.circle",title:"Прослушанные",count:allAudio.filter{UserDefaults.standard.bool(forKey:"audio.finished.\($0.id)")}.count)
                 }.buttonStyle(.plain)
             }
-            if allAudio.isEmpty {
-                VStack(spacing:12) {
-                    Button("Найти аудиокнигу") { navigation.searchScope="audio";navigation.tab = .search }
-                    Button("Импортировать аудиокнигу") { showingAudioImport=true }
-                }.font(.system(size:13,weight:.medium)).foregroundStyle(Color(hex:accentHex))
-                    .frame(maxWidth:.infinity).padding(.top,5)
-            } else if showSearch {
+            if !allAudio.isEmpty && showSearch {
                 audioRows(allAudio.filter{query.isEmpty || ($0.title+" "+$0.author).localizedCaseInsensitiveContains(query)})
             }
         }
@@ -208,7 +210,7 @@ struct LibraryScreen:View {
                     Text("\(Int((BookProgress.fraction(book.locatorJSON)*100).rounded())) %")
                         .font(.system(size:11,weight:.medium)).foregroundStyle(.white.opacity(0.8))
                 }
-                PurpleAction(title:book.locatorJSON == nil ? "Читать":"Продолжить",icon:"arrow.down.to.line",height:32) {selected=book}
+                PurpleAction(title:book.locatorJSON == nil ? "Читать":"Продолжить",icon:"arrow.down.to.line",height:44) {selected=book}
             }.frame(height:158)
         }.padding(12).frame(maxWidth:.infinity,alignment:.leading)
             .background(LinearGradient(colors:[Color(hex:"#2C203C"),Color(hex:"#28143E"),Color(hex:"#1A1324")],
@@ -219,11 +221,11 @@ struct LibraryScreen:View {
         HStack(alignment:.top,spacing:13) {
             BookArtwork(title:book.title,author:book.author,coverURL:book.coverURL,width:104,height:158)
             VStack(alignment:.leading,spacing:7) {
-                Text("Время слушать").font(.system(size:10,weight:.medium)).foregroundStyle(ReaderStyle.secondary)
+                Text(verbatim:L10n.render("Время слушать",language:localizationLanguage)).font(.system(size:10,weight:.medium)).foregroundStyle(ReaderStyle.secondary)
                 Text(book.title).font(.system(size:16,weight:.semibold)).lineLimit(3)
                 Text(book.author).font(.system(size:11)).foregroundStyle(ReaderStyle.secondary).lineLimit(2)
                 Spacer(minLength:0)
-                PurpleAction(title:"Продолжить",icon:"play.fill",height:32) {
+                PurpleAction(title:"Продолжить",icon:"play.fill",height:44) {
                     if audioPlayer.book?.id == book.id {showPlayer=true} else {selectedAudio=book}
                 }
             }.frame(height:158)
@@ -234,8 +236,8 @@ struct LibraryScreen:View {
     private func welcome(audio:Bool)->some View {
         HStack(spacing:8) {
             VStack(alignment:.leading,spacing:7) {
-                Text(audio ? "Время слушать":"Время читать").font(.system(size:19,weight:.bold))
-                Text(audio ? "Любимые истории —\nв вашем ритме." : "Соберите свою\nлюбимую библиотеку.")
+                Text(verbatim:L10n.render(audio ? "Время слушать":"Время читать",language:localizationLanguage)).font(.system(size:19,weight:.bold))
+                Text(verbatim:L10n.render(audio ? "Любимые истории —\nв вашем ритме." : "Соберите свою\nлюбимую библиотеку.",language:localizationLanguage))
                     .font(.system(size:12)).foregroundStyle(.white.opacity(0.7)).lineSpacing(2)
             }
             Spacer(minLength:0)
@@ -255,7 +257,7 @@ struct LibraryScreen:View {
             .frame(maxWidth:.infinity)
     }
     private func bookCollection(_ title:String,items:[LocalBook])->some View {
-        ScrollView {bookRows(items).padding(18)}.readerCanvas().navigationTitle(title).navigationBarTitleDisplayMode(.inline)
+        ScrollView {bookRows(items).padding(18)}.readerCanvas().readerNavigationTitle(title).navigationBarTitleDisplayMode(.inline)
     }
     @ViewBuilder private func bookRows(_ items:[LocalBook])->some View {
         if items.isEmpty {empty("В этой категории пока нет книг.")}
@@ -305,7 +307,7 @@ struct LibraryScreen:View {
                     }.buttonStyle(.plain)
                 }
             }.padding(18)
-        }.readerCanvas().navigationTitle(title).navigationBarTitleDisplayMode(.inline)
+        }.readerCanvas().readerNavigationTitle(title).navigationBarTitleDisplayMode(.inline)
     }
     private var wishlistCollection:some View {
         ScrollView {
@@ -316,7 +318,7 @@ struct LibraryScreen:View {
                 discoveryRows(DiscoveryService.saved(discoveryWishlist))
                 if wished.isEmpty && DiscoveryService.saved(discoveryWishlist).isEmpty {empty("Добавляйте книги в этот список с помощью закладки в карточке книги.")}
             }.padding(18)
-        }.readerCanvas().navigationTitle("Хочу прочитать").navigationBarTitleDisplayMode(.inline)
+        }.readerCanvas().readerNavigationTitle("Хочу прочитать").navigationBarTitleDisplayMode(.inline)
     }
     private func discoveryRows(_ items:[DiscoveryBook])->some View {
         ForEach(items) {book in
@@ -344,10 +346,10 @@ struct LibraryScreen:View {
                     }.buttonStyle(.plain)
                 }
             }.padding(18)
-        }.readerCanvas().navigationTitle("Избранное").navigationBarTitleDisplayMode(.inline)
+        }.readerCanvas().readerNavigationTitle("Избранное").navigationBarTitleDisplayMode(.inline)
     }
     private func audioCollection(_ title:String,items:[AudioBook])->some View {
-        ScrollView {audioRows(items).padding(18)}.readerCanvas().navigationTitle(title).navigationBarTitleDisplayMode(.inline)
+        ScrollView {audioRows(items).padding(18)}.readerCanvas().readerNavigationTitle(title).navigationBarTitleDisplayMode(.inline)
     }
     @ViewBuilder private func audioRows(_ items:[AudioBook])->some View {
         if items.isEmpty {empty("В этой категории пока нет аудиокниг.")}
@@ -372,7 +374,7 @@ struct LibraryScreen:View {
         }
     }
     private func empty(_ message:String)->some View {
-        Text(LocalizedStringKey(message)).font(.system(size:13)).foregroundStyle(ReaderStyle.secondary)
+        Text(verbatim:L10n.render(message,language:localizationLanguage)).font(.system(size:13)).foregroundStyle(ReaderStyle.secondary)
             .frame(maxWidth:.infinity,alignment:.center).multilineTextAlignment(.center).padding(.vertical,30)
     }
     private func offerHint() {

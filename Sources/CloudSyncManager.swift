@@ -8,6 +8,7 @@ final class CloudSyncManager: ObservableObject {
     @Published private(set) var automatic: Bool
     @Published private(set) var enabled:Bool
     @Published private(set) var isSyncing = false
+    @Published private(set) var isConnecting=false
     @Published private(set) var status = "Выберите папку в iCloud Drive"
     @Published private(set) var lastSavedAt: Date?
     @Published private(set) var restoredBooks = 0
@@ -47,13 +48,16 @@ final class CloudSyncManager: ObservableObject {
     }
 
     func chooseFolder(_ url: URL) async {
+        guard !isConnecting,!isSyncing else{return}
+        isConnecting=true
+        defer {isConnecting=false}
         do {
+            CloudConnectionDiagnostics.record("connection.begin")
             status="Подключаем папку Dark Reader…"
             let bookmark = try await Task.detached(priority:.utility) {
-                let accessed=url.startAccessingSecurityScopedResource()
-                defer {if accessed {url.stopAccessingSecurityScopedResource()}}
-                return try url.bookmarkData(options:.minimalBookmark,includingResourceValuesForKeys:nil,relativeTo:nil)
+                try CloudFolderConnection.prepare(url)
             }.value
+            guard await synchronize(using:bookmark) else{return}
             defaults.set(bookmark, forKey: bookmarkKey)
             defaults.set("Dark Reader", forKey: "cloudSync.folderName")
             defaults.set(true, forKey: "cloudSync.automatic")
@@ -61,11 +65,11 @@ final class CloudSyncManager: ObservableObject {
             automatic = true
             enabled=true
             defaults.set(true,forKey:"cloudSync.enabled")
-            status = "Папка подключена"
-            _ = await syncNow()
+            CloudConnectionDiagnostics.record("connection.verified")
             CloudBackgroundSync.schedule()
         } catch {
-            status = "Не удалось сохранить доступ: \(error.localizedDescription)"
+            CloudConnectionDiagnostics.record("connection.failed",error:error)
+            status = "Не удалось сохранить доступ: \(L10n.errorDescription(error))"
         }
     }
 
@@ -91,9 +95,13 @@ final class CloudSyncManager: ObservableObject {
             return true
         }
         if isConnected {
-            enabled=true;defaults.set(true,forKey:"cloudSync.enabled")
-            setAutomatic(true)
-            _ = await syncNow()
+            guard let bookmark=defaults.data(forKey:bookmarkKey) else{return false}
+            if await synchronize(using:bookmark) {
+                enabled=true;automatic=true
+                defaults.set(true,forKey:"cloudSync.enabled")
+                defaults.set(true,forKey:"cloudSync.automatic")
+                CloudBackgroundSync.schedule()
+            }
             return true
         }
         return await connectDefaultFolder()
@@ -149,14 +157,19 @@ final class CloudSyncManager: ObservableObject {
 
     @discardableResult
     func syncNow() async -> Bool {
-        guard enabled,let bookmark = defaults.data(forKey: bookmarkKey),
-              let store = bookStore else { return false }
+        guard enabled,let bookmark=defaults.data(forKey:bookmarkKey) else{return false}
+        return await synchronize(using:bookmark)
+    }
+
+    private func synchronize(using bookmark:Data) async -> Bool {
+        guard let store=bookStore else{return false}
         if isSyncing {
             retryAfterCurrentRun = true
             return false
         }
 
         isSyncing = true
+        CloudConnectionDiagnostics.record("backup.begin")
         status = "Сохраняем и проверяем библиотеку…"
         defer {
             isSyncing = false
@@ -207,9 +220,11 @@ final class CloudSyncManager: ObservableObject {
             } else {
                 status = "Данные сохранены в выбранной папке"
             }
+            CloudConnectionDiagnostics.record(result.missingFiles == 0 ? "backup.saved":"backup.missing-files")
             return result.missingFiles == 0
         } catch {
-            status = "Не удалось синхронизировать: \(error.localizedDescription)"
+            CloudConnectionDiagnostics.record("backup.failed",error:error)
+            status = "Не удалось синхронизировать: \(L10n.errorDescription(error))"
             return false
         }
     }
@@ -238,14 +253,14 @@ final class CloudSyncManager: ObservableObject {
         let container=await Task.detached(priority:.utility) {
             FileManager.default.url(forUbiquityContainerIdentifier:nil)
         }.value
-        guard let container else {return false}
+        guard let container else {CloudConnectionDiagnostics.record("container.unavailable");return false}
         let documents=container.appendingPathComponent("Documents",isDirectory:true)
         do {try await Task.detached(priority:.utility) {
             try FileManager.default.createDirectory(at:documents,withIntermediateDirectories:true)
         }.value}
-        catch {status="Не удалось создать папку iCloud: \(error.localizedDescription)";return false}
+        catch {status="Не удалось создать папку iCloud: \(L10n.errorDescription(error))";return false}
         await chooseFolder(documents)
-        return isConnected
+        return true
     }
 
     private func collectSettings() -> [String: String] {

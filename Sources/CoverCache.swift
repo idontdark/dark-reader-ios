@@ -53,16 +53,23 @@ struct CachedCover<Content: View, Placeholder: View>: View {
     @ViewBuilder var content: (Image) -> Content
     @ViewBuilder var placeholder: () -> Placeholder
     @State private var loaded: UIImage?
+    @State private var loadedURL:URL?
+    @State private var failed=false
     var body: some View {
         Group {
             if let loaded { content(Image(uiImage: loaded)) }
-            else { placeholder() }
+            else { placeholder().overlay {if url != nil && !failed {ProgressView().controlSize(.mini).tint(ReaderStyle.secondary)}} }
         }
         .task(id: url) {
+            if loaded != nil && loadedURL == url {return}
             loaded = nil
-            guard let url, let data = try? await CoverCache.shared.data(for: url),
-                  !Task.isCancelled else { return }
-            loaded = UIImage(data: data)
+            failed=false
+            guard let url else {failed=true;return}
+            do {
+                let data=try await CoverCache.shared.data(for:url)
+                try Task.checkCancellation()
+                loaded=UIImage(data:data);loadedURL=url;failed=loaded == nil
+            } catch {if !Task.isCancelled {failed=true}}
         }
     }
 }

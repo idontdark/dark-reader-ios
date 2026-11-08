@@ -2,6 +2,8 @@ import SwiftUI
 
 /// Preferences remain editable after onboarding.
 struct InterestsScreen: View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     @AppStorage("wantsBooks") private var books = true
     @AppStorage("wantsAudiobooks") private var audiobooks = false
     @AppStorage("preferredGenresJSON") private var genresJSON = "[]"
@@ -10,23 +12,25 @@ struct InterestsScreen: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment:.leading,spacing:8) {
                 SectionLabel(text: "Что вам интересно")
-                ReaderCard {
+                ReaderInsetGroup {
                     Toggle("Читать книги", isOn: Binding(get: { books }, set: { value in
                         if !value && !audiobooks { return }
                         books = value
                     }))
-                    .padding(.vertical, 13)
+                    .frame(minHeight:48).padding(.horizontal,4)
                     ReaderDivider()
                     Toggle("Слушать аудиокниги", isOn: Binding(get: { audiobooks }, set: { value in
                         if !value && !books { return }
                         audiobooks = value
                     }))
-                    .padding(.vertical, 13)
+                    .frame(minHeight:48).padding(.horizontal,4)
+                }.padding(.vertical,4)
                 }
-                VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 8) {
                     SectionLabel(text: "Ваши интересы")
-                    ReaderCard {
+                    ReaderInsetGroup {
                         NavigationLink {
                             GenreSettingsScreen()
                         } label: {
@@ -46,13 +50,13 @@ struct InterestsScreen: View {
                         }.buttonStyle(.plain)
                     }
                 }
-                Text("Переключаться между чтением и прослушиванием можно в любой момент.")
+                Text(verbatim:L10n.render("Переключаться между чтением и прослушиванием можно в любой момент.",language:localizationLanguage))
                     .font(.footnote)
                     .foregroundStyle(ReaderStyle.secondary)
             }.padding(20)
         }
         .readerCanvas()
-        .navigationTitle("Интересы")
+        .readerNavigationTitle("Интересы")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

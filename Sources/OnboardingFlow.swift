@@ -2,6 +2,8 @@ import SwiftUI
 
 /// One-time, skippable setup. Changing preferences later never replays this flow.
 struct OnboardingFlow: View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     let finish: () -> Void
 
     @AppStorage("appLanguage") private var language = "ru"
@@ -63,16 +65,16 @@ struct OnboardingFlow: View {
                 Spacer(minLength:22).frame(maxHeight:55)
                 BrandBook(width:150).shadow(color:Color(hex:accentHex).opacity(0.32),radius:18)
                 Text("Dark Reader").font(.system(size:30,weight:.bold)).tracking(-0.8).padding(.top,10)
-                Text(english ? "Books and Audiobooks" : "Книги и Аудиокниги")
+                Text(verbatim:L10n.render(english ? "Books and Audiobooks" : "Книги и Аудиокниги",language:localizationLanguage))
                     .font(.system(size:14,weight:.medium)).foregroundStyle(Color.white.opacity(0.87)).padding(.top,5)
                 VStack(alignment:.leading,spacing:0) {
                     HStack(spacing:10) {
                         Image(systemName:"globe").font(.system(size:21,weight:.light)).foregroundStyle(Color(hex:"#C4B2D6"))
-                        Text(english ? "Choose your language" : "Выберите язык").font(.system(size:15,weight:.semibold))
+                        Text(verbatim:L10n.render(english ? "Choose your language" : "Выберите язык",language:localizationLanguage)).font(.system(size:15,weight:.semibold))
                     }.padding(.bottom,17)
                     landingLanguage("ru","🇷🇺","Русский")
                     landingLanguage("en","🇬🇧","English").padding(.top,8)
-                    Text(english ? "You can change it later in Settings." : "Язык можно изменить в настройках.")
+                    Text(verbatim:L10n.render(english ? "You can change it later in Settings." : "Язык можно изменить в настройках.",language:localizationLanguage))
                         .font(.system(size:10)).foregroundStyle(ReaderStyle.secondary.opacity(0.7)).padding(.top,12)
                 }.padding(15).background(ReaderStyle.cardGradient,in:RoundedRectangle(cornerRadius:14))
                     .overlay(RoundedRectangle(cornerRadius:14).strokeBorder(Color(hex:"#756085").opacity(0.35),lineWidth:0.8))
@@ -129,7 +131,7 @@ struct OnboardingFlow: View {
                 }
             }
             HStack {
-                Text(english ? "STEP \(step + 1) OF 5" : "ШАГ \(step + 1) ИЗ 5")
+                Text(verbatim:L10n.render(english ? "STEP \(step + 1) OF 5" : "ШАГ \(step + 1) ИЗ 5",language:localizationLanguage))
                     .font(.caption2.weight(.bold))
                     .tracking(1.4)
                     .foregroundStyle(ReaderStyle.secondary)
@@ -294,14 +296,14 @@ struct OnboardingFlow: View {
             if loadingSuggestions && bookSuggestions.isEmpty {
                 HStack(spacing: 11) {
                     ProgressView().tint(Color(hex: accentHex))
-                    Text(english ? "Finding books with covers…" : "Подбираем книги с обложками…")
+                    Text(verbatim:L10n.render(english ? "Finding books with covers…" : "Подбираем книги с обложками…",language:localizationLanguage))
                         .font(.subheadline)
                         .foregroundStyle(ReaderStyle.secondary)
                 }
                 .padding(.vertical, 18)
             } else if bookSuggestions.isEmpty {
                 ReaderCard {
-                    Text(suggestionError ?? (english ? "No books available yet." : "Подборка пока недоступна."))
+                    Text(verbatim:L10n.render(suggestionError ?? (english ? "No books available yet." : "Подборка пока недоступна."),language:localizationLanguage))
                         .font(.subheadline)
                         .foregroundStyle(ReaderStyle.secondary)
                     Button(english ? "Try again" : "Повторить") {
@@ -312,8 +314,8 @@ struct OnboardingFlow: View {
                     .padding(.top, 10)
                 }
             } else {
-                Text(english ? "Real titles and covers from Open Library" :
-                    "Реальные книги и обложки из Open Library")
+                Text(verbatim:L10n.render(english ? "Real titles and covers from Open Library" :
+                    "Реальные книги и обложки из Open Library",language:localizationLanguage))
                     .font(.caption)
                     .foregroundStyle(ReaderStyle.secondary)
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 14),

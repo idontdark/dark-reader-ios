@@ -71,6 +71,8 @@ struct ReaderContainer: UIViewControllerRepresentable {
 }
 
 struct ReaderScreen: View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     @EnvironmentObject private var sync: CloudSyncManager
     @EnvironmentObject private var store: BookshelfStore
     @Environment(\.dismiss) private var dismiss
@@ -109,13 +111,13 @@ struct ReaderScreen: View {
                     ContentUnavailableView(
                         "Не удалось открыть книгу",
                         systemImage: "exclamationmark.triangle",
-                        description: Text(error)
+                        description: Text(verbatim:L10n.render(error,language:localizationLanguage))
                     )
                 } else {
                     ProgressView("Открываем книгу…")
                 }
             }
-            .navigationTitle(book?.title ?? "Читалка")
+            .readerNavigationTitle(book?.title ?? L10n.text("Читалка"),localized:false)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -141,7 +143,7 @@ struct ReaderScreen: View {
         .alert("Удобное чтение", isPresented: $showReaderTip) {
             Button("Понятно") {}
         } message: {
-            Text("Нажмите Aa для темы и шрифта, а закладку можно добавить в верхнем меню.")
+            Text(verbatim:L10n.render("Нажмите Aa для темы и шрифта, а закладку можно добавить в верхнем меню.",language:localizationLanguage))
         }
         .sheet(isPresented: $appearanceOpen) {
             ReaderAppearanceSheet()
@@ -195,7 +197,7 @@ struct ReaderScreen: View {
                 store?.savePosition(bookID:id,locatorJSON:json)
             }
             apply()
-        } catch { self.error = error.localizedDescription }
+        } catch { self.error = L10n.errorDescription(error) }
     }
 
     private func apply() {
@@ -233,9 +235,9 @@ struct ReaderScreen: View {
                         }
                     }
                 } else {
-                    Text("Добавьте закладку, чтобы вернуться к этому месту в книге.").foregroundStyle(.secondary)
+                    Text(verbatim:L10n.render("Добавьте закладку, чтобы вернуться к этому месту в книге.",language:localizationLanguage)).foregroundStyle(.secondary)
                 }
-            }.navigationTitle("Закладки").navigationBarTitleDisplayMode(.inline)
+            }.readerNavigationTitle("Закладки").navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement:.topBarLeading) {Button("Готово") {showBookmarks=false}}
                     ToolbarItem(placement:.topBarTrailing) {
@@ -274,6 +276,8 @@ struct ReaderScreen: View {
 }
 
 private struct ReaderAppearanceSheet: View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     @Environment(\.dismiss) private var dismiss
     @AppStorage("readerTheme") private var theme = "system"
     @AppStorage("readerFont") private var font = "serif"
@@ -329,16 +333,16 @@ private struct ReaderAppearanceSheet: View {
 
                     ReaderCard {
                         HStack {
-                            Text("Шрифт")
+                            Text(verbatim:L10n.render("Шрифт",language:localizationLanguage))
                             Spacer()
                             Picker("Шрифт", selection: $font) {
-                                Text("С засечками").tag("serif")
-                                Text("Без засечек").tag("sans")
+                                Text(verbatim:L10n.render("С засечками",language:localizationLanguage)).tag("serif")
+                                Text(verbatim:L10n.render("Без засечек",language:localizationLanguage)).tag("sans")
                             }.tint(.white)
                         }
                         ReaderDivider()
                         HStack {
-                            Text("Размер текста")
+                            Text(verbatim:L10n.render("Размер текста",language:localizationLanguage))
                             Spacer()
                             Text("\(Int(fontSize * 100))%")
                                 .foregroundStyle(ReaderStyle.secondary)
@@ -350,16 +354,16 @@ private struct ReaderAppearanceSheet: View {
                             .padding(.vertical, 10)
                         ReaderDivider()
                         VStack(alignment:.leading,spacing:10) {
-                            Text("Прогресс чтения").font(.system(size:14,weight:.semibold))
+                            Text(verbatim:L10n.render("Прогресс чтения",language:localizationLanguage)).font(.system(size:14,weight:.semibold))
                             ReaderSegmentedControl(items:[("percent","Процент прочтения"),("pages","Текущая страница")],selection:$progressDisplay)
-                            Text("Выберите, что показывать внизу книги.").font(.system(size:11)).foregroundStyle(ReaderStyle.secondary)
+                            Text(verbatim:L10n.render("Выберите, что показывать внизу книги.",language:localizationLanguage)).font(.system(size:11)).foregroundStyle(ReaderStyle.secondary)
                         }.padding(.vertical,12)
                     }
                 }
                 .padding(20)
             }
             .readerCanvas()
-            .navigationTitle("Оформление чтения")
+            .readerNavigationTitle("Оформление чтения")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {

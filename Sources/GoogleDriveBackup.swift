@@ -48,7 +48,7 @@ final class GoogleDriveBackup: ObservableObject {
         do {
             let result=try await GIDSignIn.sharedInstance.signIn(withPresenting:controller,hint:nil,additionalScopes:[Self.scope])
             update(result.user)
-        } catch {status="Вход не завершён: \(error.localizedDescription)"}
+        } catch {status="Вход не завершён: \(L10n.errorDescription(error))"}
     }
     func disconnect() {
         pending?.cancel(); GIDSignIn.sharedInstance.signOut()
@@ -88,7 +88,7 @@ final class GoogleDriveBackup: ObservableObject {
             _ = try await upload(name:"library-v1.json",id:files["library-v1.json"],data:JSONEncoder().encode(snapshot),mime:"application/json")
             lastSaved=Date();UserDefaults.standard.set(lastSaved,forKey:"google.lastSaved")
             status="Копия сохранена: \(snapshot.books.count) книг, закладки, прогресс и настройки."
-        } catch {status="Не удалось сохранить копию: \(error.localizedDescription)"}
+        } catch {status="Не удалось сохранить копию: \(L10n.errorDescription(error))"}
     }
     func restore() async {
         guard !busy,connected,let library,let cloud else{return}
@@ -150,7 +150,7 @@ final class GoogleDriveBackup: ObservableObject {
             }
             lastSaved=nil;UserDefaults.standard.removeObject(forKey:"google.lastSaved")
             status="Резервная копия удалена из Google Drive. Книги на устройстве сохранены."
-        } catch {status="Не удалось удалить копию: \(error.localizedDescription)"}
+        } catch {status="Не удалось удалить копию: \(L10n.errorDescription(error))"}
     }
     private func list() async throws -> [String:String] {
         var result:[String:String]=[:];var page:String?
@@ -276,7 +276,7 @@ final class GoogleDriveBackup: ObservableObject {
             return "Google Drive слишком долго не передавал данные. Проверьте соединение или VPN и повторите восстановление."
         }
         if let http=error as? DriveHTTPError,http.code == 401 {return "Доступ Google истёк. Подключите аккаунт повторно."}
-        return error.localizedDescription
+        return L10n.errorDescription(error)
     }
     private func presenter()->UIViewController? {
         let scenes=UIApplication.shared.connectedScenes.compactMap {$0 as? UIWindowScene}.filter {$0.activationState == .foregroundActive}

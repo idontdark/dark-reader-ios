@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct CatalogBookDetailSheet:View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     let book:CatalogBook
     let onClose:()->Void
     @EnvironmentObject private var library:BookshelfStore
@@ -25,7 +27,7 @@ struct CatalogBookDetailSheet:View {
                                    tags:RecommendationProfile.classify(book.summary ?? "").prefix(2).map {ReaderPreferences.genreName($0,language:language)})
                     ReaderSegmentedControl(items:[("books","Книга"),("audio","Аудиокнига")],selection:$format)
                     let summary=BookDescription.clean(book.summary ?? "")
-                    Text(summary.isEmpty ? "Описание пока недоступно.":summary)
+                    Text(verbatim:L10n.render(summary.isEmpty ? "Описание пока недоступно.":summary,language:localizationLanguage))
                         .font(.system(size:14)).lineSpacing(4)
                         .foregroundStyle(summary.isEmpty ? ReaderStyle.secondary:.white.opacity(0.88))
                         .frame(maxWidth:.infinity,alignment:.leading)
@@ -56,11 +58,11 @@ struct CatalogBookDetailSheet:View {
                         if let local, (local.isFavorite ?? false) != newValue {library.toggleFavorite(local)}
                     }
                     if task?.state == .failed {
-                        Text("Не удалось скачать книгу. Проверьте подключение и повторите попытку.")
+                        Text(verbatim:L10n.render("Не удалось скачать книгу. Проверьте подключение и повторите попытку.",language:localizationLanguage))
                             .font(.system(size:12)).foregroundStyle(ReaderStyle.secondary)
                     }
                 }.padding(.horizontal,20).padding(.top,10).padding(.bottom,30)
-            }.readerCanvas().navigationTitle("").navigationBarTitleDisplayMode(.inline)
+            }.readerCanvas().readerNavigationTitle("").navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement:.topBarLeading) {
                         Button(action:onClose) {Image(systemName:"chevron.left").font(.system(size:18,weight:.medium))}

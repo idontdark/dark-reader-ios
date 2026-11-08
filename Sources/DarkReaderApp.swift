@@ -134,7 +134,7 @@ private struct RootReaderView: View {
     private var preferenceObservers: some View {
         tabs
             .onChange(of: appLanguage) { old, value in
-                if bookLanguage == old || bookLanguage == "auto" { bookLanguage = value }
+                if bookLanguage == "auto" { bookLanguage = value }
                 sync.settingsChanged(key: "appLanguage", value: value)
             }
             .onChange(of: bookLanguage) { _, value in
@@ -215,7 +215,7 @@ private struct RootReaderView: View {
                 )
                 navigation.tab = .library
             } catch {
-                importError = error.localizedDescription
+                importError = L10n.errorDescription(error)
             }
         }
     }

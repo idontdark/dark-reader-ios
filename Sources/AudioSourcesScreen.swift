@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct AudioSourcesScreen: View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     @AppStorage("disabledAudioSources") private var disabled = ""
     @State private var status: [AudioSource: String] = [:]
     var body: some View {
@@ -17,9 +19,9 @@ struct AudioSourcesScreen: View {
                             Label(source.title, systemImage: "headphones").font(.headline)
                         }
                         .accessibilityIdentifier("audio-source-"+source.rawValue)
-                        Text(source == .librivox ? "Записи добровольцев, преимущественно классика" : "Архив аудиозаписей; доступность зависит от прав и региона")
+                        Text(verbatim:L10n.render(source == .librivox ? "Записи добровольцев, преимущественно классика" : "Архив аудиозаписей; доступность зависит от прав и региона",language:localizationLanguage))
                             .font(.caption).foregroundStyle(ReaderStyle.secondary).padding(.vertical, 8)
-                        Text(status[source] ?? "Ещё не проверен").font(.caption)
+                        Text(verbatim:L10n.render(status[source] ?? "Ещё не проверен",language:localizationLanguage)).font(.caption)
                         Button("Проверить подключение") {
                             status[source] = "Проверяем…"
                             Task {
@@ -32,10 +34,10 @@ struct AudioSourcesScreen: View {
                     }
                 }
                 ReaderCard {
-                    Text("Новые поставщики появятся после проверки API и разрешения на воспроизведение в стороннем приложении.")
+                    Text(verbatim:L10n.render("Новые поставщики появятся после проверки API и разрешения на воспроизведение в стороннем приложении.",language:localizationLanguage))
                         .font(.footnote).foregroundStyle(ReaderStyle.secondary)
                 }
             }.padding(20)
-        }.readerCanvas().navigationTitle("Аудиокниги — источники")
+        }.readerCanvas().readerNavigationTitle("Аудиокниги — источники")
     }
 }

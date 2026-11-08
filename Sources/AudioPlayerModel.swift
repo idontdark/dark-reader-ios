@@ -26,6 +26,17 @@ final class AudioPlayerModel: ObservableObject {
     private var sleepTask: Task<Void, Never>?
     @Published private(set) var downloadingChapter: String?
     @Published private(set) var downloaded: Set<String> = []
+    @Published private(set) var downloadingBookID: String?
+    @Published private(set) var completedDownloads = 0
+    @Published private(set) var totalDownloads = 0
+    @Published private(set) var downloadError: String?
+    private var downloadTask: Task<Void, Never>?
+    private lazy var downloadSession: URLSession = {
+        let configuration = URLSessionConfiguration.default
+        configuration.timeoutIntervalForRequest = 90
+        configuration.timeoutIntervalForResource = 3_600
+        return URLSession(configuration: configuration)
+    }()
 
     private var player: AVPlayer?
     private var timeObserver: Any?
@@ -256,35 +267,70 @@ final class AudioPlayerModel: ObservableObject {
     }
 
     func downloadCurrentChapter() async {
-        guard chapters.indices.contains(chapterIndex) else { return }
-        let track = chapters[chapterIndex]
-        guard localURL(for: track) == nil else { return }
-        downloadingChapter = track.id
-        defer { downloadingChapter = nil }
-        do {
-            var request = URLRequest(url: track.url)
-            request.timeoutInterval = 90
-            let (temporary, response) = try await URLSession.shared.download(for: request)
-            guard let http = response as? HTTPURLResponse,
-                  (200..<300).contains(http.statusCode) else {
-                throw AudioCatalogError.unavailable
+        guard let book, chapters.indices.contains(chapterIndex) else { return }
+        startDownload(book, tracks: [chapters[chapterIndex]])
+    }
+
+    func startDownload(_ selected: AudioBook, tracks: [AudioChapter]) {
+        guard downloadTask == nil, !tracks.isEmpty else { return }
+        downloadError = nil
+        downloadingBookID = selected.id
+        totalDownloads = tracks.count
+        completedDownloads = tracks.filter { localURL(for: $0) != nil }.count
+        saveToHistory(selected)
+        // The catalog caches the full chapter list before this point. Never replace it
+        // with the one chapter requested from the player menu.
+        downloadTask = Task { [weak self] in
+            guard let self else { return }
+            defer {
+                self.downloadingChapter = nil
+                self.downloadingBookID = nil
+                self.downloadTask = nil
             }
-            let base = try audioFolder()
-            let target = base.appendingPathComponent(safeFilename(for: track))
-            if FileManager.default.fileExists(atPath: target.path) {
-                try FileManager.default.removeItem(at: target)
+            do {
+                for track in tracks {
+                    try Task.checkCancellation()
+                    guard self.localURL(for: track) == nil else { continue }
+                    self.downloadingChapter = track.id
+                    try await self.download(track)
+                    self.completedDownloads += 1
+                }
+            } catch is CancellationError {
+                // Completed chapters stay available for the next attempt.
+            } catch {
+                if !Task.isCancelled {
+                    self.downloadError = L10n.text("Не удалось скачать аудиокнигу. Сохранённые главы доступны. Повторите загрузку, чтобы продолжить.") + " " + L10n.errorDescription(error)
+                }
             }
-            try FileManager.default.moveItem(at: temporary, to: target)
-            let asset = AVURLAsset(url: target)
-            guard !(try await asset.loadTracks(withMediaType: .audio)).isEmpty else {
-                try? FileManager.default.removeItem(at: target)
-                throw AudioCatalogError.noTracks
-            }
-            downloaded.insert(track.id)
-            settings.set(Array(downloaded), forKey: downloadKey)
-        } catch {
-            self.error = "Не удалось сохранить главу. Проверьте подключение."
         }
+    }
+
+    func cancelDownload() { downloadTask?.cancel() }
+
+    private func download(_ track: AudioChapter) async throws {
+        var request = URLRequest(url: track.url)
+        request.setValue("DarkReader/1.0 (iOS; audiobook download)", forHTTPHeaderField: "User-Agent")
+        let (temporary, response) = try await downloadSession.download(for: request)
+        defer { try? FileManager.default.removeItem(at: temporary) }
+        try Task.checkCancellation()
+        guard let http = response as? HTTPURLResponse,
+              (200..<300).contains(http.statusCode) else {
+            throw AudioCatalogError.unavailable
+        }
+        // Validate before publishing the file or updating the offline index.
+        let asset = AVURLAsset(url: temporary)
+        guard !(try await asset.loadTracks(withMediaType: .audio)).isEmpty else {
+            throw AudioCatalogError.noTracks
+        }
+        try Task.checkCancellation()
+        let target = try audioFolder().appendingPathComponent(safeFilename(for: track))
+        if FileManager.default.fileExists(atPath: target.path) {
+            _ = try FileManager.default.replaceItemAt(target, withItemAt: temporary)
+        } else {
+            try FileManager.default.moveItem(at: temporary, to: target)
+        }
+        downloaded.insert(track.id)
+        settings.set(Array(downloaded), forKey: downloadKey)
     }
 
     func localURL(for track: AudioChapter) -> URL? {

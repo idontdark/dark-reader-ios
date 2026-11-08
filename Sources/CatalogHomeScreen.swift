@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct CatalogHomeScreen:View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     @EnvironmentObject private var navigation:ReaderNavigation
     @EnvironmentObject private var player:AudioPlayerModel
     @EnvironmentObject private var library:BookshelfStore
@@ -102,7 +104,7 @@ struct CatalogHomeScreen:View {
     private func catalogRow(_ title:String,icon:String)->some View {
         HStack(spacing:11) {
             Image(systemName:icon).font(.system(size:17,weight:.regular)).frame(width:22)
-            Text(LocalizedStringKey(title)).font(.system(size:14,weight:.medium))
+            Text(verbatim:L10n.render(title,language:localizationLanguage)).font(.system(size:14,weight:.medium))
             Spacer()
             Image(systemName:"chevron.right").font(.system(size:11,weight:.medium)).foregroundStyle(ReaderStyle.secondary)
         }.foregroundStyle(.white.opacity(0.91)).frame(minHeight:43).contentShape(Rectangle())
@@ -110,10 +112,10 @@ struct CatalogHomeScreen:View {
     @ViewBuilder private var recommendationsSection:some View {
         VStack(alignment:.leading,spacing:11) {
             HStack {
-                Text("Для вас").font(.system(size:16,weight:.semibold))
+                Text(verbatim:L10n.render("Для вас",language:localizationLanguage)).font(.system(size:16,weight:.semibold))
                 Spacer()
                 NavigationLink {GenreSettingsScreen()} label:{
-                    Text("Мои интересы").font(.system(size:11)).foregroundStyle(ReaderStyle.secondary)
+                    Text(verbatim:L10n.render("Мои интересы",language:localizationLanguage)).font(.system(size:11)).foregroundStyle(ReaderStyle.secondary)
                 }
             }
             if loading && recommendations.isEmpty && audioBooks.isEmpty {
@@ -147,7 +149,7 @@ struct CatalogHomeScreen:View {
                     }
                 }
             } else {
-                Text(notice ?? "Подборка на выбранном языке пока недоступна.")
+                Text(verbatim:L10n.render(notice ?? "Подборка на выбранном языке пока недоступна.",language:localizationLanguage))
                     .font(.system(size:12)).foregroundStyle(ReaderStyle.secondary)
             }
         }
@@ -178,6 +180,8 @@ struct CatalogHomeScreen:View {
 }
 
 struct CatalogPromoCarousel:View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     let audio:Bool
     let onSearch:()->Void
     let onLibrary:()->Void
@@ -203,8 +207,8 @@ struct CatalogPromoCarousel:View {
         Button(action:action) {
             HStack(spacing:0) {
                 VStack(alignment:.leading,spacing:7) {
-                    Text(LocalizedStringKey(title)).font(.system(size:20,weight:.bold)).tracking(-0.3)
-                    Text(LocalizedStringKey(subtitle)).font(.system(size:12)).lineSpacing(2).foregroundStyle(.white.opacity(0.8))
+                    Text(verbatim:L10n.render(title,language:localizationLanguage)).font(.system(size:20,weight:.bold)).tracking(-0.3)
+                    Text(verbatim:L10n.render(subtitle,language:localizationLanguage)).font(.system(size:12)).lineSpacing(2).foregroundStyle(.white.opacity(0.8))
                 }.padding(.leading,17).frame(maxWidth:.infinity,alignment:.leading)
                 if audio {Image("HeroHeadphones").resizable().scaledToFit().frame(width:144,height:139).offset(x:5,y:9)}
                 else {BrandBook(width:130).padding(.trailing,8)}
@@ -224,10 +228,10 @@ struct CatalogPromoCarousel:View {
 struct UnifiedSearchScreen:View {
     @EnvironmentObject private var navigation:ReaderNavigation
     var body:some View {
-        VStack(spacing:10) {
-            ReaderHeader(title:"Поиск",trailingIcon:nil,trailingAction:nil).padding(.horizontal,18)
+        VStack(spacing:12) {
+            ReaderHeader(title:"Поиск",trailingIcon:nil,trailingAction:nil).padding(.horizontal,ReaderMetrics.screenInset)
             ReaderSegmentedControl(items:[("books","Книги"),("audio","Аудиокниги")],selection:$navigation.searchScope)
-                .padding(.horizontal,18)
+                .padding(.horizontal,ReaderMetrics.screenInset)
             if navigation.searchScope == "books" {CatalogScreen(showsHeader:false)}
             else {AudioCatalogScreen(showsHeader:false)}
         }.readerCanvas()

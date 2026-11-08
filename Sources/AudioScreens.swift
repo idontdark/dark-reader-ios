@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct AudioCatalogScreen: View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     var showsHeader = true
     @EnvironmentObject private var player: AudioPlayerModel
     @EnvironmentObject private var navigation: ReaderNavigation
@@ -32,11 +34,11 @@ struct AudioCatalogScreen: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 21) {
+                VStack(alignment: .leading, spacing: 20) {
                     if showsHeader {
                         ReaderHeader(title: "Аудиокниги", trailingIcon: nil, trailingAction: nil)
                     }
-                    VStack(alignment: .leading, spacing: 13) {
+                    VStack(alignment: .leading, spacing: ReaderMetrics.formSpacing) {
                         Menu {
                             ForEach(AudioSource.online.filter {!disabledSources.components(separatedBy:",").contains($0.rawValue)}) {item in
                                 Button(item.title) {customCatalogID="";source=item}
@@ -46,47 +48,11 @@ struct AudioCatalogScreen: View {
                             }
                             Divider()
                             Button("Настроить каталоги") {showCatalogs=true}
-                        } label: {
-                            HStack {
-                                Image(systemName:"headphones").foregroundStyle(color)
-                                Text(sourceName).font(.subheadline.weight(.semibold)).foregroundStyle(.white)
-                                Spacer()
-                                Image(systemName:"chevron.up.chevron.down").foregroundStyle(ReaderStyle.secondary)
-                            }.padding(14).background(ReaderStyle.surface,in:RoundedRectangle(cornerRadius:13))
-                        }
-                        HStack {
-                            Image(systemName: "magnifyingglass")
-                                .foregroundStyle(ReaderStyle.secondary)
-                            TextField("Название или автор", text: $query)
-                                .textInputAutocapitalization(.never)
-                                .autocorrectionDisabled()
-                                .submitLabel(.search)
-                                .onSubmit { startSearch() }
-                            if !query.isEmpty {
-                                Button { query = "" } label: {
-                                    Image(systemName: "xmark.circle.fill")
-                                }
-                                .foregroundStyle(ReaderStyle.secondary)
-                            }
-                        }
-                        .padding(14)
-                        .background(ReaderStyle.surface, in: RoundedRectangle(cornerRadius: 13))
-                        Picker("Искать", selection: $byAuthor) {
-                            Text("По названию").tag(false)
-                            Text("По автору").tag(true)
-                        }
-                        .pickerStyle(.segmented)
-
-                        HStack(spacing:8) {
-                            Image(systemName:"globe")
-                            Text("Язык книг")
-                            Spacer()
-                            Menu {
-                                Button("Русский") {bookLanguage="ru"}
-                                Button("English") {bookLanguage="en"}
-                                Button("Все") {bookLanguage="all"}
-                            } label:{Text(languageName).foregroundStyle(color)}
-                        }.font(.footnote).foregroundStyle(ReaderStyle.secondary)
+                        } label:{ReaderSearchSourceLabel(title:sourceName,icon:"headphones")}
+                        ReaderQueryField(query:$query) {if !searching {startSearch()}}
+                        ReaderSegmentedControl(items:[("title","По названию"),("author","По автору")],selection:Binding(
+                            get:{byAuthor ? "author":"title"},set:{byAuthor=$0 == "author"}))
+                        ReaderSearchLanguage(selection:$bookLanguage)
 
                         PurpleAction(title: searching ? "Отменить поиск" : "Найти аудиокниги",
                                      icon: searching ? "xmark" : "magnifyingglass") {
@@ -98,12 +64,12 @@ struct AudioCatalogScreen: View {
                         if searching {
                             HStack(spacing: 9) {
                                 ProgressView().tint(color)
-                                Text("Ищем записи…")
+                                Text(verbatim:L10n.render("Ищем записи…",language:localizationLanguage))
                                     .foregroundStyle(ReaderStyle.secondary)
                             }
                             .font(.subheadline)
                             if showVPNHint {
-                                Text("Поиск затянулся. Если каталог не открывается, попробуйте VPN.")
+                                Text(verbatim:L10n.render("Поиск затянулся. Если каталог не открывается, попробуйте VPN.",language:localizationLanguage))
                                     .font(.footnote)
                                     .foregroundStyle(ReaderStyle.secondary)
                             }
@@ -111,7 +77,7 @@ struct AudioCatalogScreen: View {
                     }
                     if let message {
                         ReaderCard {
-                            Label(message, systemImage: "wifi.exclamationmark")
+                            Label(L10n.render(message, language:localizationLanguage), systemImage: "wifi.exclamationmark")
                                 .font(.subheadline)
                                 .foregroundStyle(ReaderStyle.secondary)
                         }
@@ -127,9 +93,9 @@ struct AudioCatalogScreen: View {
                     if didSearch && books.isEmpty && !searching && message == nil {
                         ReaderCard {
                             VStack(alignment: .leading, spacing: 7) {
-                                Text("Ничего не найдено")
+                                Text(verbatim:L10n.render("Ничего не найдено",language:localizationLanguage))
                                     .font(.headline)
-                                Text("Попробуйте другое название или автора. Бесплатных записей некоторых книг пока нет.")
+                                Text(verbatim:L10n.render("Попробуйте другое название или автора. Бесплатных записей некоторых книг пока нет.",language:localizationLanguage))
                                     .font(.subheadline).foregroundStyle(ReaderStyle.secondary)
                             }
                         }
@@ -275,6 +241,8 @@ struct AudioCatalogScreen: View {
 }
 
 struct AudioBookDetailScreen:View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     let book:AudioBook
     let onPlay:()->Void
     @EnvironmentObject private var player:AudioPlayerModel
@@ -302,10 +270,11 @@ struct AudioBookDetailScreen:View {
                         Text(description).font(.system(size:14)).lineSpacing(4).foregroundStyle(.white.opacity(0.88))
                     }
                     if loading {ProgressView().padding(.vertical,10).tint(Color(hex:accentHex))}
-                    if let message {Text(message).font(.system(size:12)).foregroundStyle(ReaderStyle.secondary)}
+                    if let message {Text(verbatim:L10n.render(message,language:localizationLanguage)).font(.system(size:12)).foregroundStyle(ReaderStyle.secondary)}
                     PurpleAction(title:"Слушать аудиокнигу",icon:"play.fill") {
                         player.open(book,tracks:chapters);showPlayer=true;onPlay()
                     }.disabled(chapters.isEmpty || loading)
+                    AudioDownloadAction(book:book,chapters:chapters)
                     BookFavoriteButton(favorite:favorite) {
                         var values=decode(favoritesJSON)
                         if favorite {values.removeAll {$0.id == book.id}}
@@ -318,7 +287,7 @@ struct AudioBookDetailScreen:View {
                     }
                     if !chapters.isEmpty {
                         VStack(alignment:.leading,spacing:5) {
-                            Text("Главы").font(.system(size:15,weight:.semibold)).padding(.top,8).padding(.bottom,5)
+                            Text(verbatim:L10n.render("Главы",language:localizationLanguage)).font(.system(size:15,weight:.semibold)).padding(.top,8).padding(.bottom,5)
                             ForEach(Array(chapters.enumerated()),id:\.element.id) {index,chapter in
                                 Button {
                                     player.open(book,tracks:chapters);player.playChapter(index);showPlayer=true;onPlay()
@@ -335,7 +304,7 @@ struct AudioBookDetailScreen:View {
                         }
                     }
                 }.padding(.horizontal,20).padding(.top,10).padding(.bottom,30)
-            }.readerCanvas().navigationTitle("").navigationBarTitleDisplayMode(.inline)
+            }.readerCanvas().readerNavigationTitle("").navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement:.topBarLeading) {
                         Button {dismiss()} label:{Image(systemName:"chevron.left").font(.system(size:18,weight:.medium))}
@@ -365,6 +334,8 @@ struct AudioBookDetailScreen:View {
 }
 
 struct AudioPlayerScreen:View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     @EnvironmentObject private var player:AudioPlayerModel
     @Environment(\.dismiss) private var dismiss
     @AppStorage("accentHex") private var accentHex=ReaderStyle.defaultAccent
@@ -381,6 +352,11 @@ struct AudioPlayerScreen:View {
                             .accessibilityLabel("Свернуть плеер")
                         Spacer()
                         Menu {
+                            if let book=player.book {
+                                Button("Скачать аудиокнигу",systemImage:"arrow.down.to.line") {
+                                    player.startDownload(book,tracks:player.chapters)
+                                }.disabled(player.downloadingBookID != nil)
+                            }
                             Button("Сохранить текущую главу",systemImage:"arrow.down.to.line") {Task {await player.downloadCurrentChapter()}}
                                 .disabled(player.downloadingChapter != nil)
                             Button("Добавить закладку",systemImage:"bookmark") {player.addBookmark()}
@@ -400,7 +376,7 @@ struct AudioPlayerScreen:View {
                             .multilineTextAlignment(.center).lineLimit(2).padding(.top,6)
                     } else {
                         Image("HeroHeadphones").resizable().scaledToFit().frame(height:280)
-                        Text("Выберите аудиокнигу").font(.system(size:20,weight:.semibold)).padding(.top,15)
+                        Text(verbatim:L10n.render("Выберите аудиокнигу",language:localizationLanguage)).font(.system(size:20,weight:.semibold)).padding(.top,15)
                     }
                     Spacer(minLength:18).frame(maxHeight:34)
                     timeline
@@ -419,9 +395,9 @@ struct AudioPlayerScreen:View {
                     }.foregroundStyle(Color(hex:"#E4DEEC")).buttonStyle(.plain).padding(.top,24)
                     Spacer(minLength:22).frame(maxHeight:44)
                     bottomControls
-                    if let error=player.error {Text(error).font(.system(size:11)).foregroundStyle(ReaderStyle.secondary).padding(.top,14)}
+                    if let error=player.error {Text(verbatim:L10n.render(error,language:localizationLanguage)).font(.system(size:11)).foregroundStyle(ReaderStyle.secondary).padding(.top,14)}
                     if let remaining=player.sleepTimerRemaining {
-                        Text("До остановки: \(Int(ceil(remaining/60))) мин").font(.system(size:11)).foregroundStyle(ReaderStyle.secondary).padding(.top,12)
+                        Text(verbatim:L10n.render("До остановки: \(Int(ceil(remaining/60))) мин",language:localizationLanguage)).font(.system(size:11)).foregroundStyle(ReaderStyle.secondary).padding(.top,12)
                     }
                     Spacer(minLength:10)
                 }.padding(.horizontal,24).padding(.top,2).padding(.bottom,14)
@@ -443,7 +419,7 @@ struct AudioPlayerScreen:View {
                 Text(timeText(player.duration))
             }.font(.system(size:10,weight:.medium,design:.monospaced)).foregroundStyle(ReaderStyle.secondary)
             if !player.canSeek,player.book != nil {
-                Text("Источник пока не предоставил диапазон перемотки.")
+                Text(verbatim:L10n.render("Источник пока не предоставил диапазон перемотки.",language:localizationLanguage))
                     .font(.system(size:10)).foregroundStyle(ReaderStyle.secondary).padding(.top,7)
             }
         }
@@ -462,7 +438,7 @@ struct AudioPlayerScreen:View {
             Menu {
                 Button("Добавить закладку",systemImage:"bookmark") {player.addBookmark()}
                 ForEach(player.bookmarks) {bookmark in
-                    Button("Закладка · \(timeText(bookmark.position))") {player.openBookmark(bookmark)}
+                    Button(L10n.render("Закладка · \(timeText(bookmark.position))",language:localizationLanguage)) {player.openBookmark(bookmark)}
                 }
                 Divider()
                 ForEach(Array(player.chapters.enumerated()),id:\.element.id) {index,chapter in
@@ -474,7 +450,7 @@ struct AudioPlayerScreen:View {
             Menu {
                 Button("Отключить таймер") {player.setSleepTimer(minutes:nil)}
                 ForEach([5,10,15,30,60],id:\.self) {minutes in
-                    Button("\(minutes) мин") {player.setSleepTimer(minutes:minutes)}
+                    Button(L10n.render("\(minutes) мин",language:localizationLanguage)) {player.setSleepTimer(minutes:minutes)}
                 }
             } label:{
                 Image(systemName:"timer").font(.system(size:23,weight:.light))

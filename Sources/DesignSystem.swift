@@ -59,9 +59,11 @@ struct BrandBook: View {
 }
 struct ReaderCard<Content:View>:View {
     @ViewBuilder var content:Content
+    let inset:CGFloat
+    init(inset:CGFloat=14,@ViewBuilder content:()->Content) {self.inset=inset;self.content=content()}
     var body:some View {
         VStack(alignment:.leading,spacing:0) { content }
-            .padding(14).frame(maxWidth:.infinity,alignment:.leading)
+            .padding(inset).frame(maxWidth:.infinity,alignment:.leading)
             .background(ReaderStyle.cardGradient,in:RoundedRectangle(cornerRadius:13,style:.continuous))
             .overlay(RoundedRectangle(cornerRadius:13).strokeBorder(ReaderStyle.line,lineWidth:0.8))
     }
@@ -75,6 +77,8 @@ struct ReaderInsetGroup<Content:View>:View {
     }
 }
 struct ReaderHeader:View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     let title:String
     let trailingIcon:String?
     let trailingAction:(()->Void)?
@@ -99,10 +103,10 @@ struct ReaderHeader:View {
                     if let secondaryIcon,let secondaryAction { headerButton(secondaryIcon,secondaryAction) }
                     if let trailingIcon,let trailingAction { headerButton(trailingIcon,trailingAction) }
                 }.frame(height:28)
-                Text(LocalizedStringKey(title)).font(.system(size:25,weight:.bold)).tracking(-0.6)
+                Text(verbatim:L10n.render(title,language:localizationLanguage)).font(.system(size:25,weight:.bold)).tracking(-0.6)
             } else {
                 HStack {
-                    Text(LocalizedStringKey(title)).font(.system(size:26,weight:.bold)).tracking(-0.5)
+                    Text(verbatim:L10n.render(title,language:localizationLanguage)).font(.system(size:26,weight:.bold)).tracking(-0.5)
                     Spacer()
                     if let trailingIcon,let trailingAction { headerButton(trailingIcon,trailingAction) }
                 }.frame(minHeight:38)
@@ -120,6 +124,8 @@ struct ReaderHeader:View {
 }
 
 struct ReaderSegmentedControl:View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     let items:[(id:String,title:String)]
     @Binding var selection:String
     @AppStorage("accentHex") private var accentHex=ReaderStyle.defaultAccent
@@ -127,9 +133,9 @@ struct ReaderSegmentedControl:View {
         HStack(spacing:2) {
             ForEach(items,id:\.id) { item in
                 Button { withAnimation(.easeInOut(duration:0.16)) { selection=item.id } } label: {
-                    Text(LocalizedStringKey(item.title)).font(.system(size:12,weight:selection == item.id ? .semibold:.medium))
+                    Text(verbatim:L10n.render(item.title,language:localizationLanguage)).font(.system(size:12,weight:selection == item.id ? .semibold:.medium))
                         .foregroundStyle(.white.opacity(selection == item.id ? 1:0.73))
-                        .frame(maxWidth:.infinity).frame(height:27)
+                        .frame(maxWidth:.infinity).frame(minHeight:38)
                         .background {
                             if selection == item.id {
                                 Capsule().fill(ReaderStyle.actionGradient(accentHex))
@@ -147,6 +153,8 @@ struct ReaderSegmentedControl:View {
     }
 }
 struct PurpleAction:View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     let title:String
     var icon:String="arrow.right"
     var height:CGFloat=44
@@ -156,7 +164,7 @@ struct PurpleAction:View {
         Button(action:action) {
             HStack(spacing:7) {
                 if !icon.isEmpty { Image(systemName:icon).font(.system(size:15,weight:.medium)) }
-                Text(LocalizedStringKey(title)).font(.system(size:14,weight:.semibold))
+                Text(verbatim:L10n.render(title,language:localizationLanguage)).font(.system(size:14,weight:.semibold))
             }.foregroundStyle(.white).frame(maxWidth:.infinity).frame(height:height)
                 .background(ReaderStyle.actionGradient(accentHex),in:RoundedRectangle(cornerRadius:10))
                 .overlay(RoundedRectangle(cornerRadius:10).strokeBorder(Color.white.opacity(0.18),lineWidth:0.7))
@@ -184,21 +192,22 @@ struct BookArtwork:View {
     }
     private var fallback:some View {
         ZStack {
-            LinearGradient(colors:[Color(hex:"#705B6B"),Color(hex:"#29212F")],startPoint:.topLeading,endPoint:.bottomTrailing)
-            VStack(spacing:8) {
-                Text(title).font(.system(size:max(9,width*0.14),weight:.semibold,design:.serif))
-                    .multilineTextAlignment(.center).lineLimit(4)
-                Spacer(minLength:0)
-                Text(author).font(.system(size:max(7,width*0.09))).lineLimit(2).multilineTextAlignment(.center)
-            }.foregroundStyle(Color(hex:"#F1E4C5")).padding(max(7,width*0.08))
+            ReaderStyle.raised
+            Image(systemName:"book.closed").font(.system(size:max(16,width*0.24),weight:.light))
+                .foregroundStyle(ReaderStyle.secondary.opacity(0.65))
         }
     }
 }
+
 struct SectionLabel:View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     let text:String
-    var body:some View { Text(LocalizedStringKey(text)).font(.system(size:13,weight:.semibold)).foregroundStyle(ReaderStyle.secondary) }
+    var body:some View { Text(verbatim:L10n.render(text,language:localizationLanguage)).font(.system(size:13,weight:.semibold)).foregroundStyle(ReaderStyle.secondary) }
 }
 struct ReaderRow<Content:View>:View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     let icon:String
     let title:String
     let subtitle:String?
@@ -208,8 +217,8 @@ struct ReaderRow<Content:View>:View {
         HStack(spacing:11) {
             Image(systemName:icon).font(.system(size:17)).foregroundStyle(Color(hex:accentHex).shade(0.18)).frame(width:24)
             VStack(alignment:.leading,spacing:3) {
-                Text(LocalizedStringKey(title)).font(.system(size:14,weight:.medium)).foregroundStyle(.white)
-                if let subtitle { Text(LocalizedStringKey(subtitle)).font(.system(size:11)).foregroundStyle(ReaderStyle.secondary) }
+                Text(verbatim:L10n.render(title,language:localizationLanguage)).font(.system(size:14,weight:.medium)).foregroundStyle(.white)
+                if let subtitle { Text(verbatim:L10n.render(subtitle,language:localizationLanguage)).font(.system(size:11)).foregroundStyle(ReaderStyle.secondary) }
             }.frame(maxWidth:.infinity,alignment:.leading)
             trailing
         }.padding(.vertical,12).contentShape(Rectangle())
@@ -217,13 +226,15 @@ struct ReaderRow<Content:View>:View {
 }
 struct ReaderDivider:View { var body:some View { Rectangle().fill(Color.white.opacity(0.065)).frame(height:0.6) } }
 struct LibraryMenuRow:View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     let icon:String
     let title:String
     let count:Int
     var body:some View {
         HStack(spacing:10) {
             Image(systemName:icon).font(.system(size:17,weight:.regular)).frame(width:23)
-            Text(LocalizedStringKey(title)).font(.system(size:14,weight:.medium))
+            Text(verbatim:L10n.render(title,language:localizationLanguage)).font(.system(size:14,weight:.medium))
             Spacer()
             Text("\(count)").font(.system(size:12)).foregroundStyle(ReaderStyle.secondary)
             Image(systemName:"chevron.right").font(.system(size:10,weight:.semibold)).foregroundStyle(ReaderStyle.secondary.opacity(0.8))

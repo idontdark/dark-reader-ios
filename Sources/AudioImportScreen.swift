@@ -3,6 +3,8 @@ import UIKit
 import UniformTypeIdentifiers
 
 struct AudioImportScreen: View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     @State private var picking = false
     @State private var busy = false
     @State private var title = ""
@@ -36,11 +38,11 @@ struct AudioImportScreen: View {
                         }.disabled(busy || address.isEmpty)
                     }
                     if busy { ProgressView("Импортируем аудио…") }
-                    if let message { Text(message).font(.subheadline).foregroundStyle(ReaderStyle.secondary) }
-                    Text("Порядок глав, название, автора и обложку можно изменить в карточке импортированной книги.")
+                    if let message { Text(verbatim:L10n.render(message,language:localizationLanguage)).font(.subheadline).foregroundStyle(ReaderStyle.secondary) }
+                    Text(verbatim:L10n.render("Порядок глав, название, автора и обложку можно изменить в карточке импортированной книги.",language:localizationLanguage))
                         .font(.footnote).foregroundStyle(ReaderStyle.secondary)
                 }.padding(20)
-            }.readerCanvas().navigationTitle("Импорт аудиокниг")
+            }.readerCanvas().readerNavigationTitle("Импорт аудиокниг")
                 .fileImporter(isPresented: $picking, allowedContentTypes: AudioImportStore.extensions.compactMap { UTType(filenameExtension: $0) },
                               allowsMultipleSelection: true) { result in
                     guard case .success(let urls) = result else { message = "Не удалось открыть файлы."; return }
@@ -59,6 +61,8 @@ struct AudioImportScreen: View {
 }
 
 struct AudioEditScreen: View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     let book: AudioBook
     @Environment(\.dismiss) private var dismiss
     @State private var title = ""
@@ -76,8 +80,8 @@ struct AudioEditScreen: View {
                 ForEach(tracks) { Text($0.title) }
                     .onMove { tracks.move(fromOffsets: $0, toOffset: $1) }
             }
-            if let message { Text(message) }
-        }.scrollContentBackground(.hidden).readerCanvas().navigationTitle("Изменить аудиокнигу")
+            if let message { Text(verbatim:L10n.render(message,language:localizationLanguage)) }
+        }.scrollContentBackground(.hidden).readerCanvas().readerNavigationTitle("Изменить аудиокнигу")
             .environment(\.editMode, .constant(.active))
             .onAppear {
                 title = book.title; author = book.author; cover = book.coverURL

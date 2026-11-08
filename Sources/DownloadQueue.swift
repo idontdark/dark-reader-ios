@@ -115,12 +115,14 @@ final class DownloadQueue: ObservableObject {
 }
 
 struct DownloadsScreen: View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     @ObservedObject private var queue = DownloadQueue.shared
     var body: some View {
         ScrollView {
             VStack(spacing: 14) {
                 if queue.items.isEmpty {
-                    ReaderCard { Text("Загрузок пока нет").foregroundStyle(ReaderStyle.secondary) }
+                    ReaderCard { Text(verbatim:L10n.render("Загрузок пока нет",language:localizationLanguage)).foregroundStyle(ReaderStyle.secondary) }
                 }
                 ForEach(queue.items) { item in
                     ReaderCard {
@@ -141,6 +143,6 @@ struct DownloadsScreen: View {
                     }
                 }
             }.padding(20)
-        }.readerCanvas().navigationTitle("Загрузки")
+        }.readerCanvas().readerNavigationTitle("Загрузки")
     }
 }

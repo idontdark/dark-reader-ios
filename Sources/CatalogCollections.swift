@@ -8,36 +8,42 @@ struct DiscoveryCollectionScreen:View {
     @State private var books:[DiscoveryBook]=[]
     @State private var loading=true
     @State private var message:String?
+    @State private var failed=false
+    @State private var requestID=UUID()
     @State private var selected:DiscoveryBook?
     var body:some View {
         ScrollView {
-            VStack(spacing:11) {
-                if loading {ProgressView().padding(25)}
-                if let message {Text(message).font(.system(size:13)).foregroundStyle(ReaderStyle.secondary)}
-                ForEach(books) {book in
-                    Button {selected=book} label:{
-                        ReaderCard {
-                            HStack(spacing:12) {
-                                DiscoveryArtwork(book:book,width:63,height:93)
-                                VStack(alignment:.leading,spacing:6) {
-                                    Text(book.title).font(.system(size:15,weight:.semibold)).foregroundStyle(.white).lineLimit(2)
-                                    Text(book.author).font(.system(size:12)).foregroundStyle(ReaderStyle.secondary).lineLimit(2)
-                                };Spacer()
-                                Image(systemName:"chevron.right").font(.system(size:11)).foregroundStyle(ReaderStyle.secondary)
-                            }
-                        }
-                    }.buttonStyle(.plain)
+            LazyVStack(spacing:12) {
+                if loading && books.isEmpty {CatalogSkeletons()}
+                if loading && !books.isEmpty {ProgressView().accessibilityLabel("Обновляем подборку")}
+                if let message {
+                    ReaderCard {
+                        Text(verbatim:L10n.render(message)).font(.subheadline).foregroundStyle(ReaderStyle.secondary)
+                        if failed {Button("Повторить") {Task {await load()}}.padding(.top,12)}
+                    }
                 }
-            }.padding(18)
-        }.readerCanvas().navigationTitle(title).navigationBarTitleDisplayMode(.inline)
-            .task {
-                defer {loading=false}
-                do {
-                    books=try await DiscoveryService.books(genres:genres,language:language,limit:24,sort:sort)
-                    if books.isEmpty {message="На выбранном языке пока нет подходящих книг."}
-                } catch {message="Не удалось загрузить подборку. Повторите попытку позже."}
-            }
+                ForEach(books) {book in
+                    Button {selected=book} label:{CatalogResultRow(title:book.title,author:book.author,coverURL:book.coverURL)}.buttonStyle(.plain)
+                }
+            }.padding(ReaderMetrics.screenInset)
+        }.readerCanvas().readerNavigationTitle(title).navigationBarTitleDisplayMode(.inline)
+            .task(id:language+sort+genres.joined(separator:",")) {await load()}
+            .refreshable {await load()}
             .fullScreenCover(item:$selected) {DiscoveryBookDetail(book:$0)}
+    }
+    private func load() async {
+        let token=UUID();requestID=token;loading=true;message=nil;failed=false
+        defer {if requestID == token {loading=false}}
+        do {
+            let found=try await DiscoveryService.books(genres:genres,language:language,limit:24,sort:sort)
+            try Task.checkCancellation()
+            guard requestID == token else{return}
+            books=found
+            if found.isEmpty {message="На выбранном языке пока нет подходящих книг."}
+        } catch is CancellationError {} catch {
+            guard !Task.isCancelled,requestID == token else{return}
+            failed=true;message="Не удалось загрузить подборку. Проверьте подключение и повторите попытку."
+        }
     }
 }
 struct AudioCollectionScreen:View {
@@ -49,43 +55,48 @@ struct AudioCollectionScreen:View {
     @AppStorage("preferredAudioSource") private var source:AudioSource = .archive
     @AppStorage("disabledAudioSources") private var disabled=""
     @State private var books:[AudioBook]=[]
-    @State private var message:String?
     @State private var loading=true
+    @State private var message:String?
+    @State private var failed=false
+    @State private var requestID=UUID()
     @State private var selected:AudioBook?
-    @State private var showPlayer=false
     var body:some View {
         ScrollView {
-            VStack(spacing:11) {
-                if loading {ProgressView().padding(25)}
-                if let message {Text(message).font(.system(size:13)).foregroundStyle(ReaderStyle.secondary)}
-                ForEach(books) {book in
-                    Button {selected=book} label:{
-                        ReaderCard {
-                            HStack(spacing:12) {
-                                BookArtwork(title:book.title,author:book.author,coverURL:book.coverURL,width:63,height:93)
-                                VStack(alignment:.leading,spacing:6) {
-                                    Text(book.title).font(.system(size:15,weight:.semibold)).foregroundStyle(.white).lineLimit(2)
-                                    Text(book.author).font(.system(size:12)).foregroundStyle(ReaderStyle.secondary).lineLimit(2)
-                                };Spacer()
-                                Image(systemName:"chevron.right").font(.system(size:11)).foregroundStyle(ReaderStyle.secondary)
-                            }
-                        }
-                    }.buttonStyle(.plain)
+            LazyVStack(spacing:12) {
+                if loading && books.isEmpty {CatalogSkeletons()}
+                if loading && !books.isEmpty {ProgressView().accessibilityLabel("Обновляем подборку")}
+                if let message {
+                    ReaderCard {
+                        Text(verbatim:L10n.render(message)).font(.subheadline).foregroundStyle(ReaderStyle.secondary)
+                        if failed {Button("Повторить") {Task {await load()}}.padding(.top,12)}
+                    }
                 }
-            }.padding(18)
-        }.readerCanvas().navigationTitle(title).navigationBarTitleDisplayMode(.inline)
-            .task {
-                defer {loading=false}
-                guard !disabled.components(separatedBy:",").contains(source.rawValue) else {message="Включите источник аудиокниг.";return}
-                do {
-                    books=try await AudioCatalogService.featured(source:source,language:language,genres:genres,newest:newest)
-                    if books.isEmpty {message="На выбранном языке пока нет подходящих записей."}
-                } catch {message="Не удалось загрузить аудиокниги."}
-            }
-            .fullScreenCover(item:$selected) {book in AudioBookDetailScreen(book:book){}.environmentObject(player)}
-            .fullScreenCover(isPresented:$showPlayer) {AudioPlayerScreen().environmentObject(player)}
+                ForEach(books) {book in
+                    Button {selected=book} label:{CatalogResultRow(title:book.title,author:book.author,coverURL:book.coverURL)}.buttonStyle(.plain)
+                }
+            }.padding(ReaderMetrics.screenInset)
+        }.readerCanvas().readerNavigationTitle(title).navigationBarTitleDisplayMode(.inline)
+            .task(id:language+source.rawValue+disabled+genres.joined(separator:",")) {await load()}
+            .refreshable {await load()}
+            .fullScreenCover(item:$selected) {AudioBookDetailScreen(book:$0){}.environmentObject(player)}
+    }
+    private func load() async {
+        let token=UUID();requestID=token;loading=true;message=nil;failed=false
+        defer {if requestID == token {loading=false}}
+        guard !disabled.components(separatedBy:",").contains(source.rawValue) else {message="Включите источник аудиокниг.";return}
+        do {
+            let found=try await AudioCatalogService.featured(source:source,language:language,genres:genres,newest:newest)
+            try Task.checkCancellation()
+            guard requestID == token else{return}
+            books=found
+            if found.isEmpty {message="На выбранном языке пока нет подходящих записей."}
+        } catch is CancellationError {} catch {
+            guard !Task.isCancelled,requestID == token else{return}
+            failed=true;message="Не удалось загрузить аудиокниги. Проверьте подключение и повторите попытку."
+        }
     }
 }
+
 struct CatalogGenresScreen:View {
     let audio:Bool
     @AppStorage("appLanguage") private var language="ru"
@@ -104,7 +115,7 @@ struct CatalogGenresScreen:View {
                     if genre.id != ReaderPreferences.genres.last?.id {ReaderDivider()}
                 }
             }.padding(18)
-        }.readerCanvas().navigationTitle("Жанры").navigationBarTitleDisplayMode(.inline)
+        }.readerCanvas().readerNavigationTitle("Жанры").navigationBarTitleDisplayMode(.inline)
     }
 }
 struct CatalogAuthorsScreen:View {
@@ -136,10 +147,12 @@ struct CatalogAuthorsScreen:View {
                 }
                 NavigationLink("Любимые авторы") {FavoriteAuthorsScreen()}.font(.system(size:13))
             }.padding(18)
-        }.readerCanvas().navigationTitle("Авторы").navigationBarTitleDisplayMode(.inline)
+        }.readerCanvas().readerNavigationTitle("Авторы").navigationBarTitleDisplayMode(.inline)
     }
 }
 struct CatalogSeriesScreen:View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     let audio:Bool
     @EnvironmentObject private var navigation:ReaderNavigation
     @AppStorage("catalogProvider") private var provider="flibusta"
@@ -154,7 +167,7 @@ struct CatalogSeriesScreen:View {
                     ReaderCard {
                         if loading {ProgressView().padding(.vertical,15)}
                         else {
-                            Text(message ?? "Этот источник пока не передаёт список серий.").font(.system(size:14)).foregroundStyle(ReaderStyle.secondary)
+                            Text(verbatim:L10n.render(message ?? "Этот источник пока не передаёт список серий.",language:localizationLanguage)).font(.system(size:14)).foregroundStyle(ReaderStyle.secondary)
                             Button("Найти книгу по названию") {
                                 navigation.searchScope=audio ? "audio":"books";navigation.tab = .search
                             }.font(.system(size:13,weight:.medium)).padding(.top,12)
@@ -162,7 +175,7 @@ struct CatalogSeriesScreen:View {
                     }.padding(18)
                 }.readerCanvas()
             }
-        }.navigationTitle("Серии").navigationBarTitleDisplayMode(.inline)
+        }.readerNavigationTitle("Серии").navigationBarTitleDisplayMode(.inline)
             .task {
                 defer {loading=false}
                 guard !audio else {message="Раздел серий пока недоступен. Если он будет востребован, я добавлю его, когда найду подходящий сервис. Пока книги серии можно искать по названию.";return}
@@ -178,6 +191,8 @@ struct CatalogSeriesScreen:View {
     }
 }
 struct OPDSBrowseScreen:View {
+    @AppStorage("appLanguage") private var localizationLanguage="ru"
+
     let title:String
     let url:URL
     @State private var entries:[CatalogBook]=[]
@@ -186,7 +201,7 @@ struct OPDSBrowseScreen:View {
     var body:some View {
         ScrollView {
             VStack(spacing:10) {
-                if let message {Text(message).font(.system(size:13)).foregroundStyle(ReaderStyle.secondary)}
+                if let message {Text(verbatim:L10n.render(message,language:localizationLanguage)).font(.system(size:13)).foregroundStyle(ReaderStyle.secondary)}
                 ForEach(entries) {book in
                     if let navigation=book.navigationURL,book.epubURL == nil {
                         NavigationLink {OPDSBrowseScreen(title:book.title,url:navigation)} label:{
@@ -203,7 +218,7 @@ struct OPDSBrowseScreen:View {
                     }
                 }
             }.padding(18)
-        }.readerCanvas().navigationTitle(title).navigationBarTitleDisplayMode(.inline)
+        }.readerCanvas().readerNavigationTitle(title,localized:false).navigationBarTitleDisplayMode(.inline)
             .task {do {entries=try await CatalogProviders.browse(url:url)} catch {message="Не удалось открыть каталог."}}
             .fullScreenCover(item:$selected) {book in CatalogBookDetailSheet(book:book){selected=nil}}
     }
