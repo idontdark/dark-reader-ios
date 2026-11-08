@@ -1,6 +1,9 @@
 name: Build and publish IPA
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [".github/workflows/ipa.yml"]
 concurrency:
   group: dark-reader-release
   cancel-in-progress: true
@@ -42,42 +45,51 @@ jobs:
           test "$VERSION" = "1.0.0"
           mkdir -p dist/Payload
           ditto "$APP" "dist/Payload/DarkReader.app"
-          (cd dist && zip -qry ../DarkReader-1.03-unsigned.ipa Payload)
-          unzip -tq DarkReader-1.03-unsigned.ipa
-          unzip -Z1 DarkReader-1.03-unsigned.ipa | grep -qx 'Payload/DarkReader.app/Info.plist'
-          unzip -Z1 DarkReader-1.03-unsigned.ipa | grep -qx 'Payload/DarkReader.app/DarkReader'
+          mkdir -p release-files
+          (cd dist && zip -qry '../release-files/dark-signer [v1.1].ipa' Payload)
+          unzip -tq 'release-files/dark-signer [v1.1].ipa'
+          unzip -Z1 'release-files/dark-signer [v1.1].ipa' > ipa-contents.txt
+          grep -Fx 'Payload/DarkReader.app/Info.plist' ipa-contents.txt
+          grep -Fx 'Payload/DarkReader.app/DarkReader' ipa-contents.txt
           echo "Verified Payload/DarkReader.app"
       - name: Upload Actions artifact (ZIP containing IPA)
         uses: actions/upload-artifact@v4
         with:
-          name: DarkReader-1.03-IPA
-          path: DarkReader-1.03-unsigned.ipa
+          name: dark-signer-v1.1-IPA
+          path: release-files/*.ipa
           if-no-files-found: error
           retention-days: 30
       - name: Publish direct IPA to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.0-build-${{ github.run_number }}
-          name: Dark Reader 1.0 — Обновление 1.03 (build ${{ github.run_number }})
+          name: Dark Reader — dark-signer [v1.1] (build ${{ github.run_number }})
           prerelease: true
           generate_release_notes: false
           body_path: docs/RELEASE_1.03.md
-          files: DarkReader-1.03-unsigned.ipa
+          files: release-files/*.ipa
 
       - name: Remove superseded installation files
         uses: actions/github-script@v7
         with:
           script: |
             const current = 'v1.0.0-build-' + context.runNumber;
+            const desired = 'dark-signer [v1.1].ipa';
+            const {data: created} = await github.rest.repos.getReleaseByTag({...context.repo, tag:current});
+            const ipa = created.assets.find(a => a.name.endsWith('.ipa') && a.size > 0);
+            if (!ipa) throw new Error('New IPA not uploaded; keep old files');
+            if (ipa.name !== desired) {
+              await github.rest.repos.updateReleaseAsset({...context.repo, asset_id:ipa.id, name:desired, label:desired});
+            }
             const releases = await github.paginate(github.rest.repos.listReleases, {...context.repo, per_page: 100});
-            const published = releases.find(r => r.tag_name === current && !r.draft && r.assets.some(a => a.name === 'DarkReader-1.03-unsigned.ipa' && a.state === 'uploaded' && a.size > 0));
+            const published = releases.find(r => r.tag_name === current && !r.draft && r.assets.some(a => a.name === desired && a.state === 'uploaded' && a.size > 0));
             if (!published) throw new Error('New IPA not confirmed; keep old files');
             for (const release of releases.filter(r => r.id !== published.id)) {
-              for (const asset of release.assets.filter(a => /^DarkReader.*\.(ipa|zip)$/i.test(a.name))) {
+              for (const asset of release.assets.filter(a => /^(DarkReader|dark-signer).*\.(ipa|zip)$/i.test(a.name))) {
                 await github.rest.repos.deleteReleaseAsset({...context.repo, asset_id: asset.id});
               }
             }
             const artifacts = await github.paginate(github.rest.actions.listArtifactsForRepo, {...context.repo, per_page: 100});
-            for (const artifact of artifacts.filter(a => /^DarkReader.*IPA$/i.test(a.name) && a.workflow_run?.id !== context.runId)) {
+            for (const artifact of artifacts.filter(a => /^(DarkReader|dark-signer).*IPA$/i.test(a.name) && a.workflow_run?.id !== context.runId)) {
               await github.rest.actions.deleteArtifact({...context.repo, artifact_id: artifact.id});
             }
