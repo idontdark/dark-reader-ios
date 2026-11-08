@@ -221,82 +221,87 @@ struct ReaderScreen: View {
     private var readerOptions: ReaderOptions {
         ReaderOptions(fontSize: fontSize, font: font, theme: effectiveTheme, scroll: scroll, animated: pageAnimation && !reduceMotion)
     }
-    var body: some View {
+    var body: some View { preferenceObservers }
+
+    @ViewBuilder private var publicationLayer: some View {
+        if let session {
+            ReaderSurface(session: session).ignoresSafeArea()
+                .onReceive(session.$displayedTheme) { displayedTheme = $0 }
+                .onReceive(session.$isReady) { bookReady = $0 }
+                .accessibilityAction(named: Text(verbatim: L10n.text("Показать панель чтения"))) { chrome.visible = true }
+        } else if let error {
+            ContentUnavailableView("Не удалось открыть книгу", systemImage: "exclamationmark.triangle",
+                                   description: Text(verbatim: L10n.render(error, language: localizationLanguage)))
+        } else {
+            ProgressView("Открываем книгу…")
+        }
+    }
+    @ViewBuilder private var readerOverlays: some View {
+        if let session, chrome.visible || persistentProgress {
+            VStack {
+                Spacer()
+                ReadingProgressFooter(session: session, format: progressDisplay, theme: displayedTheme ?? effectiveTheme)
+            }.allowsHitTesting(false)
+        }
+        if chrome.visible { readerControls }
+        else if !bookReady {
+            VStack {
+                HStack { readerButton("chevron.down", label: "Закрыть книгу") { dismiss() }; Spacer() }
+                Spacer()
+            }.padding(12)
+        }
+    }
+    private var readingCanvas: some View {
         NavigationStack {
             ZStack {
                 paper.background.ignoresSafeArea()
-                Group {
-                if let session {
-                    ReaderSurface(session: session).ignoresSafeArea()
-                        .onReceive(session.$displayedTheme) { displayedTheme = $0 }
-                        .onReceive(session.$isReady) { bookReady = $0 }
-                        .accessibilityAction(named:Text(verbatim:L10n.text("Показать панель чтения"))) {chrome.visible=true}
-                } else if let error {
-                    ContentUnavailableView(
-                        "Не удалось открыть книгу",
-                        systemImage: "exclamationmark.triangle",
-                        description: Text(verbatim:L10n.render(error,language:localizationLanguage))
-                    )
-                } else {
-                    ProgressView("Открываем книгу…")
-                }
-                }
-                if let session, chrome.visible || persistentProgress {
-                    VStack {Spacer();ReadingProgressFooter(session:session,format:progressDisplay,theme:displayedTheme ?? effectiveTheme)}.allowsHitTesting(false)
-                }
-                if chrome.visible { readerControls }
-                else if !bookReady {
-                    VStack { HStack { readerButton("chevron.down", label: "Закрыть книгу") { dismiss() }; Spacer() }; Spacer() }.padding(12)
-                }
+                publicationLayer
+                readerOverlays
             }
-            .toolbar(.hidden,for:.navigationBar)
+            .toolbar(.hidden, for: .navigationBar)
             .foregroundStyle(paper.text)
-            .tint(SwiftUI.Color(hex:accentHex))
+            .tint(SwiftUI.Color(hex: accentHex))
         }
-        .preferredColorScheme(theme == "system" ? nil:(paper.dark ? .dark:.light))
+        .preferredColorScheme(theme == "system" ? nil : (paper.dark ? .dark : .light))
         .statusBarHidden(session != nil && !chrome.visible)
-        .animation(reduceMotion ? nil:.easeInOut(duration:0.16),value:chrome.visible)
-        .accessibilityAction(.escape) {persist();dismiss()}
-        .sheet(isPresented:$showBookmarks) {bookmarksSheet}
-        .readerHint(isPresented:$showReaderTip,title:"Только вы и книга",message:"Коснитесь середины страницы, чтобы показать или скрыть панель. Нажимайте по краям для перелистывания. Долгое нажатие выделяет текст.",icon:"book")
-        .sheet(isPresented: $appearanceOpen) {
-            ReaderAppearanceSheet()
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-        }
-        .task {
-            await load()
-            // The reading surface starts with text only. Its first-use tip appears after the first menu tap.
-            while !Task.isCancelled {
-                do { try await Task.sleep(nanoseconds: 20_000_000_000) }
-                catch { break }
-                persist()
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.16), value: chrome.visible)
+        .accessibilityAction(.escape) { persist(); dismiss() }
+    }
+    private var presentations: some View {
+        readingCanvas
+            .sheet(isPresented: $showBookmarks) { bookmarksSheet }
+            .readerHint(isPresented: $showReaderTip, title: "Только вы и книга", message: "Коснитесь середины страницы, чтобы показать или скрыть панель. Нажимайте по краям для перелистывания. Долгое нажатие выделяет текст.", icon: "book")
+            .sheet(isPresented: $appearanceOpen) {
+                ReaderAppearanceSheet().presentationDetents([.medium, .large]).presentationDragIndicator(.visible)
             }
-        }
-        .task(id: readerOptions) { [options = readerOptions] in
-            session?.apply(options)
-        }
-        .onDisappear { persist(); session?.cancelUpdates() }
-        .onChange(of: scenePhase) { _, phase in if phase != .active { persist() } }
-        .onChange(of:chrome.visible) {_,visible in
-            if visible && !hintReaderShown {hintReaderShown=true;showReaderTip=true}
-            if !visible {showReaderTip=false}
-        }
-        .onChange(of:persistentProgress) {_,value in sync.settingsChanged(key:"readerPersistentProgress",value:String(value))}
-        .onChange(of:pageAnimation) {_,value in sync.settingsChanged(key:"readerPageAnimation",value:String(value))}
-        .onChange(of: progressDisplay) { _,value in sync.settingsChanged(key:"readerProgressDisplay",value:value) }
-        .onChange(of: fontSize) { _, value in
-            sync.settingsChanged(key: "readerFontSize", value: String(value))
-        }
-        .onChange(of: font) { _, value in
-            sync.settingsChanged(key: "readerFont", value: value)
-        }
-        .onChange(of: theme) { _, value in
-            sync.settingsChanged(key: "readerTheme", value: value)
-        }
-        .onChange(of: scroll) { _, value in
-            sync.settingsChanged(key: "readerScroll", value: String(value))
-        }
+    }
+    private var readingLifecycle: some View {
+        presentations
+            .task {
+                await load()
+                while !Task.isCancelled {
+                    do { try await Task.sleep(nanoseconds: 20_000_000_000) }
+                    catch { break }
+                    persist()
+                }
+            }
+            .task(id: readerOptions) { [options = readerOptions] in session?.apply(options) }
+            .onDisappear { persist(); session?.cancelUpdates() }
+            .onChange(of: scenePhase) { _, phase in if phase != .active { persist() } }
+            .onChange(of: chrome.visible) { _, visible in
+                if visible && !hintReaderShown { hintReaderShown = true; showReaderTip = true }
+                if !visible { showReaderTip = false }
+            }
+    }
+    private var preferenceObservers: some View {
+        readingLifecycle
+            .onChange(of: persistentProgress) { _, value in sync.settingsChanged(key: "readerPersistentProgress", value: String(value)) }
+            .onChange(of: pageAnimation) { _, value in sync.settingsChanged(key: "readerPageAnimation", value: String(value)) }
+            .onChange(of: progressDisplay) { _, value in sync.settingsChanged(key: "readerProgressDisplay", value: value) }
+            .onChange(of: fontSize) { _, value in sync.settingsChanged(key: "readerFontSize", value: String(value)) }
+            .onChange(of: font) { _, value in sync.settingsChanged(key: "readerFont", value: value) }
+            .onChange(of: theme) { _, value in sync.settingsChanged(key: "readerTheme", value: value) }
+            .onChange(of: scroll) { _, value in sync.settingsChanged(key: "readerScroll", value: String(value)) }
     }
 
     private var readerControls:some View {
