@@ -1,17 +1,22 @@
 import SwiftUI
 import Foundation
 
+enum OPDSCatalogKind:String,Codable {case books,audio}
+
 struct NamedOPDSCatalog: Codable, Identifiable, Hashable {
     var id: UUID
     var name: String
     var url: String
     var searchParameter: String
+    var kind:OPDSCatalogKind? = nil
+    var isAudio:Bool {kind == .audio}
 
-    init(id: UUID = UUID(), name: String, url: String, searchParameter: String = "searchTerm") {
+    init(id: UUID = UUID(), name: String, url: String, searchParameter: String = "searchTerm",kind:OPDSCatalogKind = .books) {
         self.id = id
         self.name = name
         self.url = url
         self.searchParameter = searchParameter
+        self.kind=kind
     }
 }
 
@@ -46,6 +51,7 @@ struct CustomOPDSCatalogsScreen: View {
     @State private var parameter = "searchTerm"
     @State private var editingID: UUID?
     @State private var error: String?
+    @State private var kind="books"
 
     private var saved: [NamedOPDSCatalog] { OPDSSources.decode(raw) }
 
@@ -64,11 +70,12 @@ struct CustomOPDSCatalogsScreen: View {
                     ReaderCard {
                         ForEach(saved) { source in
                             HStack(spacing: 11) {
-                                Image(systemName: "books.vertical")
+                                Image(systemName: source.isAudio ? "headphones":"books.vertical")
                                     .foregroundStyle(Color(hex: accentHex))
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(source.name)
                                         .font(.subheadline.weight(.semibold))
+                                    Text(source.isAudio ? "Аудиокниги":"Книги").font(.caption).foregroundStyle(ReaderStyle.secondary)
                                     Text(source.url)
                                         .font(.caption2)
                                         .lineLimit(1)
@@ -81,6 +88,7 @@ struct CustomOPDSCatalogsScreen: View {
                                     name = source.name
                                     address = source.url
                                     parameter = source.searchParameter
+                                    kind=source.isAudio ? "audio":"books"
                                 } label: {
                                     Image(systemName: "pencil")
                                 }
@@ -98,6 +106,9 @@ struct CustomOPDSCatalogsScreen: View {
                 }
                 SectionLabel(text: editingID == nil ? "Новый каталог" : "Изменить каталог")
                 ReaderCard {
+                    Text("Тип каталога").font(.system(size:13,weight:.semibold)).padding(.bottom,10)
+                    ReaderSegmentedControl(items:[("books","Книги"),("audio","Аудиокниги")],selection:$kind)
+                    ReaderDivider().padding(.top,12)
                     TextField("Название", text: $name)
                         .textInputAutocapitalization(.words)
                         .padding(.vertical, 13)
@@ -140,7 +151,8 @@ struct CustomOPDSCatalogsScreen: View {
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
             url: address.trimmingCharacters(in: .whitespacesAndNewlines),
             searchParameter: parameter.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                ? "searchTerm" : parameter.trimmingCharacters(in: .whitespacesAndNewlines)
+                ? "searchTerm" : parameter.trimmingCharacters(in: .whitespacesAndNewlines),
+            kind:kind == "audio" ? .audio:.books
         )
         guard OPDSSources.isValid(item) else {
             error = "Укажите название и ссылку HTTP или HTTPS на каталог."
@@ -161,6 +173,7 @@ struct CustomOPDSCatalogsScreen: View {
         name = ""
         address = ""
         parameter = "searchTerm"
+        kind="books"
         error = nil
     }
 }

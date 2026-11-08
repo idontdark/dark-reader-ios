@@ -21,7 +21,13 @@ struct AudioCatalogScreen: View {
     @State private var hintTask: Task<Void, Never>?
     @State private var selected: AudioBook?
     @State private var showPlayer = false
+    @AppStorage("savedOPDSCatalogs") private var savedCatalogs="[]"
+    @AppStorage("preferredAudioCatalogID") private var customCatalogID=""
+    @State private var showCatalogs=false
+    private var customCatalog:NamedOPDSCatalog? {OPDSSources.decode(savedCatalogs).first {$0.isAudio && $0.id.uuidString == customCatalogID}}
     private var color: Color { Color(hex: accentHex) }
+    private var sourceName:String {customCatalog?.name ?? source.title}
+    private var languageName:String {bookLanguage == "all" ? "Все":bookLanguage == "en" ? "English":"Русский"}
 
     var body: some View {
         NavigationStack {
@@ -31,14 +37,23 @@ struct AudioCatalogScreen: View {
                         ReaderHeader(title: "Аудиокниги", trailingIcon: nil, trailingAction: nil)
                     }
                     VStack(alignment: .leading, spacing: 13) {
-                        NavigationLink("Источники аудиокниг") { AudioSourcesScreen() }
-                        SectionLabel(text: "Источник")
-                        Picker("Источник", selection: $source) {
-                            ForEach(AudioSource.online.filter { !disabledSources.components(separatedBy: ",").contains($0.rawValue) }) { item in
-                                Text(item.title).tag(item)
+                        Menu {
+                            ForEach(AudioSource.online.filter {!disabledSources.components(separatedBy:",").contains($0.rawValue)}) {item in
+                                Button(item.title) {customCatalogID="";source=item}
                             }
+                            ForEach(OPDSSources.decode(savedCatalogs).filter {$0.isAudio}) {item in
+                                Button(item.name) {customCatalogID=item.id.uuidString}
+                            }
+                            Divider()
+                            Button("Настроить каталоги") {showCatalogs=true}
+                        } label: {
+                            HStack {
+                                Image(systemName:"headphones").foregroundStyle(color)
+                                Text(sourceName).font(.subheadline.weight(.semibold)).foregroundStyle(.white)
+                                Spacer()
+                                Image(systemName:"chevron.up.chevron.down").foregroundStyle(ReaderStyle.secondary)
+                            }.padding(14).background(ReaderStyle.surface,in:RoundedRectangle(cornerRadius:13))
                         }
-                        .pickerStyle(.segmented)
                         HStack {
                             Image(systemName: "magnifyingglass")
                                 .foregroundStyle(ReaderStyle.secondary)
@@ -62,11 +77,16 @@ struct AudioCatalogScreen: View {
                         }
                         .pickerStyle(.segmented)
 
-                        Picker("Язык книг", selection: $bookLanguage) {
-                            Text("Русский").tag("ru")
-                            Text("English").tag("en")
-                            Text("Все").tag("all")
-                        }.pickerStyle(.segmented)
+                        HStack(spacing:8) {
+                            Image(systemName:"globe")
+                            Text("Язык книг")
+                            Spacer()
+                            Menu {
+                                Button("Русский") {bookLanguage="ru"}
+                                Button("English") {bookLanguage="en"}
+                                Button("Все") {bookLanguage="all"}
+                            } label:{Text(languageName).foregroundStyle(color)}
+                        }.font(.footnote).foregroundStyle(ReaderStyle.secondary)
 
                         PurpleAction(title: searching ? "Отменить поиск" : "Найти аудиокниги",
                                      icon: searching ? "xmark" : "magnifyingglass") {
@@ -74,6 +94,7 @@ struct AudioCatalogScreen: View {
                             else { startSearch() }
                         }
                         .disabled(!searching && query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .opacity(!searching && query.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty ? 0.5:1)
                         if searching {
                             HStack(spacing: 9) {
                                 ProgressView().tint(color)
@@ -96,7 +117,7 @@ struct AudioCatalogScreen: View {
                         }
                     }
                     HStack {
-                        SectionLabel(text: didSearch ? "Результаты" : "Бесплатные записи")
+                        SectionLabel(text:"Результаты")
                         Spacer()
                         if didSearch {
                             Text("\(books.count)")
@@ -120,7 +141,7 @@ struct AudioCatalogScreen: View {
                                 .foregroundStyle(ReaderStyle.secondary)
                         }
                     }
-                    LazyVStack(spacing: 12) {
+                    VStack(spacing: 11) {
                         ForEach(books) { book in
                             Button {
                                 selected = book
@@ -128,7 +149,7 @@ struct AudioCatalogScreen: View {
                                 ReaderCard {
                                     HStack(spacing: 13) {
                                         BookArtwork(title: book.title, author: book.author,
-                                                    coverURL: book.coverURL, width: 72, height: 100)
+                                                    coverURL: book.coverURL, width: 66, height: 94)
                                         VStack(alignment: .leading, spacing: 6) {
                                             Text(book.title)
                                                 .font(.subheadline.weight(.semibold))
@@ -164,6 +185,8 @@ struct AudioCatalogScreen: View {
             }
             .readerCanvas()
             .toolbar(.hidden, for: .navigationBar)
+            .navigationDestination(isPresented:$showCatalogs) {CustomOPDSCatalogsScreen()}
+            .onChange(of:customCatalogID) {_,_ in cancelSearch();didSearch=false;books=[];message=nil}
             .fullScreenCover(item: $selected) { book in
                 AudioBookDetailScreen(book: book) {}
                     .environmentObject(player)
@@ -202,7 +225,7 @@ struct AudioCatalogScreen: View {
 
     private func startSearch() {
         cancelSearch()
-        guard !disabledSources.components(separatedBy: ",").contains(source.rawValue), source != .local else {
+        guard customCatalog != nil || (!disabledSources.components(separatedBy:",").contains(source.rawValue) && source != .local) else {
             message = "Включите выбранный источник в настройках источников."
             return
         }
@@ -213,6 +236,7 @@ struct AudioCatalogScreen: View {
         let token = UUID()
         searchID = token
         let chosenSource = source
+        let selectedCatalog=customCatalog
         let term = query
         let authorMode = byAuthor
         hintTask = Task {
@@ -221,9 +245,18 @@ struct AudioCatalogScreen: View {
         }
         searchTask = Task {
             do {
-                let result = try await AudioCatalogService.search(
-                    source: chosenSource, query: term, byAuthor: authorMode, language: ReaderPreferences.effectiveLanguage(bookLanguage, appLanguage: language)
-                )
+                let result:[AudioBook]
+                if let selectedCatalog {
+                    let entries=try await OPDSClient(searchEndpoint:selectedCatalog.url,queryParameter:selectedCatalog.searchParameter).search(term)
+                    result=entries.filter {$0.audioURL != nil || $0.navigationURL != nil}.map {entry in
+                        AudioBook(id:"opds:"+selectedCatalog.id.uuidString+":"+entry.id,source:.opds,sourceID:entry.id,
+                                  title:entry.title,author:entry.author,description:entry.summary ?? "",coverURL:entry.coverURL,language:nil,
+                                  streamURL:entry.audioURL,feedURL:entry.navigationURL)
+                    }
+                } else {
+                    result=try await AudioCatalogService.search(source:chosenSource,query:term,byAuthor:authorMode,
+                             language:ReaderPreferences.effectiveLanguage(bookLanguage,appLanguage:language))
+                }
                 try Task.checkCancellation()
                 guard source == chosenSource && searchID == token else { return }
                 books = result

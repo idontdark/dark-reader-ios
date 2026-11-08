@@ -8,6 +8,9 @@ struct CloudSyncScreen:View {
     @ObservedObject private var google=GoogleDriveBackup.shared
     @State private var pickingFolder=false
     @State private var deleteGoogle=false
+    @State private var selectedFolder:URL?
+    @State private var selectedFolderScoped=false
+    @State private var connectingICloud=false
     var body:some View {
         ScrollView {
             VStack(alignment:.leading,spacing:19) {
@@ -16,22 +19,25 @@ struct CloudSyncScreen:View {
                     .font(.system(size:13)).foregroundStyle(ReaderStyle.secondary)
                 ReaderCard {
                     Label("iCloud Drive",systemImage:"icloud").font(.headline)
-                    Text(cloud.isConnected ? "Папка Dark Reader подключена":"Создадим папку Dark Reader в выбранном месте iCloud Drive.")
+                    Toggle("Сохранять в iCloud",isOn:Binding(get:{cloud.enabled},set:{value in
+                        connectingICloud=true
+                        Task {
+                            if !(await cloud.setEnabled(value)) {pickingFolder=true}
+                            connectingICloud=false
+                        }
+                    })).disabled(connectingICloud || cloud.isSyncing).padding(.top,14)
+                    if connectingICloud || cloud.isSyncing {ProgressView().padding(.top,8)}
+                    Text(cloud.enabled ? "Резервные копии сохраняются в папке Dark Reader.":"Папка Dark Reader будет создана после включения сохранения.")
                         .font(.system(size:13)).foregroundStyle(ReaderStyle.secondary).padding(.vertical,12)
-                    PurpleAction(title:cloud.isConnected ? "Изменить папку":"Подключить iCloud Drive",icon:"folder") {
-                        Task {if !(await cloud.connectDefaultFolder()) {pickingFolder=true}}
-                    }
-                    Text("Если iOS попросит выбрать место, откройте iCloud Drive и нажмите «Открыть». Папка Dark Reader появится автоматически; повторно выбирать её не нужно.")
+                    Text("При первом включении iOS может попросить выбрать место в iCloud Drive. Папка Dark Reader создастся автоматически. Повторно выбирать её не потребуется.")
                         .font(.system(size:11)).foregroundStyle(ReaderStyle.secondary).padding(.vertical,12)
-                    if cloud.isConnected {
-                        Toggle("Сохранять автоматически",isOn:Binding(get:{cloud.automatic},set:cloud.setAutomatic))
-                            .font(.system(size:14)).padding(.vertical,8)
+                    if cloud.enabled,cloud.isConnected {
                         HStack {
                             Button("Сохранить сейчас") {Task {_ = await cloud.syncNow()}}
                             Spacer()
                             Button("Восстановить") {Task {_ = await cloud.syncNow()}}
                         }.font(.system(size:13,weight:.semibold)).padding(.vertical,10).disabled(cloud.isSyncing)
-                        Button("Отключить папку") {cloud.forgetFolder()}.font(.system(size:12)).foregroundStyle(ReaderStyle.secondary)
+                        Button("Изменить папку") {pickingFolder=true}.font(.system(size:12)).foregroundStyle(ReaderStyle.secondary)
                     }
                     Text(cloud.status).font(.system(size:12)).foregroundStyle(ReaderStyle.secondary).padding(.top,12)
                     if let date=cloud.lastSavedAt {Text(date.formatted(date:.abbreviated,time:.shortened)).font(.caption2).foregroundStyle(ReaderStyle.secondary).padding(.top,6)}
@@ -61,16 +67,27 @@ struct CloudSyncScreen:View {
                     .font(.system(size:11)).foregroundStyle(ReaderStyle.secondary)
             }.padding(20)
         }.readerCanvas().navigationTitle("Резервные копии").navigationBarTitleDisplayMode(.inline)
-            .sheet(isPresented:$pickingFolder) {
+            .sheet(isPresented:$pickingFolder,onDismiss:connectSelectedFolder) {
                 CloudFolderPicker {result in
+                    if case .success(let url)=result {
+                        selectedFolder=url;selectedFolderScoped=url.startAccessingSecurityScopedResource()
+                    }
                     pickingFolder=false
-                    if case .success(let url)=result {Task {await cloud.chooseFolder(url)}}
                 }.ignoresSafeArea()
             }
             .alert("Удалить копию Google Drive?",isPresented:$deleteGoogle) {
                 Button("Удалить",role:.destructive) {Task {await google.deleteBackup()}}
                 Button("Отмена",role:.cancel) {}
             } message:{Text("Копия в облаке будет удалена. Книги на этом устройстве останутся.")}
+    }
+    private func connectSelectedFolder() {
+        guard let url=selectedFolder else{return}
+        let scoped=selectedFolderScoped
+        selectedFolder=nil;selectedFolderScoped=false
+        Task {
+            await cloud.chooseFolder(url)
+            if scoped {url.stopAccessingSecurityScopedResource()}
+        }
     }
 }
 private struct CloudFolderPicker:UIViewControllerRepresentable {

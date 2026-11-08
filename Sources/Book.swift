@@ -39,6 +39,7 @@ struct CatalogBook: Identifiable, Hashable, Sendable, Codable {
     var coverURL: URL? = nil
     var summary: String? = nil
     var downloadFormat: String? = nil
+    var audioURL:URL? = nil
 }
 
 enum ReaderError: LocalizedError {

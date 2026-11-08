@@ -102,6 +102,7 @@ private struct RootReaderView: View {
     @AppStorage("catalog.wishlistJSON") private var wishlistJSON="[]"
     @AppStorage("catalog.favoritesJSON") private var catalogFavoritesJSON="[]"
     @AppStorage("discovery.wishlistJSON") private var discoveryWishlistJSON="[]"
+    @AppStorage("savedOPDSCatalogs") private var savedCatalogsJSON="[]"
     @AppStorage("wantsBooks") private var wantsBooks = true
     @AppStorage("wantsAudiobooks") private var wantsAudio = false
     @State private var importError: String?
@@ -149,6 +150,7 @@ private struct RootReaderView: View {
 
     private var additionalObservers: some View {
         preferenceObservers
+            .onChange(of:savedCatalogsJSON) {_,value in sync.settingsChanged(key:"savedOPDSCatalogs",value:value)}
             .onChange(of:wishlistJSON) {_,value in sync.settingsChanged(key:"catalog.wishlistJSON",value:value)}
             .onChange(of:catalogFavoritesJSON) {_,value in sync.settingsChanged(key:"catalog.favoritesJSON",value:value)}
             .onChange(of:discoveryWishlistJSON) {_,value in sync.settingsChanged(key:"discovery.wishlistJSON",value:value)}

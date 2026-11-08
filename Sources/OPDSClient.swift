@@ -85,6 +85,7 @@ final class OPDSFeedParser: NSObject, XMLParserDelegate {
     private var title = ""
     private var author = ""
     private var epubURL: URL?
+    private var audioURL:URL?
     private var navigationURL: URL?
     private var coverURL: URL?
     private var summary = ""
@@ -108,6 +109,7 @@ final class OPDSFeedParser: NSObject, XMLParserDelegate {
             title = ""
             author = ""
             epubURL = nil
+            audioURL=nil
             navigationURL = nil
             coverURL = nil
             summary = ""
@@ -127,6 +129,8 @@ final class OPDSFeedParser: NSObject, XMLParserDelegate {
             guard !["buy", "borrow", "sample", "subscribe"].contains(where: { rel.hasSuffix("/" + $0) }) else { return }
             if (rel.contains("image") || rel == "x-stanza-cover-image" || rel == "x-stanza-cover-image-thumbnail"), mime.hasPrefix("image/") {
                 if coverURL == nil { coverURL = linkURL }
+            } else if mime.hasPrefix("audio/") && (rel.contains("acquisition") || rel == "http://opds-spec.org/acquisition/open-access" || rel == "enclosure") {
+                if audioURL == nil {audioURL=linkURL}
             } else if mime.contains("epub+zip") || mime.contains("application/epub")
                         || mime.contains("fb2") || mime.contains("fictionbook") || mime.contains("mobipocket") {
                 if epubURL == nil {
@@ -162,8 +166,8 @@ final class OPDSFeedParser: NSObject, XMLParserDelegate {
         }
         if name == "author" { inAuthor = false }
         if name == "entry" {
-            if !title.isEmpty && (epubURL != nil || navigationURL != nil) {
-                let fallbackID = (epubURL ?? navigationURL)?.absoluteString ?? title
+            if !title.isEmpty && (epubURL != nil || navigationURL != nil || audioURL != nil) {
+                let fallbackID = (epubURL ?? audioURL ?? navigationURL)?.absoluteString ?? title
                 books.append(CatalogBook(
                     id: identifier.isEmpty ? fallbackID : identifier,
                     title: title,
@@ -172,7 +176,7 @@ final class OPDSFeedParser: NSObject, XMLParserDelegate {
                     navigationURL: navigationURL,
                     coverURL: coverURL,
                     summary: summary.isEmpty ? nil : summary,
-                    downloadFormat: downloadFormat
+                    downloadFormat: downloadFormat,audioURL:audioURL
                 ))
             }
             currentEntry = false

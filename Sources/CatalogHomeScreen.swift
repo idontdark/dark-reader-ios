@@ -77,6 +77,7 @@ struct CatalogHomeScreen:View {
     }
     private func openAudio(_ selected:AudioSource) {
         disabledSources=disabledSources.components(separatedBy:",").filter {$0 != selected.rawValue}.joined(separator:",")
+        UserDefaults.standard.set("",forKey:"preferredAudioCatalogID")
         audioSource=selected;navigation.searchScope="audio";navigation.tab = .search
     }
     private var categoryRows:some View {

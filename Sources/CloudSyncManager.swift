@@ -6,6 +6,7 @@ import BackgroundTasks
 final class CloudSyncManager: ObservableObject {
     @Published private(set) var folderName: String?
     @Published private(set) var automatic: Bool
+    @Published private(set) var enabled:Bool
     @Published private(set) var isSyncing = false
     @Published private(set) var status = "Выберите папку в iCloud Drive"
     @Published private(set) var lastSavedAt: Date?
@@ -22,12 +23,19 @@ final class CloudSyncManager: ObservableObject {
     private var remotelyAppliedUntil = Date.distantPast
 
     init() {
+        if !UserDefaults.standard.bool(forKey:"cloudSync.explicitOptIn") {
+            UserDefaults.standard.set(false,forKey:"cloudSync.automatic")
+            UserDefaults.standard.set(false,forKey:"cloudSync.enabled")
+            UserDefaults.standard.set(true,forKey:"cloudSync.explicitOptIn")
+        }
+        enabled=UserDefaults.standard.bool(forKey:"cloudSync.enabled")
         folderName = UserDefaults.standard.string(forKey: "cloudSync.folderName")
         automatic = UserDefaults.standard.bool(forKey: "cloudSync.automatic")
         lastSavedAt = UserDefaults.standard.object(forKey: "cloudSync.lastSaved") as? Date
-        if folderName != nil {
+        if enabled,folderName != nil {
             status = "Готово к синхронизации"
         }
+        if !enabled {status="Сохранение в iCloud выключено"}
     }
 
     var isConnected: Bool { defaults.data(forKey: bookmarkKey) != nil }
@@ -39,17 +47,20 @@ final class CloudSyncManager: ObservableObject {
     }
 
     func chooseFolder(_ url: URL) async {
-        let accessed = url.startAccessingSecurityScopedResource()
-        defer {if accessed {url.stopAccessingSecurityScopedResource()}}
         do {
-            let bookmark = try url.bookmarkData(
-                options: .minimalBookmark, includingResourceValuesForKeys: nil, relativeTo: nil
-            )
+            status="Подключаем папку Dark Reader…"
+            let bookmark = try await Task.detached(priority:.utility) {
+                let accessed=url.startAccessingSecurityScopedResource()
+                defer {if accessed {url.stopAccessingSecurityScopedResource()}}
+                return try url.bookmarkData(options:.minimalBookmark,includingResourceValuesForKeys:nil,relativeTo:nil)
+            }.value
             defaults.set(bookmark, forKey: bookmarkKey)
             defaults.set("Dark Reader", forKey: "cloudSync.folderName")
             defaults.set(true, forKey: "cloudSync.automatic")
             folderName = "Dark Reader"
             automatic = true
+            enabled=true
+            defaults.set(true,forKey:"cloudSync.enabled")
             status = "Папка подключена"
             _ = await syncNow()
             CloudBackgroundSync.schedule()
@@ -71,6 +82,23 @@ final class CloudSyncManager: ObservableObject {
         }
     }
 
+    func setEnabled(_ value:Bool) async -> Bool {
+        if !value {
+            enabled=false;automatic=false;queued?.cancel()
+            defaults.set(false,forKey:"cloudSync.enabled")
+            defaults.set(false,forKey:"cloudSync.automatic")
+            status="Сохранение в iCloud выключено. Резервные копии в облаке сохранены."
+            return true
+        }
+        if isConnected {
+            enabled=true;defaults.set(true,forKey:"cloudSync.enabled")
+            setAutomatic(true)
+            _ = await syncNow()
+            return true
+        }
+        return await connectDefaultFolder()
+    }
+
     func forgetFolder() {
         queued?.cancel()
         defaults.removeObject(forKey: bookmarkKey)
@@ -78,6 +106,8 @@ final class CloudSyncManager: ObservableObject {
         defaults.set(false, forKey: "cloudSync.automatic")
         folderName = nil
         automatic = false
+        enabled=false
+        defaults.set(false,forKey:"cloudSync.enabled")
         status = "Выберите папку в iCloud Drive"
         // Files already saved in iCloud Drive are never deleted here.
     }
@@ -103,7 +133,7 @@ final class CloudSyncManager: ObservableObject {
 
     func requestSync() {
         GoogleDriveBackup.shared.requestBackup()
-        guard automatic, isConnected else { return }
+        guard enabled,automatic, isConnected else { return }
         if isSyncing {
             retryAfterCurrentRun = true
             return
@@ -119,7 +149,7 @@ final class CloudSyncManager: ObservableObject {
 
     @discardableResult
     func syncNow() async -> Bool {
-        guard let bookmark = defaults.data(forKey: bookmarkKey),
+        guard enabled,let bookmark = defaults.data(forKey: bookmarkKey),
               let store = bookStore else { return false }
         if isSyncing {
             retryAfterCurrentRun = true
@@ -210,7 +240,9 @@ final class CloudSyncManager: ObservableObject {
         }.value
         guard let container else {return false}
         let documents=container.appendingPathComponent("Documents",isDirectory:true)
-        do {try FileManager.default.createDirectory(at:documents,withIntermediateDirectories:true)}
+        do {try await Task.detached(priority:.utility) {
+            try FileManager.default.createDirectory(at:documents,withIntermediateDirectories:true)
+        }.value}
         catch {status="Не удалось создать папку iCloud: \(error.localizedDescription)";return false}
         await chooseFolder(documents)
         return isConnected

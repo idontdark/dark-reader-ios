@@ -71,12 +71,11 @@ struct LanguageSettingsScreen: View {
                 VStack(alignment: .leading, spacing: 10) {
                     SectionLabel(text: "Язык книг")
                     ReaderCard {
-                        Picker("Язык каталога", selection: $bookLanguage) {
-                            Text("Русский").tag("ru")
-                            Text("English").tag("en")
-                            Text("Все").tag("all")
-                        }
-                        .tint(Color(hex: ReaderStyle.defaultAccent))
+                        bookLanguageOption("ru","Русский",symbol:"🇷🇺")
+                        ReaderDivider()
+                        bookLanguageOption("en","English",symbol:"🇬🇧")
+                        ReaderDivider()
+                        bookLanguageOption("all","Все языки",symbol:"🌐")
                         Text("Язык книг настраивается отдельно от языка приложения. Фильтрация зависит от выбранного каталога.")
                             .font(.footnote)
                             .foregroundStyle(ReaderStyle.secondary)
@@ -87,10 +86,22 @@ struct LanguageSettingsScreen: View {
             .padding(20)
         }
         .readerCanvas()
-        .navigationTitle("Язык")
+        .navigationTitle(Text(verbatim:appLanguage == "en" ? "Language":"Язык"))
         .navigationBarTitleDisplayMode(.inline)
     }
 
+    private func bookLanguageOption(_ code:String,_ label:String,symbol:String)->some View {
+        Button {bookLanguage=code} label: {
+            HStack(spacing:12) {
+                Text(symbol).font(.title3)
+                Text(label).foregroundStyle(.white)
+                Spacer()
+                if bookLanguage == code || (bookLanguage == "auto" && appLanguage == code) {
+                    Image(systemName:"checkmark.circle.fill").foregroundStyle(Color(hex:ReaderStyle.defaultAccent))
+                }
+            }.padding(.vertical,13).contentShape(Rectangle())
+        }.buttonStyle(.plain)
+    }
     private func languageOption(_ code: String, _ label: String, symbol: String) -> some View {
         Button {
             appLanguage = code

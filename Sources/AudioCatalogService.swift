@@ -1,9 +1,9 @@
 import Foundation
 
 enum AudioSource: String, CaseIterable, Identifiable, Codable {
-    case librivox, archive, local
+    case librivox, archive, local, opds
     var id: String { rawValue }
-    var title: String { switch self { case .librivox: "LibriVox"; case .archive: "Internet Archive"; case .local: "Импортированные" } }
+    var title: String { switch self { case .librivox: "LibriVox"; case .archive: "Internet Archive"; case .local: "Импортированные";case .opds:"OPDS" } }
     static var online: [AudioSource] { [.librivox, .archive] }
 }
 
@@ -17,6 +17,8 @@ struct AudioBook: Identifiable, Hashable, Sendable, Codable {
     let coverURL: URL?
     let language: String?
     var genres: [String]? = nil
+    var streamURL:URL? = nil
+    var feedURL:URL? = nil
 }
 
 struct AudioChapter: Identifiable, Hashable, Sendable, Codable {
@@ -54,7 +56,7 @@ enum AudioCatalogService {
             switch source {
             case .librivox: found = try await searchLibriVox(variant, byAuthor: byAuthor)
             case .archive: found = try await searchArchive(variant, byAuthor: byAuthor, language: language)
-            case .local: return []
+            case .local,.opds: return []
             }
             let filtered = found.filter { matchesLanguage($0.language, choice: language) }
             if !filtered.isEmpty { return filtered }
@@ -122,7 +124,7 @@ enum AudioCatalogService {
             guard let url = components.url else { throw AudioCatalogError.invalidReply }
             let object = try await requestObject(url)
             return parseArchive(object)
-        case .local: return []
+        case .local,.opds: return []
         }
     }
 
@@ -130,6 +132,16 @@ enum AudioCatalogService {
         if book.source != .local, let cached = AudioTrackCache.load(book), !cached.isEmpty { return cached }
         let found: [AudioChapter]
         switch book.source {
+        case .opds:
+            if let url=book.streamURL {
+                found=[AudioChapter(id:book.id+":track",title:book.title,url:url,durationSeconds:nil)]
+            } else if let url=book.feedURL {
+                let entries=try await OPDSClient(searchEndpoint:"",queryParameter:"").browse(url)
+                found=entries.enumerated().compactMap {index,entry in
+                    guard let url=entry.audioURL else{return nil}
+                    return AudioChapter(id:book.id+":\(index)",title:entry.title,url:url,durationSeconds:nil)
+                }
+            } else {throw AudioCatalogError.noTracks}
         case .local: return try AudioImportStore.chapters(for: book)
         case .librivox:
             let url = URL(string: "https://librivox.org/api/feed/audiotracks/?project_id=\(book.sourceID)&format=json")!

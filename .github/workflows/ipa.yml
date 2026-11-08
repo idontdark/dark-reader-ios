@@ -42,27 +42,27 @@ jobs:
           test "$VERSION" = "1.0.0"
           mkdir -p dist/Payload
           ditto "$APP" "dist/Payload/DarkReader.app"
-          (cd dist && zip -qry ../DarkReader-1.0.0-unsigned.ipa Payload)
-          unzip -tq DarkReader-1.0.0-unsigned.ipa
-          unzip -Z1 DarkReader-1.0.0-unsigned.ipa | grep -qx 'Payload/DarkReader.app/Info.plist'
-          unzip -Z1 DarkReader-1.0.0-unsigned.ipa | grep -qx 'Payload/DarkReader.app/DarkReader'
+          (cd dist && zip -qry ../DarkReader-1.01-unsigned.ipa Payload)
+          unzip -tq DarkReader-1.01-unsigned.ipa
+          unzip -Z1 DarkReader-1.01-unsigned.ipa | grep -qx 'Payload/DarkReader.app/Info.plist'
+          unzip -Z1 DarkReader-1.01-unsigned.ipa | grep -qx 'Payload/DarkReader.app/DarkReader'
           echo "Verified Payload/DarkReader.app"
       - name: Upload Actions artifact (ZIP containing IPA)
         uses: actions/upload-artifact@v4
         with:
-          name: DarkReader-1.0.0-IPA
-          path: DarkReader-1.0.0-unsigned.ipa
+          name: DarkReader-1.01-IPA
+          path: DarkReader-1.01-unsigned.ipa
           if-no-files-found: error
           retention-days: 30
       - name: Publish direct IPA to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.0-build-${{ github.run_number }}
-          name: Dark Reader 1.0.0 — Своя библиотека (build ${{ github.run_number }})
+          name: Dark Reader 1.0 — Обновление 1.01 (build ${{ github.run_number }})
           prerelease: true
           generate_release_notes: false
-          body_path: docs/RELEASE_1.0.0.md
-          files: DarkReader-1.0.0-unsigned.ipa
+          body_path: docs/RELEASE_1.01.md
+          files: DarkReader-1.01-unsigned.ipa
 
       - name: Remove superseded installation files
         uses: actions/github-script@v7
@@ -70,7 +70,7 @@ jobs:
           script: |
             const current = 'v1.0.0-build-' + context.runNumber;
             const releases = await github.paginate(github.rest.repos.listReleases, {...context.repo, per_page: 100});
-            const published = releases.find(r => r.tag_name === current && !r.draft && r.assets.some(a => a.name === 'DarkReader-1.0.0-unsigned.ipa' && a.state === 'uploaded' && a.size > 0));
+            const published = releases.find(r => r.tag_name === current && !r.draft && r.assets.some(a => a.name === 'DarkReader-1.01-unsigned.ipa' && a.state === 'uploaded' && a.size > 0));
             if (!published) throw new Error('New IPA not confirmed; keep old files');
             for (const release of releases.filter(r => r.id !== published.id)) {
               for (const asset of release.assets.filter(a => /^DarkReader.*\.(ipa|zip)$/i.test(a.name))) {

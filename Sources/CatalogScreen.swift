@@ -65,9 +65,9 @@ struct CatalogScreen: View {
                         Menu {
                             Button("Флибуста", systemImage: "books.vertical") { provider = "flibusta" }
                             Button("Gutendex · Project Gutenberg", systemImage: "book.closed") { provider = "gutendex" }
-                            if !OPDSSources.decode(savedOPDSCatalogs).isEmpty {
+                            if !OPDSSources.decode(savedOPDSCatalogs).filter {!$0.isAudio}.isEmpty {
                                 Divider()
-                                ForEach(OPDSSources.decode(savedOPDSCatalogs)) { item in
+                                ForEach(OPDSSources.decode(savedOPDSCatalogs).filter {!$0.isAudio}) { item in
                                     Button(item.name, systemImage: "books.vertical") {
                                         provider = "opds:" + item.id.uuidString
                                     }
@@ -441,7 +441,7 @@ struct CatalogScreen: View {
                 )
                 try Task.checkCancellation()
                 guard requestID == token else { return }
-                results = books
+                results = books.filter {$0.epubURL != nil || $0.navigationURL != nil}
                 hasSearched = true
                 heading = "Результаты"
                 history.removeAll()
