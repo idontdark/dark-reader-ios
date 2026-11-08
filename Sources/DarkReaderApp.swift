@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import GoogleSignIn
 
 enum ReaderTab: Int, CaseIterable, Hashable {
     case library, catalog, search, settings
@@ -98,6 +99,9 @@ private struct RootReaderView: View {
     @AppStorage("preferredGenresJSON") private var genresJSON = "[]"
     @AppStorage("preferredAuthorsJSON") private var authorsJSON = "[]"
     @AppStorage("favoriteBooksJSON") private var favoriteBooksJSON = "[]"
+    @AppStorage("catalog.wishlistJSON") private var wishlistJSON="[]"
+    @AppStorage("catalog.favoritesJSON") private var catalogFavoritesJSON="[]"
+    @AppStorage("discovery.wishlistJSON") private var discoveryWishlistJSON="[]"
     @AppStorage("wantsBooks") private var wantsBooks = true
     @AppStorage("wantsAudiobooks") private var wantsAudio = false
     @State private var importError: String?
@@ -145,6 +149,9 @@ private struct RootReaderView: View {
 
     private var additionalObservers: some View {
         preferenceObservers
+            .onChange(of:wishlistJSON) {_,value in sync.settingsChanged(key:"catalog.wishlistJSON",value:value)}
+            .onChange(of:catalogFavoritesJSON) {_,value in sync.settingsChanged(key:"catalog.favoritesJSON",value:value)}
+            .onChange(of:discoveryWishlistJSON) {_,value in sync.settingsChanged(key:"discovery.wishlistJSON",value:value)}
             .onChange(of: favoriteBooksJSON) { _, value in
                 sync.settingsChanged(key: "favoriteBooksJSON", value: value)
             }
@@ -160,6 +167,7 @@ private struct RootReaderView: View {
         additionalObservers
             .task {
                 DownloadQueue.shared.attach(library)
+                await GoogleDriveBackup.shared.restoreConnection()
                 if bookLanguage == "auto" { bookLanguage = appLanguage }
                 if UserDefaults.standard.object(forKey: "preferredAudioSource") == nil {
                     UserDefaults.standard.set(appLanguage == "ru" ? AudioSource.archive.rawValue : AudioSource.librivox.rawValue, forKey: "preferredAudioSource")
@@ -187,6 +195,7 @@ private struct RootReaderView: View {
     }
 
     private func handleIncomingURL(_ url: URL) {
+        if GIDSignIn.sharedInstance.handle(url) {return}
         guard url.isFileURL else { return }
         Task { @MainActor in
             do {

@@ -36,6 +36,7 @@ struct CatalogScreen: View {
     @State private var requestID = UUID()
     @State private var showVPNHint = false
     @State private var selectedBook: CatalogBook?
+    @State private var readingBook:LocalBook?
     @State private var recommended: [CatalogBook] = []
     @State private var loadedRecommendations = false
 
@@ -192,7 +193,6 @@ struct CatalogScreen: View {
                         }
                     }
 
-                    NavigationLink("Загрузки") { DownloadsScreen() }
                     VStack(alignment: .leading, spacing: 13) {
                         HStack {
                             SectionLabel(text: heading)
@@ -242,8 +242,8 @@ struct CatalogScreen: View {
                                     .foregroundStyle(ReaderStyle.secondary)
                             }
                         } else {
-                            LazyVStack(spacing: 11) {
-                                ForEach(results) { book in
+                            VStack(spacing: 11) {
+                                ForEach(Array(results.enumerated()),id:\.offset) { _,book in
                                     bookRow(book)
                                 }
                             }
@@ -266,6 +266,13 @@ struct CatalogScreen: View {
             }
             .onChange(of: navigation.authorToSearch) { _, _ in handlePendingAuthor() }
             .onChange(of: navigation.bookToSearch) { _, _ in handlePendingBook() }
+            .onChange(of:library.books.map(\.id)) {old,ids in
+                if let added=library.books.first(where:{candidate in !old.contains(candidate.id) && results.contains(where:{$0.id == candidate.catalogID})}),
+                   let catalogID=added.catalogID,results.contains(where:{$0.id == catalogID}) {
+                    completedTitle=added.title
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                }
+            }
             .alert("Поиск книг", isPresented: $showCatalogTip) {
                 Button("Понятно") {}
             } message: {
@@ -283,6 +290,7 @@ struct CatalogScreen: View {
                 CatalogBookDetailSheet(book: book) { selectedBook = nil }
                     .environmentObject(library)
             }
+            .fullScreenCover(item:$readingBook) {book in ReaderScreen(bookID:book.id).environmentObject(library)}
             .alert("Не удалось выполнить действие", isPresented: Binding(
                 get: { error != nil }, set: { if !$0 { error = nil } }
             )) {
@@ -303,7 +311,9 @@ struct CatalogScreen: View {
     }
 
     private func bookRow(_ book: CatalogBook) -> some View {
-        ReaderCard {
+        let local=library.books.first {$0.catalogID == book.id}
+        let task=downloads.items.first {$0.id == book.id}
+        return ReaderCard {
             HStack(alignment: .center, spacing: 13) {
                 Button { selectedBook = book } label: {
                     BookArtwork(title: book.title, author: book.author,
@@ -319,9 +329,13 @@ struct CatalogScreen: View {
                         .font(.footnote)
                         .foregroundStyle(ReaderStyle.secondary)
                         .lineLimit(1)
-                    if let task = downloads.items.first(where: { $0.id == book.id }) {
-                        ProgressView(value: task.progress)
+                    if local != nil {
+                        Label("В библиотеке",systemImage:"checkmark.circle.fill").font(.caption.weight(.medium)).foregroundStyle(.green)
+                    } else if let task {
+                        if [.connecting,.downloading,.queued].contains(task.state) {
+                            ProgressView(value: task.progress).progressViewStyle(.linear)
                             .tint(Color(hex: accentHex))
+                        }
                         Text(task.state.title)
                             .font(.caption2)
                             .foregroundStyle(ReaderStyle.secondary)
@@ -333,17 +347,20 @@ struct CatalogScreen: View {
                 }
                 Spacer(minLength: 1)
                 if let epubURL = book.epubURL, ["http", "https"].contains(epubURL.scheme ?? "") {
-                    Button { downloads.enqueue(book) } label: {
-                        if downloadingID == book.id {
-                            ProgressView().tint(Color(hex: accentHex))
-                        } else {
-                            Image(systemName: "arrow.down.to.line")
+                    Button {
+                        if let local {readingBook=local}
+                        else if let task,[.connecting,.downloading,.queued].contains(task.state) {downloads.pause(book.id)}
+                        else if task?.state == .paused {downloads.retry(book.id)}
+                        else {downloads.enqueue(book)}
+                    } label: {
+                        if local != nil {Text("Читать").font(.system(size:12,weight:.semibold)).foregroundStyle(Color(hex:accentHex))}
+                        else {
+                            Image(systemName:task?.state == .paused ? "play.circle" : task.map {[.connecting,.downloading,.queued].contains($0.state)} == true ? "pause.circle":"arrow.down.to.line")
                                 .font(.system(size: 19, weight: .medium))
                                 .foregroundStyle(Color(hex: accentHex))
                         }
                     }
-                    .disabled(downloads.items.contains { $0.id == book.id && $0.state != .failed })
-                    .accessibilityLabel("Скачать \(book.title)")
+                    .accessibilityLabel(local != nil ? "Читать \(book.title)":"Загрузка \(book.title)")
                 } else if book.navigationURL != nil {
                     Button { Task { await browse(book) } } label: {
                         Image(systemName: "chevron.right")
@@ -353,7 +370,7 @@ struct CatalogScreen: View {
                     .accessibilityLabel("Открыть раздел \(book.title)")
                 }
             }
-        }
+        }.fixedSize(horizontal:false,vertical:true)
     }
 
     private var languageName: String {

@@ -35,17 +35,25 @@ struct CatalogBookDetailSheet:View {
                             ProgressView().tint(Color(hex:accentHex))
                             Text(task.state.title).font(.system(size:12)).foregroundStyle(ReaderStyle.secondary)
                             Spacer()
-                            NavigationLink("Загрузки") {DownloadsScreen()}.font(.system(size:12))
+
                         }
                     }
                     PurpleAction(title:actionTitle,icon:local == nil ? "arrow.down.to.line":"book") {
                         if let local {reading=local}
+                        else if task?.state == .paused {downloads.retry(book.id)}
                         else if book.epubURL != nil {downloads.enqueue(book)}
                         else {findBook()}
-                    }.disabled(busy)
+                    }.disabled(busy && task?.state != .paused)
+                    if local != nil {
+                        Label("Книга добавлена в библиотеку",systemImage:"checkmark.circle.fill")
+                            .font(.system(size:12,weight:.medium)).foregroundStyle(.green)
+                        Button("Открыть библиотеку") {navigation.libraryScope="books";navigation.tab = .library;onClose()}
+                            .font(.system(size:13,weight:.semibold))
+                    }
                     BookFavoriteButton(favorite:favorite) {
-                        if let local {library.toggleFavorite(local)}
-                        CatalogBookmarks.toggle(book,key:CatalogBookmarks.favoritesKey)
+                        let newValue = !favorite
+                        CatalogBookmarks.set(book,key:CatalogBookmarks.favoritesKey,enabled:newValue)
+                        if let local, (local.isFavorite ?? false) != newValue {library.toggleFavorite(local)}
                     }
                     if task?.state == .failed {
                         Text("Не удалось скачать книгу. Проверьте подключение и повторите попытку.")
@@ -78,6 +86,7 @@ struct CatalogBookDetailSheet:View {
     }
     private var actionTitle:String {
         if local != nil{return "Читать книгу"}
+        if task?.state == .paused {return "Продолжить загрузку"}
         if busy{return task?.state.title ?? "В очереди"}
         if book.epubURL == nil{return "Найти книгу в каталоге"}
         return "Скачать книгу (EPUB)"

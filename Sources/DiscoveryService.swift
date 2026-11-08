@@ -134,6 +134,7 @@ struct DiscoveryBookDetail:View {
     @EnvironmentObject private var navigation:ReaderNavigation
     @Environment(\.dismiss) private var dismiss
     @AppStorage("favoriteBooksJSON") private var favoritesJSON="[]"
+    @AppStorage("discovery.wishlistJSON") private var wishlistJSON="[]"
     @AppStorage("appLanguage") private var language="ru"
     @State private var format="books"
     @State private var summary:String?
@@ -162,13 +163,19 @@ struct DiscoveryBookDetail:View {
                     }
                     ToolbarItemGroup(placement:.topBarTrailing) {
                         ShareLink(item:book.detailURL) {Image(systemName:"square.and.arrow.up").font(.system(size:17))}
-                        Button {toggle()} label:{Image(systemName:favorite ? "bookmark.fill":"bookmark").font(.system(size:17))}
-                            .accessibilityLabel("Избранное")
+                        Button {toggleWishlist()} label:{Image(systemName:DiscoveryService.saved(wishlistJSON).contains {$0.id == book.id} ? "bookmark.fill":"bookmark").font(.system(size:17))}
+                            .accessibilityLabel("Хочу прочитать")
                     }
                 }.tint(Color(hex:"#D2C5DE"))
                 .task {summary=await BookDescription.discovery(book,language:language)}
                 .onChange(of:format) {_,value in if value == "audio" {find("audio")}}
         }
+    }
+    private func toggleWishlist() {
+        var items=DiscoveryService.saved(wishlistJSON)
+        if items.contains(where:{$0.id == book.id}) {items.removeAll {$0.id == book.id}} else {items.insert(book,at:0)}
+        wishlistJSON=DiscoveryService.encode(items)
+        GoogleDriveBackup.shared.requestBackup()
     }
     private func toggle() {
         var books=DiscoveryService.saved(favoritesJSON)

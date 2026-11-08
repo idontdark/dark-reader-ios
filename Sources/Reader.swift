@@ -89,6 +89,10 @@ struct ReaderScreen: View {
     @State private var appearanceOpen = false
     @AppStorage("hintReaderShown") private var hintReaderShown = false
     @State private var showReaderTip = false
+    @State private var showBookmarks=false
+    @State private var namingBookmark=false
+    @State private var bookmarkName=""
+    @State private var editingBookmark:Int?
 
     private var book: LocalBook? { store.books.first(where: { $0.id == bookID }) }
 
@@ -120,21 +124,12 @@ struct ReaderScreen: View {
                     }
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
-                    Menu {
-                        Button("Добавить закладку", systemImage: "bookmark.fill") {
-                            addBookmark()
-                        }
-                        if let marks = book?.bookmarks, !marks.isEmpty {
-                            Divider()
-                            ForEach(marks.indices, id: \.self) { i in
-                                Button("Закладка \(i + 1)") {
-                                    Task { await openBookmark(marks[i]) }
-                                }
-                            }
-                        }
-                    } label: {
+                    Button {showBookmarks=true} label: {
                         Image(systemName: "bookmark")
                     }
+                    Button {if let book {store.toggleFavorite(book)}} label: {
+                        Image(systemName:book?.isFavorite == true ? "star.fill":"star")
+                    }.accessibilityLabel("Избранное")
                     Button { appearanceOpen = true } label: {
                         Image(systemName: "textformat.size")
                     }
@@ -142,6 +137,7 @@ struct ReaderScreen: View {
             }
             .tint(SwiftUI.Color(hex: accentHex))
         }
+        .sheet(isPresented:$showBookmarks) {bookmarksSheet}
         .alert("Удобное чтение", isPresented: $showReaderTip) {
             Button("Понятно") {}
         } message: {
@@ -213,9 +209,55 @@ struct ReaderScreen: View {
 
     private func addBookmark() {
         guard let locator = session?.navigator.currentLocation,
-              let json = try? locator.jsonString() else { return }
-        store.saveBookmark(bookID: bookID, locatorJSON: json)
+              let raw = try? locator.jsonString(),let bytes=raw.data(using:.utf8),
+              var json=(try? JSONSerialization.jsonObject(with:bytes)) as? [String:Any] else { return }
+        json["title"]=bookmarkName.trimmingCharacters(in:.whitespacesAndNewlines)
+        guard let data=try? JSONSerialization.data(withJSONObject:json) else{return}
+        store.saveBookmark(bookID: bookID, locatorJSON: String(decoding:data,as:UTF8.self))
         UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
+
+    private var bookmarksSheet:some View {
+        NavigationStack {
+            List {
+                if let marks=book?.bookmarks,!marks.isEmpty {
+                    ForEach(marks.indices,id:\.self) {index in
+                        Button {
+                            showBookmarks=false
+                            Task {await openBookmark(marks[index])}
+                        } label: {
+                            Label(markTitle(marks[index],index:index),systemImage:"bookmark.fill").foregroundStyle(.primary)
+                        }.swipeActions {
+                            Button("Удалить",role:.destructive) {store.deleteBookmark(bookID:bookID,index:index)}
+                            Button("Переименовать") {editingBookmark=index;bookmarkName=markTitle(marks[index],index:index);namingBookmark=true}.tint(.purple)
+                        }
+                    }
+                } else {
+                    Text("Добавьте закладку, чтобы вернуться к этому месту в книге.").foregroundStyle(.secondary)
+                }
+            }.navigationTitle("Закладки").navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement:.topBarLeading) {Button("Готово") {showBookmarks=false}}
+                    ToolbarItem(placement:.topBarTrailing) {
+                        Button("Добавить",systemImage:"plus") {
+                            editingBookmark=nil;bookmarkName="Закладка \((book?.bookmarks?.count ?? 0)+1)";namingBookmark=true
+                        }
+                    }
+                }
+                .alert("Название закладки",isPresented:$namingBookmark) {
+                    TextField("Например, любимая цитата",text:$bookmarkName)
+                    Button("Сохранить") {
+                        if bookmarkName.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty {bookmarkName="Закладка"}
+                        if let index=editingBookmark {store.renameBookmark(bookID:bookID,index:index,name:bookmarkName)} else {addBookmark()}
+                    }
+                    Button("Отмена",role:.cancel) {}
+                }
+        }.tint(SwiftUI.Color(hex:accentHex)).preferredColorScheme(.dark)
+    }
+    private func markTitle(_ raw:String,index:Int)->String {
+        guard let data=raw.data(using:.utf8),let json=(try? JSONSerialization.jsonObject(with:data)) as? [String:Any],
+              let title=json["title"] as? String,!title.isEmpty else{return "Закладка \(index+1)"}
+        return title
     }
 
     private func openBookmark(_ json: String) async {

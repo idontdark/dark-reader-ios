@@ -29,7 +29,8 @@ struct ImportScreen: View {
                         }
                         .buttonStyle(.plain)
                         ReaderDivider()
-                        Button { navigation.searchScope = "books"
+                        Button { UserDefaults.standard.set("flibusta",forKey:"catalogProvider")
+                            navigation.searchScope = "books"
                             navigation.tab = .search } label: {
                             ReaderRow(icon: "books.vertical", title: "Найти на Флибусте",
                                       subtitle: "Поиск и загрузка EPUB прямо в приложении") {
@@ -56,11 +57,11 @@ struct ImportScreen: View {
                         ReaderCard {
                             Text("Вставьте ссылку на книгу")
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(Color(red: 0.32, green: 0.67, blue: 1.0))
+                                .foregroundStyle(.white)
                             HStack {
                                 Image(systemName: "link")
                                     .foregroundStyle(ReaderStyle.secondary)
-                                TextField("https://example.com/book.fb2", text: $directURL)
+                                TextField("", text: $directURL,prompt:Text("https://example.com/book.fb2").foregroundColor(ReaderStyle.secondary))
                                     .keyboardType(.URL)
                                     .textInputAutocapitalization(.never)
                                     .autocorrectionDisabled()
@@ -84,7 +85,6 @@ struct ImportScreen: View {
                         }
                     }
 
-                    NavigationLink("Загрузки") {DownloadsScreen()}.font(.system(size:13))
                     if completed {
                         ReaderCard {
                             HStack(alignment: .top, spacing: 12) {

@@ -166,6 +166,10 @@ final class BookshelfStore: ObservableObject {
     func toggleFavorite(_ book: LocalBook) {
         guard let i = books.firstIndex(where: { $0.id == book.id }) else { return }
         books[i].isFavorite = !(books[i].isFavorite ?? false)
+        if books[i].isFavorite != true,let catalogID=books[i].catalogID {
+            let items=CatalogBookmarks.decode(UserDefaults.standard.string(forKey:CatalogBookmarks.favoritesKey) ?? "[]")
+            if let item=items.first(where:{$0.id == catalogID}) {CatalogBookmarks.set(item,key:CatalogBookmarks.favoritesKey,enabled:false)}
+        }
         if books[i].isFavorite == true { RecommendationProfile.record(title: book.title, author: book.author, weight: 4) }
         books[i].updatedAt = Date()
         persist(localChange: true)
@@ -179,6 +183,20 @@ final class BookshelfStore: ObservableObject {
         books[i].bookmarks = all
         books[i].updatedAt = Date()
         persist(localChange: true)
+    }
+
+    func renameBookmark(bookID:UUID,index:Int,name:String) {
+        guard let i=books.firstIndex(where:{$0.id == bookID}),var marks=books[i].bookmarks,
+              marks.indices.contains(index),let bytes=marks[index].data(using:.utf8),
+              var json=(try? JSONSerialization.jsonObject(with:bytes)) as? [String:Any] else{return}
+        json["title"]=name.trimmingCharacters(in:.whitespacesAndNewlines)
+        guard let data=try? JSONSerialization.data(withJSONObject:json) else{return}
+        marks[index]=String(decoding:data,as:UTF8.self);books[i].bookmarks=marks
+        books[i].updatedAt=Date();persist(localChange:true)
+    }
+    func deleteBookmark(bookID:UUID,index:Int) {
+        guard let i=books.firstIndex(where:{$0.id == bookID}),var marks=books[i].bookmarks,marks.indices.contains(index) else{return}
+        marks.remove(at:index);books[i].bookmarks=marks;books[i].updatedAt=Date();persist(localChange:true)
     }
 
     func delete(_ book: LocalBook) {

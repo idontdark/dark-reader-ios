@@ -9,6 +9,7 @@ struct LibraryScreen:View {
     @AppStorage("favoriteBooksJSON") private var selectedBooksJSON="[]"
     @AppStorage("catalog.wishlistJSON") private var wishlistJSON="[]"
     @AppStorage("catalog.favoritesJSON") private var favoritesJSON="[]"
+    @AppStorage("discovery.wishlistJSON") private var discoveryWishlist="[]"
     @AppStorage("hintLibraryShown") private var hintLibraryShown=false
     @AppStorage("onboardingSchemaVersion") private var onboardingVersion=0
     @State private var selected:LocalBook?
@@ -115,12 +116,12 @@ struct LibraryScreen:View {
                         LibraryMenuRow(icon:"book",title:"Читаю",count:reading.count)
                     }.buttonStyle(.plain)
                     ReaderDivider()
-                    NavigationLink { catalogCollection("Хочу прочитать",items:wished) } label: {
-                        LibraryMenuRow(icon:"bookmark",title:"Хочу прочитать",count:wished.count)
+                    NavigationLink { wishlistCollection } label: {
+                        LibraryMenuRow(icon:"bookmark",title:"Хочу прочитать",count:wished.count+DiscoveryService.saved(discoveryWishlist).count)
                     }.buttonStyle(.plain)
                     ReaderDivider()
                     NavigationLink { favoritesCollection } label: {
-                        LibraryMenuRow(icon:"star",title:"Избранное",count:favoriteLocal.count+catalogFavorites.count)
+                        LibraryMenuRow(icon:"star",title:"Избранное",count:favoriteLocal.count+catalogFavorites.count+DiscoveryService.saved(selectedBooksJSON).count)
                     }.buttonStyle(.plain)
                 }
             } else {
@@ -143,9 +144,23 @@ struct LibraryScreen:View {
                     }
                 }.padding(.top,4)
             }
-            NavigationLink { DownloadsScreen() } label: {
-                Label("Загрузки",systemImage:"arrow.down.circle").font(.system(size:12)).foregroundStyle(ReaderStyle.secondary)
-            }.padding(.top,3)
+            if !books.books.isEmpty {
+                VStack(alignment:.leading,spacing:10) {
+                    SectionLabel(text:"Загруженные книги")
+                    ScrollView(.horizontal,showsIndicators:false) {
+                        HStack(alignment:.top,spacing:12) {
+                            ForEach(books.books.sorted {$0.addedAt > $1.addedAt}) {book in
+                                Button {selected=book} label: {
+                                    VStack(alignment:.leading,spacing:6) {
+                                        BookArtwork(title:book.title,author:book.author,coverURL:book.coverURL,width:88,height:128)
+                                        Text(book.title).font(.system(size:11,weight:.medium)).lineLimit(2)
+                                    }.foregroundStyle(.white).frame(width:88,alignment:.leading)
+                                }.buttonStyle(.plain)
+                            }
+                        }
+                    }
+                }.padding(.top,4)
+            }
         }
     }
     private var audioHome:some View {
@@ -292,10 +307,37 @@ struct LibraryScreen:View {
             }.padding(18)
         }.readerCanvas().navigationTitle(title).navigationBarTitleDisplayMode(.inline)
     }
+    private var wishlistCollection:some View {
+        ScrollView {
+            VStack(spacing:12) {
+                ForEach(wished) {book in
+                    Button {selectedCatalog=book} label: {ReaderCard {Text(book.title).foregroundStyle(.white)}}.buttonStyle(.plain)
+                }
+                discoveryRows(DiscoveryService.saved(discoveryWishlist))
+                if wished.isEmpty && DiscoveryService.saved(discoveryWishlist).isEmpty {empty("Добавляйте книги в этот список с помощью закладки в карточке книги.")}
+            }.padding(18)
+        }.readerCanvas().navigationTitle("Хочу прочитать").navigationBarTitleDisplayMode(.inline)
+    }
+    private func discoveryRows(_ items:[DiscoveryBook])->some View {
+        ForEach(items) {book in
+            Button {selectedDiscovery=book} label: {
+                ReaderCard {
+                    HStack(spacing:12) {
+                        DiscoveryArtwork(book:book,width:48,height:70)
+                        VStack(alignment:.leading,spacing:5) {
+                            Text(book.title).font(.system(size:14,weight:.medium)).foregroundStyle(.white)
+                            Text(book.author).font(.system(size:11)).foregroundStyle(ReaderStyle.secondary)
+                        };Spacer()
+                    }
+                }
+            }.buttonStyle(.plain)
+        }
+    }
     private var favoritesCollection:some View {
         ScrollView {
             VStack(spacing:16) {
-                bookRows(favoriteLocal)
+                if !favoriteLocal.isEmpty {bookRows(favoriteLocal)}
+                discoveryRows(DiscoveryService.saved(selectedBooksJSON))
                 ForEach(catalogFavorites) {book in
                     Button {selectedCatalog=book} label: {
                         ReaderCard {Text(book.title).font(.system(size:14,weight:.medium)).foregroundStyle(.white)}

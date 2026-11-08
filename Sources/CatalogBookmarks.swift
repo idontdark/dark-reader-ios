@@ -10,13 +10,17 @@ enum CatalogBookmarks {
         (try? JSONEncoder().encode(books)).map { String(decoding:$0,as:UTF8.self) } ?? "[]"
     }
     static func toggle(_ book:CatalogBook,key:String) {
+        set(book,key:key,enabled:!decode(UserDefaults.standard.string(forKey:key) ?? "[]").contains {$0.id == book.id})
+    }
+    static func set(_ book:CatalogBook,key:String,enabled:Bool) {
         var books=decode(UserDefaults.standard.string(forKey:key) ?? "[]")
-        if books.contains(where:{$0.id == book.id}) { books.removeAll {$0.id == book.id} }
-        else {
+        books.removeAll {$0.id == book.id}
+        if enabled {
             books.insert(book,at:0)
             RecommendationProfile.record(title:book.title,author:book.author,weight:key == favoritesKey ? 4:1)
         }
         UserDefaults.standard.set(encode(books),forKey:key)
+        GoogleDriveBackup.shared.requestBackup()
     }
     static func downloaded(_ book:CatalogBook) {
         let books=decode(UserDefaults.standard.string(forKey:wishlistKey) ?? "[]").filter {$0.id != book.id}

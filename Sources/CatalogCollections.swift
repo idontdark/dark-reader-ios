@@ -165,7 +165,7 @@ struct CatalogSeriesScreen:View {
         }.navigationTitle("Серии").navigationBarTitleDisplayMode(.inline)
             .task {
                 defer {loading=false}
-                guard !audio else {message="Выбранный аудиоисточник не предоставляет отдельный каталог серий. Попробуйте поиск по названию.";return}
+                guard !audio else {message="Раздел серий пока недоступен. Если он будет востребован, я добавлю его, когда найду подходящий сервис. Пока книги серии можно искать по названию.";return}
                 let saved=OPDSSources.decode(UserDefaults.standard.string(forKey:"savedOPDSCatalogs") ?? "[]")
                 let address=provider == "flibusta" ? "https://flibusta.is/opds":saved.first(where:{"opds:"+$0.id.uuidString == provider})?.url
                 guard let address,let root=URL(string:address) else {message="Для просмотра серий выберите OPDS-каталог, который их поддерживает.";return}

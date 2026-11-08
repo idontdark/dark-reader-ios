@@ -52,12 +52,10 @@ struct CloudFolderWorker: Sendable {
             bookmarkDataIsStale: &stale
         )
         guard !stale else { throw CloudSyncError.expiredBookmark }
-        guard selectedFolder.startAccessingSecurityScopedResource() else {
-            throw CloudSyncError.accessDenied
-        }
-        defer { selectedFolder.stopAccessingSecurityScopedResource() }
+        let scoped=selectedFolder.startAccessingSecurityScopedResource()
+        defer { if scoped {selectedFolder.stopAccessingSecurityScopedResource()} }
 
-        let root = selectedFolder.appendingPathComponent("Dark Reader", isDirectory: true)
+        let root = selectedFolder.lastPathComponent == "Dark Reader" ? selectedFolder : selectedFolder.appendingPathComponent("Dark Reader", isDirectory: true)
         let deviceFolder = root.appendingPathComponent("Devices", isDirectory: true)
         let cloudBooks = root.appendingPathComponent("Books", isDirectory: true)
         try makeCoordinatedDirectory(root)

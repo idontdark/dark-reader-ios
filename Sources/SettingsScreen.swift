@@ -118,7 +118,11 @@ struct SettingsScreen: View {
                         }
                     }
 
-                    Text("Dark Reader · \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.3.0")")
+                    HStack(spacing:16) {
+                        Link("Конфиденциальность",destination:URL(string:"https://idontdark.github.io/dark-reader/privacy.html")!)
+                        Link("Условия",destination:URL(string:"https://idontdark.github.io/dark-reader/terms.html")!)
+                    }.font(.system(size:11)).foregroundStyle(ReaderStyle.secondary).frame(maxWidth:.infinity)
+                    Text("Dark Reader · \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0")")
                         .font(.caption)
                         .foregroundStyle(ReaderStyle.secondary)
                         .frame(maxWidth: .infinity)

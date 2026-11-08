@@ -54,42 +54,30 @@ struct CatalogHomeScreen:View {
     }
     private var sourceChips:some View {
         HStack(spacing:8) {
-            Menu {
-                Button("Флибуста") {openBooks("flibusta")}
-                Button("Project Gutenberg") {openBooks("gutendex")}
-                ForEach(OPDSSources.decode(UserDefaults.standard.string(forKey:"savedOPDSCatalogs") ?? "[]")) {source in
-                    Button(source.name) {openBooks("opds:"+source.id.uuidString)}
-                }
-            } label: {
-                HStack(spacing:7) {
-                    BrandBook(width:22)
-                    Text(provider == "flibusta" ? "Флибуста" : provider == "gutendex" ? "Gutenberg":"OPDS")
-                        .font(.system(size:12,weight:.semibold)).lineLimit(1)
-                    Spacer(minLength:0)
-                }.padding(.horizontal,10).frame(maxWidth:.infinity).frame(height:38)
-                    .background(ReaderStyle.cardGradient,in:RoundedRectangle(cornerRadius:9))
-                    .overlay(RoundedRectangle(cornerRadius:9).strokeBorder(ReaderStyle.line,lineWidth:0.7))
+            if selection == "books" {
+                sourceButton("Флибуста",icon:"books.vertical") {openBooks("flibusta")}
+                sourceButton("Project Gutenberg",icon:"book.closed") {openBooks("gutendex")}
+            } else {
+                sourceButton("LibriVox",icon:"headphones") {openAudio(.librivox)}
+                sourceButton("Internet Archive",icon:"waveform") {openAudio(.archive)}
             }
-            Menu {
-                ForEach(AudioSource.online) {source in
-                    if !disabledSources.components(separatedBy:",").contains(source.rawValue) {
-                        Button(source.title) {
-                            audioSource=source;navigation.searchScope="audio";navigation.tab = .search
-                        }
-                    }
-                }
-                Button("Управление источниками") {showSources=true}
-            } label: {
-                HStack(spacing:7) {
-                    Image(systemName:"headphones").font(.system(size:17,weight:.medium)).foregroundStyle(Color(hex:"#C4B5D5"))
-                    Text(audioSource.title).font(.system(size:12,weight:.semibold)).lineLimit(1).minimumScaleFactor(0.8)
-                    Spacer(minLength:0)
-                    Image(systemName:"chevron.right").font(.system(size:10,weight:.semibold)).foregroundStyle(ReaderStyle.secondary)
-                }.padding(.horizontal,10).frame(maxWidth:.infinity).frame(height:38)
-                    .background(ReaderStyle.cardGradient,in:RoundedRectangle(cornerRadius:9))
-                    .overlay(RoundedRectangle(cornerRadius:9).strokeBorder(ReaderStyle.line,lineWidth:0.7))
-            }.accessibilityIdentifier("audio-source-menu").accessibilityLabel("Источники аудиокниг")
-        }.foregroundStyle(.white)
+        }
+    }
+    private func sourceButton(_ title:String,icon:String,action:@escaping()->Void)->some View {
+        Button(action:action) {
+            HStack(spacing:7) {
+                Image(systemName:icon).font(.system(size:17)).foregroundStyle(Color(hex:accentHex))
+                Text(title).font(.system(size:12,weight:.semibold)).lineLimit(1).minimumScaleFactor(0.7)
+                Spacer(minLength:0)
+                Image(systemName:"chevron.right").font(.system(size:10)).foregroundStyle(ReaderStyle.secondary)
+            }.foregroundStyle(.white).padding(.horizontal,10).frame(maxWidth:.infinity).frame(height:40)
+                .background(ReaderStyle.cardGradient,in:RoundedRectangle(cornerRadius:9))
+                .overlay(RoundedRectangle(cornerRadius:9).strokeBorder(ReaderStyle.line,lineWidth:0.7))
+        }.buttonStyle(.plain)
+    }
+    private func openAudio(_ selected:AudioSource) {
+        disabledSources=disabledSources.components(separatedBy:",").filter {$0 != selected.rawValue}.joined(separator:",")
+        audioSource=selected;navigation.searchScope="audio";navigation.tab = .search
     }
     private var categoryRows:some View {
         ReaderInsetGroup {

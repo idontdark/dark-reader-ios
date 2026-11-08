@@ -34,30 +34,26 @@ final class CloudSyncManager: ObservableObject {
 
     func attach(_ books: BookshelfStore) {
         bookStore = books
+        GoogleDriveBackup.shared.attach(books,cloud:self)
         books.onLocalChange = { [weak self] in self?.requestSync() }
     }
 
     func chooseFolder(_ url: URL) async {
         let accessed = url.startAccessingSecurityScopedResource()
-        guard accessed else {
-            status = "Не удалось получить доступ к папке"
-            return
-        }
+        defer {if accessed {url.stopAccessingSecurityScopedResource()}}
         do {
             let bookmark = try url.bookmarkData(
                 options: .minimalBookmark, includingResourceValuesForKeys: nil, relativeTo: nil
             )
-            url.stopAccessingSecurityScopedResource()
             defaults.set(bookmark, forKey: bookmarkKey)
-            defaults.set(url.lastPathComponent, forKey: "cloudSync.folderName")
+            defaults.set("Dark Reader", forKey: "cloudSync.folderName")
             defaults.set(true, forKey: "cloudSync.automatic")
-            folderName = url.lastPathComponent
+            folderName = "Dark Reader"
             automatic = true
             status = "Папка подключена"
             _ = await syncNow()
             CloudBackgroundSync.schedule()
         } catch {
-            url.stopAccessingSecurityScopedResource()
             status = "Не удалось сохранить доступ: \(error.localizedDescription)"
         }
     }
@@ -106,6 +102,7 @@ final class CloudSyncManager: ObservableObject {
     }
 
     func requestSync() {
+        GoogleDriveBackup.shared.requestBackup()
         guard automatic, isConnected else { return }
         if isSyncing {
             retryAfterCurrentRun = true
@@ -196,12 +193,36 @@ final class CloudSyncManager: ObservableObject {
         return id
     }
 
+    func makeSnapshot() -> CloudLibrarySnapshot? {
+        guard let store=bookStore else{return nil}
+        return CloudLibrarySnapshot(schema:1,deviceID:deviceID(),savedAt:Date(),books:store.books,
+                                    deletions:store.deletions,settings:collectSettings(),
+                                    settingsChangedAt:defaults.object(forKey:settingsDateKey) as? Date ?? .distantPast)
+    }
+    func restoreSettings(_ values:[String:String],changedAt:Date) {
+        applySettings(values);defaults.set(changedAt,forKey:settingsDateKey)
+    }
+    /// A signed build with iCloud Documents can use its own container. Other
+    /// signatures select iCloud Drive once through Files; no private path is used.
+    func connectDefaultFolder() async -> Bool {
+        let container=await Task.detached(priority:.utility) {
+            FileManager.default.url(forUbiquityContainerIdentifier:nil)
+        }.value
+        guard let container else {return false}
+        let documents=container.appendingPathComponent("Documents",isDirectory:true)
+        do {try FileManager.default.createDirectory(at:documents,withIntermediateDirectories:true)}
+        catch {status="Не удалось создать папку iCloud: \(error.localizedDescription)";return false}
+        await chooseFolder(documents)
+        return isConnected
+    }
+
     private func collectSettings() -> [String: String] {
         let keys = [
             "readerTheme", "readerFont", "readerFontSize", "readerScroll", "readerProgressDisplay",
             "appTheme", "appAppearance", "accentHex", "readerBackgroundHex", "readerTextHex",
             "appLanguage", "preferredBookLanguage", "preferredGenresJSON",
-            "preferredAuthorsJSON", "wantsBooks", "wantsAudiobooks", "savedOPDSCatalogs", "favoriteBooksJSON"
+            "preferredAuthorsJSON", "wantsBooks", "wantsAudiobooks", "savedOPDSCatalogs", "favoriteBooksJSON",
+            "catalog.wishlistJSON", "catalog.favoritesJSON", "discovery.wishlistJSON"
         ]
         var values: [String: String] = [:]
         for key in keys {
@@ -227,7 +248,8 @@ final class CloudSyncManager: ObservableObject {
                 defaults.set(value == "1" || value.lowercased() == "true", forKey: key)
             case "readerTheme", "readerFont", "appTheme", "appAppearance", "accentHex",
                  "readerBackgroundHex", "readerTextHex", "appLanguage",
-                 "preferredBookLanguage", "preferredGenresJSON", "preferredAuthorsJSON", "savedOPDSCatalogs", "favoriteBooksJSON":
+                 "preferredBookLanguage", "preferredGenresJSON", "preferredAuthorsJSON", "savedOPDSCatalogs", "favoriteBooksJSON",
+                 "catalog.wishlistJSON", "catalog.favoritesJSON", "discovery.wishlistJSON":
                 defaults.set(value, forKey: key)
             default:
                 break

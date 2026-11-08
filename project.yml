@@ -4,9 +4,12 @@ options:
 settings:
   base:
     SWIFT_VERSION: 5.9
-    MARKETING_VERSION: 0.9.0
-    CURRENT_PROJECT_VERSION: 9
+    MARKETING_VERSION: 1.0.0
+    CURRENT_PROJECT_VERSION: 10
 packages:
+  GoogleSignIn:
+    url: https://github.com/google/GoogleSignIn-iOS.git
+    exactVersion: 10.1.0
   Readium:
     url: https://github.com/readium/swift-toolkit.git
     from: 3.11.1
@@ -30,8 +33,12 @@ targets:
       properties:
         CFBundleDisplayName: "Dark Reader"
         CFBundleName: "Dark Reader - Books & Audiobooks"
-        CFBundleShortVersionString: "0.9.0"
-        CFBundleVersion: "9"
+        CFBundleShortVersionString: "1.0.0"
+        CFBundleVersion: "10"
+        GIDClientID: "183748481353-7vbvbe3o7u1pgtg4vet7g3o86dg7lfsq.apps.googleusercontent.com"
+        CFBundleURLTypes:
+          - CFBundleURLSchemes:
+              - com.googleusercontent.apps.183748481353-7vbvbe3o7u1pgtg4vet7g3o86dg7lfsq
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true
         LSSupportsOpeningDocumentsInPlace: true
@@ -62,6 +69,10 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: NO
     dependencies:
+      - package: GoogleSignIn
+        product: GoogleSignIn
+      - package: GoogleSignIn
+        product: GoogleSignInSwift
       - package: Readium
         product: ReadiumShared
       - package: Readium
