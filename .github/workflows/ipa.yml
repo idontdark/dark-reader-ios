@@ -1,6 +1,8 @@
 name: Build and publish IPA
 on:
   workflow_dispatch:
+  push:
+    branches: [build/ipa-unified-20261110]
 concurrency:
   group: dark-reader-release
   cancel-in-progress: true
