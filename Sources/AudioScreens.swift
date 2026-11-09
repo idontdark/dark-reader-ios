@@ -146,7 +146,6 @@ struct AudioCatalogScreen: View {
             .readerCanvas()
             .toolbar(.hidden, for: .navigationBar)
             .sheet(item:$webCatalog) {AudioWebCatalogScreen(url:$0.url)}
-            .onChange(of:customCatalogID) {_,_ in cancelSearch();didSearch=false;books=[];message=nil}
             .fullScreenCover(item: $selected) { book in
                 AudioBookDetailScreen(book: book) {}
                     .environmentObject(player)

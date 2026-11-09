@@ -359,7 +359,7 @@ struct CatalogScreen: View {
                 guard requestID == token else { return }
                 results = final
             } catch is CancellationError { }
-            catch { if requestID == token { error = L10n.errorDescription(error) } }
+            catch { if requestID == token { self.error = L10n.errorDescription(error) } }
         }
     }
 

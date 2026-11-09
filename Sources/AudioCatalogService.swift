@@ -2,7 +2,7 @@ import Foundation
 
 /// Two independent public catalog APIs. Results are never synthesized.
 enum AudioCatalogService {
-    static func search(source: AudioSource, query: String, byAuthor: Bool = false, language: String? = nil) async throws -> [AudioBook] {
+    static func search(source: AudioSource, query: String, byAuthor: Bool = false, language: String? = nil, onPage: AudioSearchProgress? = nil) async throws -> [AudioBook] {
         let term = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !term.isEmpty else { throw AudioCatalogError.invalidSearch }
         if source == .knigavuhe || source == .akniga {
@@ -12,6 +12,7 @@ enum AudioCatalogService {
                     let batch=try await WebAudioSourceService.search(source:source,query:variant,byAuthor:byAuthor)
                     succeeded=true
                     for book in batch where seen.insert(book.id).inserted {found.append(book)}
+                    await onPage?(found)
                 } catch is CancellationError {throw CancellationError()}
                 catch {lastError=error}
             }
@@ -36,6 +37,7 @@ enum AudioCatalogService {
                 try Task.checkCancellation()
                 succeeded=true
                 for book in found where matchesLanguage(book.language,choice:language) && seen.insert(book.id).inserted {results.append(book)}
+                await onPage?(ranked(results, query: term, byAuthor: byAuthor))
                 if results.count>=100 {break}
             } catch is CancellationError {throw CancellationError()}
             catch {lastError=error}

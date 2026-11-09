@@ -28,7 +28,7 @@ struct NativeAudiobookSource: AudiobookSourceAdapter {
         switch source.adapter { case .librivox: .librivox; case .knigavuhe: .knigavuhe; case .akniga: .akniga; default: .archive }
     }
     func search(_ query: String, byAuthor: Bool, onPage: AudioSearchProgress?) async throws -> [AudioBook] {
-        let raw = try await AudioCatalogService.search(source: native, query: query, byAuthor: byAuthor, language: nil)
+        let raw = try await AudioCatalogService.search(source: native, query: query, byAuthor: byAuthor, language: nil, onPage: { await onPage?(stamp($0)) })
         let books = try await hydrate(stamp(raw), onPage: onPage)
         await onPage?(books); return books
     }

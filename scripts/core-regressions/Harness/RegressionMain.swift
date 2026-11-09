@@ -7,6 +7,7 @@ import ReadiumZIPFoundation
         print("PASS: " + name)
     }
     static func main() async throws {
+        if CommandLine.arguments.contains("--live-audit") { try await SourceLiveAudit.run(); return }
         try await SourceRegressionChecks.run()
         let fm = FileManager.default
         let folder = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString)

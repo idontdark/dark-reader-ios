@@ -9,13 +9,18 @@ permissions:
   actions: write
 jobs:
   build:
-    runs-on: macos-15
+    runs-on: macos-15-intel
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: latest-stable
+      - uses: actions/cache/restore@v4
+        with:
+          path: build
+          key: iphone-derived-${{ runner.os }}-${{ hashFiles('project.yml') }}-${{ github.run_id }}
+          restore-keys: iphone-derived-${{ runner.os }}-${{ hashFiles('project.yml') }}-
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Generate AppIcon.png
@@ -29,6 +34,11 @@ jobs:
         run: |
           set -euo pipefail
           xcodebuild -project DarkReader.xcodeproj -scheme DarkReader -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$PWD/build" CODE_SIGNING_ALLOWED=NO build
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: build
+          key: iphone-derived-${{ runner.os }}-${{ hashFiles('project.yml') }}-${{ github.run_id }}
       - name: Verify and package unsigned IPA
         shell: bash
         run: |
@@ -63,30 +73,6 @@ jobs:
           name: Dark Reader — dark-signer [v1.1] (build ${{ github.run_number }})
           prerelease: true
           generate_release_notes: false
-          body_path: docs/RELEASE_1.03.md
+          body_path: docs/RELEASE_UNIFIED_SOURCES.md
           files: release-files/*.ipa
 
-      - name: Remove superseded installation files
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const current = 'v1.0.0-build-' + context.runNumber;
-            const desired = 'dark-signer [v1.1].ipa';
-            const {data: created} = await github.rest.repos.getReleaseByTag({...context.repo, tag:current});
-            const ipa = created.assets.find(a => a.name.endsWith('.ipa') && a.size > 0);
-            if (!ipa) throw new Error('New IPA not uploaded; keep old files');
-            if (ipa.name !== desired) {
-              await github.rest.repos.updateReleaseAsset({...context.repo, asset_id:ipa.id, name:desired, label:desired});
-            }
-            const releases = await github.paginate(github.rest.repos.listReleases, {...context.repo, per_page: 100});
-            const published = releases.find(r => r.tag_name === current && !r.draft && r.assets.some(a => (a.name === desired || a.label === desired) && a.state === 'uploaded' && a.size > 0));
-            if (!published) throw new Error('New IPA not confirmed; keep old files');
-            for (const release of releases.filter(r => r.id !== published.id)) {
-              for (const asset of release.assets.filter(a => /^(DarkReader|dark-signer).*\.(ipa|zip)$/i.test(a.name))) {
-                await github.rest.repos.deleteReleaseAsset({...context.repo, asset_id: asset.id});
-              }
-            }
-            const artifacts = await github.paginate(github.rest.actions.listArtifactsForRepo, {...context.repo, per_page: 100});
-            for (const artifact of artifacts.filter(a => /^(DarkReader|dark-signer).*IPA$/i.test(a.name) && a.workflow_run?.id !== context.runId)) {
-              await github.rest.actions.deleteArtifact({...context.repo, artifact_id: artifact.id});
-            }
