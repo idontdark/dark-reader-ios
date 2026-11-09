@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [feature/unified-sources]
-    paths: ['.github/workflows/source-integration-audit.yml']
+    paths: ['.github/workflows/source-integration-audit.yml', 'Sources/**', 'scripts/core-regressions/Harness/**']
 permissions:
   contents: read
 jobs:
