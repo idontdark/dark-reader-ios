@@ -7,6 +7,7 @@ import ReadiumZIPFoundation
         print("PASS: " + name)
     }
     static func main() async throws {
+        try await SourceRegressionChecks.run()
         let fm = FileManager.default
         let folder = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try fm.createDirectory(at: folder, withIntermediateDirectories: true)

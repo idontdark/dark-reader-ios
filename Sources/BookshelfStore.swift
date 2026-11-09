@@ -136,7 +136,7 @@ final class BookshelfStore: ObservableObject {
         imported.coverURL = saveCover(metadata?.cover, id: imported.id) ?? book.coverURL
         imported.catalogID = book.id
         imported.isFavorite = CatalogBookmarks.decode(UserDefaults.standard.string(forKey:CatalogBookmarks.favoritesKey) ?? "[]").contains {$0.id == book.id}
-        RecommendationProfile.record(title: book.title, author: book.author, weight: 1)
+        RecommendationProfile.record(title: book.title, author: book.author, weight: 1, genre: book.genres?.first, series: book.series)
         books.insert(imported, at: 0)
         CatalogBookmarks.downloaded(book)
         progress?(1.0)

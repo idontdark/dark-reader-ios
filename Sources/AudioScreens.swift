@@ -7,8 +7,6 @@ struct AudioCatalogScreen: View {
     @EnvironmentObject private var player: AudioPlayerModel
     @EnvironmentObject private var navigation: ReaderNavigation
     @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
-    @AppStorage("preferredAudioSource") private var source: AudioSource = .librivox
-    @AppStorage("disabledAudioSources") private var disabledSources = ""
     @AppStorage("preferredBookLanguage") private var bookLanguage = "auto"
     @AppStorage("appLanguage") private var language = "ru"
     @FocusState private var queryFocused: Bool
@@ -27,16 +25,12 @@ struct AudioCatalogScreen: View {
     @State private var hintTask: Task<Void, Never>?
     @State private var selected: AudioBook?
     @State private var showPlayer = false
-    @AppStorage("savedOPDSCatalogs") private var savedCatalogs="[]"
-    @AppStorage("preferredAudioCatalogID") private var customCatalogID=""
     @State private var acceptedRevision = 0
     @State private var sourceFailures = 0
     @AppStorage(SourcePreferences.key) private var enabledSourceData = Data()
     @State private var showCatalogs=false
     @State private var webCatalog:AudioWebCatalog?
-    private var customCatalog:NamedOPDSCatalog? {OPDSSources.decode(savedCatalogs).first {$0.isAudio && $0.id.uuidString == customCatalogID}}
     private var color: Color { Color(hex: accentHex) }
-    private var sourceName:String {customCatalog?.name ?? L10n.text(source.title)}
     private var languageName:String {bookLanguage == "all" ? "Все":bookLanguage == "en" ? "English":"Русский"}
 
     var body: some View {
@@ -235,7 +229,9 @@ struct AudioBookDetailScreen:View {
     @State private var resolvedBook: AudioBook?
     @State private var webPage = false
     @State private var playable = false
-    private var editionBook: AudioBook { selectedEdition.map { book.selecting($0) } ?? book }
+    @State private var downloadable = false
+    @State private var downloadArchive = false
+    private var editionBook: AudioBook { (selectedEdition.map { book.selecting($0) } ?? book).withResolvedSource }
     private var displayed: AudioBook { resolvedBook ?? editionBook }
     let onPlay:()->Void
     @EnvironmentObject private var player:AudioPlayerModel
@@ -283,16 +279,19 @@ struct AudioBookDetailScreen:View {
                         PurpleAction(title:"Слушать аудиокнигу",icon:"play.fill") {
                             player.open(displayed,tracks:chapters);showPlayer=true;onPlay()
                         }
-                        if chapters.allSatisfy({["mp3", "m4b", "m4a", "wav", "flac", "aac"].contains($0.url.pathExtension.lowercased()) || $0.url.isFileURL}) {
+                        if downloadable {
                             AudioDownloadAction(book:displayed,chapters:chapters)
                         }
                     } else if !loading && displayed.pageURL != nil {
-                        PurpleAction(title: "Слушать на сайте", icon: "safari") { webPage = true }
+                        PurpleAction(title: "Слушать на сайте", icon: "safari") { downloadArchive = false; webPage = true }
+                    }
+                    if displayed.archiveURL != nil && !loading {
+                        PurpleAction(title: "Скачать архив аудиокниги", icon: "arrow.down.to.line") { downloadArchive = true; webPage = true }
                     }
                     BookFavoriteButton(favorite:favorite) {
                         var values=decode(favoritesJSON)
                         if favorite {values.removeAll {$0.id == displayed.id}}
-                        else {values.insert(displayed,at:0);RecommendationProfile.record(title:displayed.title,author:displayed.author,weight:4,genre:displayed.genres?.first)}
+                        else {values.insert(displayed,at:0);RecommendationProfile.record(title:displayed.title,author:displayed.author,weight:4,genre:displayed.genres?.first,kind:.audio,series:displayed.series)}
                         favoritesJSON=encode(values)
                     }
                     if displayed.source == .local {
@@ -338,7 +337,7 @@ struct AudioBookDetailScreen:View {
                 }.tint(Color(hex:accentHex))
                 .task(id: selectedEdition?.id ?? book.id) { await loadEdition() }
                 .sheet(isPresented: $webPage) {
-                    if let id = displayed.providerID, let source = SourceCatalog.source(id), let page = displayed.pageURL {
+                    if let id = displayed.providerID, let source = SourceCatalog.source(id), let page = downloadArchive ? displayed.archiveURL : displayed.pageURL {
                         SourceWebScreen(source: source, url: page, title: displayed.title, author: displayed.author)
                     }
                 }
@@ -349,12 +348,12 @@ struct AudioBookDetailScreen:View {
         }
     }
     private func loadEdition() async {
-        loading = true; chapters = []; message = nil; playable = false
+        loading = true; chapters = []; message = nil; playable = false; downloadable = false
         defer { if !Task.isCancelled { loading = false } }
         let current = editionBook
         do {
             if let id = current.providerID, let source = SourceCatalog.source(id) {
-                resolvedBook = try await AudioSourceFactory.adapter(source).detail(current)
+                resolvedBook = try? await AudioSourceFactory.adapter(source).detail(current)
             }
             let tracks = try await AudioCatalogService.chapters(for: resolvedBook ?? current)
             try Task.checkCancellation()
@@ -362,7 +361,15 @@ struct AudioBookDetailScreen:View {
             var valid = first.url.isFileURL
             if !valid { valid = await SourceFileProbe.playable(first.url) }
             try Task.checkCancellation()
-            if valid { chapters = tracks; playable = true }
+            if valid {
+                chapters = tracks; playable = true
+                let indices = Set([0, tracks.count / 2, tracks.count - 1])
+                var direct = true
+                for index in indices {
+                    if !tracks[index].url.isFileURL, !(await SourceFileProbe.check(tracks[index].url, kind: .audioFile)) { direct = false }
+                }
+                try Task.checkCancellation(); downloadable = direct
+            }
             else { message = "Встроенное воспроизведение недоступно. Можно открыть книгу на сайте." }
         } catch is CancellationError { }
         catch { if !Task.isCancelled { message = "Встроенное воспроизведение недоступно. Можно открыть книгу на сайте." } }

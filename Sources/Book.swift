@@ -49,6 +49,8 @@ struct CatalogBook: Identifiable, Hashable, Sendable, Codable {
     var popularityBasis: String? = nil
     var offers: [BookOffer]? = nil
     var recommendationReason: String? = nil
+    var series: String? = nil
+    var seriesNumber: Double? = nil
 }
 
 enum ReaderError: LocalizedError {

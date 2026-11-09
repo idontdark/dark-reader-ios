@@ -17,7 +17,7 @@ enum CatalogBookmarks {
         books.removeAll {$0.id == book.id}
         if enabled {
             books.insert(book,at:0)
-            RecommendationProfile.record(title:book.title,author:book.author,weight:key == favoritesKey ? 4:1)
+            RecommendationProfile.record(title:book.title,author:book.author,weight:key == favoritesKey ? 4:1,genre:book.genres?.first,series:book.series)
         }
         UserDefaults.standard.set(encode(books),forKey:key)
         Task { @MainActor in GoogleDriveBackup.shared.requestBackup() }

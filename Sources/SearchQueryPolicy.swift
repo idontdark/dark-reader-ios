@@ -2,6 +2,20 @@ import Foundation
 
 /// Verified edition names supplement a literal search; they never fabricate catalog entries.
 enum SearchQueryPolicy {
+    /// All meaningful query words must occur in the selected field. Search pages
+    /// often also contain popular/sidebar works, which must never become results.
+    static func matches(title: String, author: String, query: String, byAuthor: Bool) -> Bool {
+        let text = normalized(byAuthor ? author : title)
+        let stopwords: Set<String> = ["и", "в", "на", "с", "the", "a", "of", "and"]
+        return variants(query, byAuthor: byAuthor).contains { variant in
+            let words = normalized(variant).split(separator: " ").map(String.init).filter { !stopwords.contains($0) }
+            return !words.isEmpty && words.allSatisfy { text.contains($0) }
+        }
+    }
+    static func matchesSearchLanguage(_ actual: String?, requested: String?) -> Bool {
+        guard actual?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false else { return true }
+        return GenreTaxonomy.matchesLanguage(actual, requested: requested)
+    }
     static func normalized(_ text: String) -> String {
         text.lowercased().replacingOccurrences(of: "ё", with: "е")
             .replacingOccurrences(of: "[^\\p{L}\\p{N}]+", with: " ", options: .regularExpression)

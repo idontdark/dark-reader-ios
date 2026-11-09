@@ -14,38 +14,9 @@ struct DiscoveryBook: Identifiable, Codable, Hashable, Sendable {
 }
 
 enum DiscoveryService {
-    private static let genreSlugs: [String: String] = [
-        "detective": "mystery",
-        "fantasy": "science_fiction",
-        "romance": "romance",
-        "classics": "classic_literature",
-        "adventure": "adventure",
-        "history": "history",
-        "biography": "biography",
-        "nonfiction": "nonfiction",
-        "children": "juvenile_fiction",
-        "thriller": "thrillers"
-    ]
-
-    private struct SearchFeed: Decodable { let docs: [Work] }
-    private struct Editions: Decodable { let docs: [Edition] }
-    private struct Edition: Decodable {
-        let key: String
-        let title: String
-        let language: [String]?
-        let cover_i: Int?
-    }
-    private struct Work: Decodable {
-        let key: String
-        let first_publish_year:Int?
-        let author_name: [String]?
-        let cover_i: Int?
-        let editions: Editions?
-    }
-
     /// Require a matching edition. A work's default title can be in another language.
-    static func books(genres: [String], language: String, limit: Int = 24, sort: String = "readinglog") async throws -> [DiscoveryBook] {
-        let shelf: RecommendationShelf = sort == "new" ? .recent : (genres.isEmpty ? .popular : .personalized)
+    static func books(genres: [String], language: String, limit: Int = 24, sort: String = "readinglog", shelf explicitShelf: RecommendationShelf? = nil) async throws -> [DiscoveryBook] {
+        let shelf: RecommendationShelf = explicitShelf ?? (sort == "new" ? .recent : (genres.isEmpty ? .popular : .personalized))
         let books = try await UnifiedDiscoveryService.books(genres: genres, language: language, shelf: shelf, limit: limit)
         return books.compactMap { book in
             guard let page = book.navigationURL ?? book.offers?.first?.pageURL else { return nil }

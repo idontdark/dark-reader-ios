@@ -8,6 +8,8 @@ struct RecommendationContext: Sendable {
     var previousIDs: Set<String> = []
     var language: String
     var searches: [String] = []
+    var series: Set<String> = []
+    var authorWeights: [String: Double] = [:]
     var now = Date()
 }
 struct RecommendationDecision: Sendable { let accepted: Bool; let score: Double; let reason: String; let genres: [String] }
@@ -17,7 +19,7 @@ struct RecommendationDecision: Sendable { let accepted: Bool; let score: Double;
 enum RecommendationEngine {
     static func evaluate(id: String, title: String, author: String, language: String?, genres: [String],
                          publicationDate: String?, popularity: Double?, popularityBasis: String?,
-                         context: RecommendationContext, shelf: RecommendationShelf) -> RecommendationDecision {
+                         series: String? = nil, context: RecommendationContext, shelf: RecommendationShelf) -> RecommendationDecision {
         let normalizedGenres = GenreTaxonomy.normalize(genres)
         let rejected = RecommendationDecision(accepted: false, score: 0, reason: "", genres: normalizedGenres)
         guard GenreTaxonomy.matchesLanguage(language, requested: context.language),
@@ -42,9 +44,13 @@ enum RecommendationEngine {
             let historyMatch = context.searches.contains { query in
                 query.count >= 4 && searchable.contains(GenreTaxonomy.normalized(query))
             }
-            guard !matches.isEmpty || authorMatch || historyMatch else { return rejected }
-            reason = authorMatch ? "Ваш любимый автор" : historyMatch ? "На основе ваших поисков" : "По вашим любимым жанрам"
+            let seriesMatch = series.map { context.series.contains(GenreTaxonomy.normalized($0)) } ?? false
+            guard !matches.isEmpty || authorMatch || historyMatch || seriesMatch else { return rejected }
+            reason = seriesMatch ? "Продолжение знакомой серии" : authorMatch ? "Ваш любимый автор" : historyMatch ? "На основе ваших поисков" : "По вашим любимым жанрам"
             if authorMatch { score += 15 }
+            if seriesMatch { score += 18 }
+            if historyMatch { score += 10 }
+            score += context.authorWeights[GenreTaxonomy.normalized(author), default: 0]
             if context.previousIDs.contains(id) { score -= 8 }
         }
         if popularityBasis != nil { score += min(5, log1p(max(0, popularity ?? 0))) }
@@ -55,12 +61,11 @@ enum RecommendationEngine {
         var scored: [(CatalogBook, RecommendationDecision)] = []
         for var book in candidates {
             let key = GenreTaxonomy.normalized(book.title) + ":" + GenreTaxonomy.normalized(book.author)
-            guard seen.insert(key).inserted else { continue }
             let decision = evaluate(id: book.id, title: book.title, author: book.author, language: book.language,
                                     genres: book.genres ?? [], publicationDate: book.publicationDate,
                                     popularity: book.popularity, popularityBasis: book.popularityBasis,
-                                    context: context, shelf: shelf)
-            guard decision.accepted else { continue }
+                                    series: book.series, context: context, shelf: shelf)
+            guard decision.accepted, seen.insert(key).inserted else { continue }
             book.recommendationReason = decision.reason; scored.append((book, decision))
         }
         scored.sort { $0.1.score == $1.1.score ? $0.0.id < $1.0.id : $0.1.score > $1.1.score }

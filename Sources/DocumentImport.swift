@@ -38,7 +38,10 @@ enum DocumentImport {
             let doc = try SwiftSoup.parse(html)
             try doc.select("script, style, iframe, object, form, nav").remove()
             if let value = try? doc.title(), !value.isEmpty { title = value }
-            text = (try? doc.body()?.wholeText()) ?? ""
+            // Preserve paragraph boundaries before SwiftSoup normalizes whitespace.
+            try doc.select("br").append("\n")
+            try doc.select("p, div, h1, h2, h3, li").append("\n")
+            text = (try? doc.body()?.text(trimAndNormaliseWhitespace: false)) ?? ""
         case "rtf":
             #if canImport(UIKit) || canImport(AppKit)
             text = try NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.rtf], documentAttributes: nil).string

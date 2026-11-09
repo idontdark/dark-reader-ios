@@ -9,7 +9,7 @@ import AVFoundation
 /// Checks a short prefix and cancels the transfer, including when a server ignores
 /// Range. A health check never downloads an entire book or audio chapter.
 final class SourceFileProbe: NSObject, URLSessionDataDelegate, @unchecked Sendable {
-    enum Kind { case book, audio }
+    enum Kind: Equatable { case book, audio, audioFile }
     private let kind: Kind
     private var continuation: CheckedContinuation<Bool, Never>?
     private var bytes = Data()
@@ -49,10 +49,10 @@ final class SourceFileProbe: NSObject, URLSessionDataDelegate, @unchecked Sendab
         case .book:
             return bytes.starts(with: [0x50, 0x4B]) || bytes.starts(with: Data("%PDF".utf8)) ||
                 String(decoding: bytes, as: UTF8.self).contains("FictionBook") || bytes.starts(with: Data("{\\rtf".utf8))
-        case .audio:
+        case .audio, .audioFile:
             return bytes.starts(with: Data("ID3".utf8)) || (bytes.count > 2 && bytes[0] == 0xFF && bytes[1] & 0xE0 == 0xE0) ||
                 (bytes.count >= 8 && String(decoding: bytes[4..<8], as: UTF8.self) == "ftyp") ||
-                bytes.starts(with: Data("RIFF".utf8)) || bytes.starts(with: Data("fLaC".utf8)) || bytes.starts(with: Data("#EXTM3U".utf8))
+                bytes.starts(with: Data("RIFF".utf8)) || bytes.starts(with: Data("fLaC".utf8)) || (kind == .audio && bytes.starts(with: Data("#EXTM3U".utf8)))
         }
     }
     private func finish(_ result: Bool) {

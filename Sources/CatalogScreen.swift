@@ -12,9 +12,6 @@ struct CatalogScreen: View {
     @EnvironmentObject private var library: BookshelfStore
     @EnvironmentObject private var navigation: ReaderNavigation
     @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
-    @AppStorage("catalogProvider") private var provider = "flibusta"
-    @AppStorage("catalogURL") private var customURL = "https://flibusta.is/opds/search?searchType=books"
-    @AppStorage("catalogQueryParameter") private var customParameter = "searchTerm"
     @FocusState private var queryFocused: Bool
     private var query: String {
         get { navigation.searchQuery }
@@ -35,7 +32,6 @@ struct CatalogScreen: View {
     @AppStorage("preferredBookLanguage") private var bookLanguage = "auto"
     @AppStorage("hintCatalogShown") private var hintCatalogShown = false
     @State private var showCatalogTip = false
-    @AppStorage("savedOPDSCatalogs") private var savedOPDSCatalogs = "[]"
     @AppStorage("preferredGenresJSON") private var genresJSON = "[]"
     @State private var searchTask: Task<Void, Never>?
     @State private var vpnTask: Task<Void, Never>?
@@ -48,19 +44,6 @@ struct CatalogScreen: View {
     @State private var acceptedRevision = 0
     @State private var sourceFailures = 0
     @AppStorage(SourcePreferences.key) private var enabledSourceData = Data()
-
-    private var legacyProviderName: String {
-        switch provider {
-        case "flibusta": return L10n.text("Флибуста",language:language)
-        case "gutenberg": return "Project Gutenberg"
-        case "gutendex": return "Gutendex"
-        default:
-            if let selected = OPDSSources.decode(savedOPDSCatalogs).first(where: { "opds:" + $0.id.uuidString == provider }) {
-                return selected.name
-            }
-            return L10n.text("Другой OPDS",language:language)
-        }
-    }
 
     var body: some View {
         NavigationStack {
@@ -245,7 +228,7 @@ struct CatalogScreen: View {
         ReaderCard {
             VStack(alignment: .leading, spacing: 7) {
                 Text(verbatim:L10n.render("Ничего не найдено",language:localizationLanguage)).font(.headline)
-                Text(verbatim:L10n.render("Попробуйте другой запрос или переключите каталог.",language:localizationLanguage))
+                Text(verbatim:L10n.render("Попробуйте другое название или автора. Источники можно проверить в настройках.",language:localizationLanguage))
                     .font(.subheadline)
                     .foregroundStyle(ReaderStyle.secondary)
             }
@@ -282,7 +265,7 @@ struct CatalogScreen: View {
                             .font(.caption2)
                             .foregroundStyle(ReaderStyle.secondary)
                     } else {
-                        Text(verbatim:L10n.render(book.epubURL != nil ? "EPUB" : "Открыть раздел",language:localizationLanguage))
+                        Text(verbatim:L10n.render(book.downloadFormat?.uppercased() ?? "Карточка книги",language:localizationLanguage))
                             .font(.caption2.weight(.medium))
                             .foregroundStyle(ReaderStyle.secondary)
                     }
@@ -304,11 +287,10 @@ struct CatalogScreen: View {
                     }
                     .accessibilityLabel(Text(verbatim:L10n.render(local != nil ? "Читать \(book.title)":"Загрузка \(book.title)",language:localizationLanguage)))
                 } else if book.navigationURL != nil {
-                    Button { Task { await browse(book) } } label: {
+                    Button { selectedBook = book } label: {
                         Image(systemName: "chevron.right")
                             .foregroundStyle(ReaderStyle.secondary)
                     }
-                    .disabled(searching)
                     .accessibilityLabel(Text(verbatim:L10n.render("Открыть раздел \(book.title)",language:localizationLanguage)))
                 }
             }
@@ -382,13 +364,8 @@ struct CatalogScreen: View {
     }
 
     private func fetchRecommendations() async {
-        guard let genre = ReaderPreferences.array(genresJSON).first else { return }
-        let preferred = ReaderPreferences.effectiveLanguage(bookLanguage, appLanguage: language)
-        if let suggested = try? await CatalogProviders.recommendations(
-            genre: genre, language: preferred
-        ) {
-            recommended = Array(suggested.prefix(12))
-        }
+        let preferred = ReaderPreferences.effectiveLanguage(bookLanguage, appLanguage: language) ?? "all"
+        recommended = (try? await UnifiedDiscoveryService.books(genres: ReaderPreferences.array(genresJSON), language: preferred, shelf: .personalized, limit: 12)) ?? []
     }
 
     private func browse(_ book: CatalogBook) async {

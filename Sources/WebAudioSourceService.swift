@@ -14,15 +14,12 @@ enum WebAudioSourceService {
         for (key,value) in ["&lt;":"<","&gt;":">","&nbsp;":" ","&amp;":"&","&quot;":"\"","&#039;":"'","&#39;":"'","&laquo;":"«","&raquo;":"»","&ndash;":"–","&mdash;":"—"] {text=text.replacingOccurrences(of:key,with:value)}
         return text.trimmingCharacters(in:.whitespacesAndNewlines)
     }
-    static func page(_ url:URL) async throws -> String {
-        var request=URLRequest(url:url);request.timeoutInterval=25
-        request.setValue("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15",forHTTPHeaderField:"User-Agent")
-        let (data,response)=try await URLSession.shared.data(for:request)
-        try Task.checkCancellation()
-        guard let http=response as? HTTPURLResponse,(200..<300).contains(http.statusCode),data.count<4_000_000,
-              let html=String(data:data,encoding:.utf8) else {throw AudioCatalogError.unavailable}
+    static func page(_ url: URL) async throws -> String {
+        let response = try await SourceHTTPClient.shared.load(url)
+        guard let html = SourceHTTPClient.html(response) else { throw AudioCatalogError.invalidReply }
         return html
     }
+
     static func search(source:AudioSource,query:String,byAuthor:Bool=false) async throws -> [AudioBook] {
         guard let url=AudioWebCatalog.search(host:source == .knigavuhe ? "knigavuhe.org":"akniga.org",query:query)?.url else {throw AudioCatalogError.invalidSearch}
         var found:[AudioBook]=[];var seen=Set<String>()
@@ -82,7 +79,7 @@ enum WebAudioSourceService {
             let id=source.rawValue+":"+url.path
             return AudioBook(id:id,source:source,sourceID:url.path,title:title,author:author.flatMap {$0.isEmpty ? nil:$0} ?? "Неизвестный автор",
                              description:source == .knigavuhe ? clean(first("<div class=\"bookkitem_about\">(.*?)</div>",block) ?? ""):"",
-                             coverURL:cover.flatMap {URL(string:clean($0))},language:"ru",feedURL:url)
+                             coverURL:cover.flatMap {URL(string:clean($0))},language:nil,feedURL:url)
         }
     }
     static func chapters(for book:AudioBook) async throws -> [AudioChapter] {

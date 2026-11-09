@@ -28,6 +28,9 @@ struct AudioBook: Identifiable, Hashable, Sendable, Codable {
     var popularityBasis: String? = nil
     var editions: [AudioEdition]? = nil
     var recommendationReason: String? = nil
+    var series: String? = nil
+    var seriesNumber: Double? = nil
+    var archiveURL: URL? = nil
     var sourceTitle: String { providerID.flatMap(SourceCatalog.source)?.name ?? source.title }
 }
 

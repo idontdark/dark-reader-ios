@@ -63,7 +63,6 @@ struct LanguageSettingsScreen: View {
 
     @AppStorage("appLanguage") private var appLanguage = "ru"
     @AppStorage("preferredBookLanguage") private var bookLanguage = "auto"
-    @AppStorage("catalogProvider") private var catalogProvider = "flibusta"
     @AppStorage("preferredAuthorsJSON") private var authorsJSON = "[]"
     @State private var showLanguageTip = false
 
@@ -246,13 +245,16 @@ struct FavoriteAuthorsScreen: View {
 }
 
 struct GenreSettingsScreen: View {
+    var kind: SourceKind = .books
     @AppStorage("accentHex") private var accentHex=ReaderStyle.defaultAccent
 
     @AppStorage("appLanguage") private var localizationLanguage="ru"
 
     @AppStorage("preferredGenresJSON") private var genresJSON = "[]"
     @AppStorage("appLanguage") private var language = "ru"
-    private var chosen: [String] { ReaderPreferences.array(genresJSON) }
+    @AppStorage("preferredAudioGenresJSON") private var audioGenresJSON = ""
+    private var selectedJSON: String { kind == .audio && !audioGenresJSON.isEmpty ? audioGenresJSON : genresJSON }
+    private var chosen: [String] { ReaderPreferences.array(selectedJSON) }
 
     var body: some View {
         ScrollView {
@@ -265,7 +267,9 @@ struct GenreSettingsScreen: View {
                         var values = chosen
                         if values.contains(item.id) { values.removeAll { $0 == item.id } }
                         else { values.append(item.id) }
-                        genresJSON = ReaderPreferences.encode(values)
+                        if kind == .audio { audioGenresJSON = ReaderPreferences.encode(values) }
+                        else { genresJSON = ReaderPreferences.encode(values) }
+                        GoogleDriveBackup.shared.requestBackup()
                     } label: {
                         HStack {
                             Image(systemName: item.icon)

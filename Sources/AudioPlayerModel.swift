@@ -389,7 +389,7 @@ final class AudioPlayerModel: ObservableObject {
         }
         position = max(0, seconds - (chapters[chapterIndex].startSeconds ?? 0))
         if position >= 10, !recordedChapter, let book {
-            RecommendationProfile.record(title: book.title, author: book.author, weight: 3, genre: book.genres?.first)
+            RecommendationProfile.record(title: book.title, author: book.author, weight: 3, genre: book.genres?.first, kind: .audio, series: book.series)
             recordedChapter = true
         }
         if let seconds = player?.currentItem?.duration.seconds, seconds.isFinite, seconds > 0 {

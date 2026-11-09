@@ -32,7 +32,7 @@ enum GenreTaxonomy {
             let text = normalized(subject)
             guard !text.isEmpty else { continue }
             if text.contains("history and criticism") || text.contains("история и критика") { continue }
-            if text.contains("historical fiction") || text.contains("historical romance") || text.contains("историческ") && text.contains("роман") {
+            if (text.contains("history") && text.hasSuffix(" fiction")) || text.contains("historical fiction") || text.contains("historical romance") || text.contains("историческ") && text.contains("роман") {
                 found.insert("historical_fiction"); continue
             }
             for (id, terms) in aliases where terms.contains(where: {
@@ -51,7 +51,9 @@ enum GenreTaxonomy {
     }
     static func matchesLanguage(_ actual: String?, requested: String?) -> Bool {
         guard let requested, requested != "all" else { return true }
-        return language(actual) == language(requested)
+        guard let wanted = language(requested), let actual else { return false }
+        let tokens = normalized(actual).split(separator: " ").map(String.init)
+        return tokens.contains { language($0) == wanted }
     }
 }
 

@@ -20,7 +20,7 @@ enum AudioCatalogService {
         }
         var variants = searchVariants(term)
         for value in SearchQueryPolicy.variants(term,byAuthor:byAuthor) where !variants.contains(value) { variants.append(value) }
-        if !byAuthor,RecommendationProfile.normalized(term) == "любовь" {variants += ["love","любв"]}
+        if !byAuthor,RecommendationProfile.normalized(term) == "Р»СЋР±РѕРІСЊ" {variants += ["love","Р»СЋР±РІ"]}
         var results:[AudioBook]=[]
         var seen=Set<String>()
         var lastError:Error?
@@ -55,22 +55,22 @@ enum AudioCatalogService {
     static func matchesLanguage(_ value: String?, choice: String?) -> Bool {
         guard let choice, choice != "all" else { return true }
         let tokens = (value ?? "").lowercased().components(separatedBy: CharacterSet.letters.inverted)
-        return choice == "ru" ? tokens.contains(where: { ["ru", "rus", "russian", "русский"].contains($0) })
+        return choice == "ru" ? tokens.contains(where: { ["ru", "rus", "russian", "СЂСѓСЃСЃРєРёР№"].contains($0) })
             : tokens.contains(where: { ["en", "eng", "english"].contains($0) })
     }
 
     static func searchVariants(_ term: String) -> [String] {
         let aliases = [
-            "богатый папа": "Rich Dad Poor Dad",
-            "богатый папа бедный папа": "Rich Dad Poor Dad",
-            "мастер и маргарита": "Master and Margarita",
-            "преступление и наказание": "Crime and Punishment",
-            "война и мир": "War and Peace",
-            "анна каренина": "Anna Karenina",
-            "достоевский": "Dostoyevsky", "толстой": "Tolstoy",
-            "булгаков": "Bulgakov", "кийосаки": "Kiyosaki",
-            "dostoevsky": "Dostoyevsky", "dostoyevsky": "Достоевский",
-            "tolstoy": "Толстой", "bulgakov": "Булгаков", "kiyosaki": "Кийосаки"
+            "Р±РѕРіР°С‚С‹Р№ РїР°РїР°": "Rich Dad Poor Dad",
+            "Р±РѕРіР°С‚С‹Р№ РїР°РїР° Р±РµРґРЅС‹Р№ РїР°РїР°": "Rich Dad Poor Dad",
+            "РјР°СЃС‚РµСЂ Рё РјР°СЂРіР°СЂРёС‚Р°": "Master and Margarita",
+            "РїСЂРµСЃС‚СѓРїР»РµРЅРёРµ Рё РЅР°РєР°Р·Р°РЅРёРµ": "Crime and Punishment",
+            "РІРѕР№РЅР° Рё РјРёСЂ": "War and Peace",
+            "Р°РЅРЅР° РєР°СЂРµРЅРёРЅР°": "Anna Karenina",
+            "РґРѕСЃС‚РѕРµРІСЃРєРёР№": "Dostoyevsky", "С‚РѕР»СЃС‚РѕР№": "Tolstoy",
+            "Р±СѓР»РіР°РєРѕРІ": "Bulgakov", "РєРёР№РѕСЃР°РєРё": "Kiyosaki",
+            "dostoevsky": "Dostoyevsky", "dostoyevsky": "Р”РѕСЃС‚РѕРµРІСЃРєРёР№",
+            "tolstoy": "РўРѕР»СЃС‚РѕР№", "bulgakov": "Р‘СѓР»РіР°РєРѕРІ", "kiyosaki": "РљРёР№РѕСЃР°РєРё"
         ]
         let normalized = RecommendationProfile.normalized(term)
         if let alias = aliases[normalized] { return [term, alias] }
@@ -81,7 +81,14 @@ enum AudioCatalogService {
 
     static func featured(source: AudioSource, language: String? = nil, genres: [String] = [], newest: Bool = false) async throws -> [AudioBook] {
         switch source {
-        case .librivox: return try await archiveFeatured(language:language,genres:genres,newest:newest,librivoxOnly:true)
+        case .librivox:
+            // Project IDs/catalog-added dates do not prove a new audio edition.
+            if newest { return [] }
+            var parts = URLComponents(string: "https://librivox.org/api/feed/audiobooks/")!
+            var values: [URLQueryItem] = [.init(name: "format", value: "json"), .init(name: "limit", value: "60"), .init(name: "extended", value: "1"), .init(name: "coverart", value: "1")]
+            if let genre = genres.first, let name = audioGenreQuery(genre, archive: false) { values.append(.init(name: "genre", value: name)) }
+            parts.queryItems = values
+            return parseLibriVox(try await requestObject(parts.url!)).filter { matchesLanguage($0.language, choice: language) }
         case .archive: return try await archiveFeatured(language:language,genres:genres,newest:newest,librivoxOnly:false)
         case .knigavuhe,.akniga:
             let found=try await WebAudioSourceService.featured(source:source,genres:genres,newest:newest)
@@ -93,7 +100,7 @@ enum AudioCatalogService {
     private static func archiveFeatured(language:String?,genres:[String],newest:Bool,librivoxOnly:Bool) async throws -> [AudioBook] {
             var components = URLComponents(string: "https://archive.org/advancedsearch.php")!
             components.queryItems = [
-                .init(name: "q", value: "mediatype:audio AND " + (librivoxOnly ? "collection:librivoxaudio":"(collection:librivoxaudio OR collection:audio_bookspoetry OR subject:audiobooks OR subject:аудиокниги)") + languageQuery(language) + (genres.first.flatMap { audioGenreQuery($0, archive: true) } ?? "")),
+                .init(name: "q", value: "mediatype:audio AND " + (librivoxOnly ? "collection:librivoxaudio":"(collection:librivoxaudio OR collection:audio_bookspoetry OR subject:audiobooks OR subject:Р°СѓРґРёРѕРєРЅРёРіРё)") + languageQuery(language) + (genres.first.flatMap { audioGenreQuery($0, archive: true) } ?? "")),
                 .init(name: "fl[]", value: "language"),
                 .init(name: "fl[]", value: "subject"),
             .init(name: "fl[]", value: "date"),
@@ -131,7 +138,12 @@ enum AudioCatalogService {
                     return AudioChapter(id:book.id+":\(index)",title:entry.title,url:url,durationSeconds:nil)
                 }
             } else {throw AudioCatalogError.noTracks}
-        case .local: return try AudioImportStore.chapters(for: book)
+        case .local:
+            #if canImport(UIKit)
+            return try AudioImportStore.chapters(for: book)
+            #else
+            throw AudioCatalogError.noTracks
+            #endif
         case .knigavuhe,.akniga:
             do {found=try await WebAudioSourceService.chapters(for:book)}
             catch {if book.source == .knigavuhe,let cached=AudioTrackCache.load(book),!cached.isEmpty {return cached};throw error}
@@ -144,7 +156,7 @@ enum AudioCatalogService {
                       let url = secureURL(address) else { return nil }
                 return AudioChapter(
                     id: "\(book.id):\(index)",
-                    title: string(value["title"]) ?? "Глава \(index + 1)",
+                    title: string(value["title"]) ?? "Р“Р»Р°РІР° \(index + 1)",
                     url: url,
                     durationSeconds: Double(string(value["playtime"]) ?? "")
                 )
@@ -206,7 +218,7 @@ enum AudioCatalogService {
             }.filter { !$0.isEmpty }
             return AudioBook(
                 id: "librivox:\(id)", source: .librivox, sourceID: id,
-                title: title, author: names.joined(separator: ", ").isEmpty ? "Неизвестный автор" : names.joined(separator: ", "),
+                title: title, author: names.joined(separator: ", ").isEmpty ? "РќРµРёР·РІРµСЃС‚РЅС‹Р№ Р°РІС‚РѕСЂ" : names.joined(separator: ", "),
                 description: string(entry["description"]) ?? "",
                 coverURL: secureURL(string(entry["coverart_thumbnail"]) ?? string(entry["coverart_jpg"]) ?? ""),
                 language: string(entry["language"]),
@@ -214,14 +226,14 @@ enum AudioCatalogService {
                 pageURL: secureURL(string(entry["url_librivox"]) ?? ""),
                 narrator: ((entry["readers"] as? [[String: Any]]) ?? []).compactMap { string($0["display_name"] ?? $0["name"]) }.joined(separator: ", "),
                 durationSeconds: Double(string(entry["totaltimesecs"]) ?? ""),
-                publicationDate: string(entry["catalog_date"])
+                publicationDate: nil
             )
         }
     }
 
     private static func searchArchive(_ term: String, byAuthor: Bool, language: String?, librivoxOnly:Bool=false) async throws -> [AudioBook] {
         guard let words = archiveSearchExpression(term, byAuthor: byAuthor) else { return [] }
-        let scope=librivoxOnly ? "collection:librivoxaudio":"(subject:audiobooks OR subject:аудиокниги OR subject:\"audio books\" OR collection:librivoxaudio OR collection:audio_bookspoetry)"
+        let scope=librivoxOnly ? "collection:librivoxaudio":"(subject:audiobooks OR subject:Р°СѓРґРёРѕРєРЅРёРіРё OR subject:\"audio books\" OR collection:librivoxaudio OR collection:audio_bookspoetry)"
         let query = "mediatype:audio AND \(scope) AND (\(words))" + languageQuery(language)
         var components = URLComponents(string: "https://archive.org/advancedsearch.php")!
         components.queryItems = [
@@ -251,7 +263,7 @@ enum AudioCatalogService {
             guard let id = item["identifier"] as? String,
                   !id.isEmpty, id.count < 160,
                   let title = string(item["title"]) else { return nil }
-            let author = string(item["creator"]) ?? "Неизвестный автор"
+            let author = string(item["creator"]) ?? "РќРµРёР·РІРµСЃС‚РЅС‹Р№ Р°РІС‚РѕСЂ"
             return AudioBook(
                 id: "archive:\(id)", source: .archive, sourceID: id,
                 title: title, author: author, description: string(item["description"]) ?? "",
@@ -260,13 +272,13 @@ enum AudioCatalogService {
                 genres: GenreTaxonomy.normalize((item["subject"] as? [String]) ?? string(item["subject"]).map { [$0] } ?? []),
                 publicationDate: string(item["date"] ?? item["year"]),
                 popularity: (item["downloads"] as? NSNumber)?.doubleValue,
-                popularityBasis: "Количество прослушиваний в Internet Archive"
+                popularityBasis: "РљРѕР»РёС‡РµСЃС‚РІРѕ СЃРєР°С‡РёРІР°РЅРёР№ РІ Internet Archive"
             )
         }
     }
 
     static func archiveSearchExpression(_ term: String, byAuthor: Bool) -> String? {
-        let stopwords: Set<String> = ["и", "в", "во", "на", "с", "the", "a", "an", "and", "of"]
+        let stopwords: Set<String> = ["Рё", "РІ", "РІРѕ", "РЅР°", "СЃ", "the", "a", "an", "and", "of"]
         let tokens = RecommendationProfile.normalized(term).split(separator: " ").map(String.init)
             .filter { !stopwords.contains($0) }
         guard !tokens.isEmpty else { return nil }
@@ -280,7 +292,7 @@ enum AudioCatalogService {
                       "nonfiction":"non fiction", "children":"children", "thriller":"thriller"]
         guard let topic = topics[genre] else { return nil }
         if archive {
-            let queries=["romance":"romance OR novel OR роман OR романы","fantasy":"fantasy OR фэнтези", "science_fiction":"science fiction OR фантастика","detective":"mystery OR detective OR детектив","classics":"classics OR classic OR классика","adventure":"adventure OR приключения","children":"children OR fairy tales OR сказки"]
+            let queries=["romance":"romance OR novel OR СЂРѕРјР°РЅ OR СЂРѕРјР°РЅС‹","fantasy":"fantasy OR С„СЌРЅС‚РµР·Рё", "science_fiction":"science fiction OR С„Р°РЅС‚Р°СЃС‚РёРєР°","detective":"mystery OR detective OR РґРµС‚РµРєС‚РёРІ","classics":"classics OR classic OR РєР»Р°СЃСЃРёРєР°","adventure":"adventure OR РїСЂРёРєР»СЋС‡РµРЅРёСЏ","children":"children OR fairy tales OR СЃРєР°Р·РєРё"]
             return " AND subject:(\(queries[genre] ?? topic))"
         }
         return topic
@@ -295,25 +307,7 @@ enum AudioCatalogService {
     }
 
     private static func requestObject(_ url: URL) async throws -> [String: Any] {
-        var request = URLRequest(url: url)
-        request.timeoutInterval = 18
-        request.setValue("DarkReader/0.7 (iOS; audio catalog search)", forHTTPHeaderField: "User-Agent")
-        do {
-            let (data, response) = try await URLSession.shared.data(for: request)
-            try Task.checkCancellation()
-            guard let response = response as? HTTPURLResponse else { throw AudioCatalogError.unavailable }
-            if response.statusCode == 404, url.host == "librivox.org" { return [:] }
-            guard (200..<300).contains(response.statusCode) else { throw AudioCatalogError.unavailable }
-            guard data.count < 4_000_000,
-                  let value = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                throw AudioCatalogError.invalidReply
-            }
-            return value
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch {
-            throw AudioCatalogError.unavailable
-        }
+        try await SourceHTTPClient.shared.json(url)
     }
 
     private static func secureURL(_ value: String) -> URL? {

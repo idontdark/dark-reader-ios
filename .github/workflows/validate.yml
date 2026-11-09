@@ -39,7 +39,7 @@ jobs:
         run: brew install xcodegen
       - name: Run real import and backup round trips on macOS
         run: |
-          cp Sources/{SourceCatalog,SourceCatalogGenerated,GenreTaxonomy,DocumentImport,Book,BookFormatConverter,FB2Document,BookMetadata,ReaderOptions,CloudLibraryModels,LocalLibraryBackup}.swift scripts/core-regressions/Harness/
+          cp Sources/{SourceHTTPClient,SourceFileProbe,SourceHealthChecker,SearchQueryPolicy,CatalogSearchAccumulator,OPDSClient,CatalogProviders,FlibustaCatalog,HTMLSourceParser,BookSourceAdapters,AudioSourceAdapters,AudioModels,AudioCatalogService,AudioTrackCache,AudioWebCatalogModels,WebAudioSourceService,EditionIdentity,UnifiedSearchService,UnifiedDiscoveryService,RecommendationEngine,RecommendationProfile,DiscoveryModels,SourceCatalog,SourceCatalogGenerated,GenreTaxonomy,DocumentImport,Book,BookFormatConverter,FB2Document,BookMetadata,ReaderOptions,CloudLibraryModels,LocalLibraryBackup}.swift scripts/core-regressions/Harness/
           swift run --package-path scripts/core-regressions ReaderCoreRegressions
       - name: Prepare project
         run: |

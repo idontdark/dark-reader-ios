@@ -7,6 +7,7 @@ struct InterestsScreen: View {
     @AppStorage("wantsBooks") private var books = true
     @AppStorage("wantsAudiobooks") private var audiobooks = false
     @AppStorage("preferredGenresJSON") private var genresJSON = "[]"
+    @AppStorage("preferredAudioGenresJSON") private var audioGenresJSON = ""
     @AppStorage("preferredAuthorsJSON") private var authorsJSON = "[]"
 
     var body: some View {
@@ -34,8 +35,15 @@ struct InterestsScreen: View {
                         NavigationLink {
                             GenreSettingsScreen()
                         } label: {
-                            ReaderRow(icon: "sparkles", title: "Любимые жанры",
+                            ReaderRow(icon: "sparkles", title: "Жанры книг",
                                       subtitle: "\(ReaderPreferences.array(genresJSON).count)") {
+                                Image(systemName: "chevron.right").foregroundStyle(ReaderStyle.secondary)
+                            }
+                        }.buttonStyle(.plain)
+                        ReaderDivider()
+                        NavigationLink { GenreSettingsScreen(kind: .audio) } label: {
+                            ReaderRow(icon: "headphones", title: "Жанры аудиокниг",
+                                      subtitle: "\(ReaderPreferences.array(audioGenresJSON.isEmpty ? genresJSON : audioGenresJSON).count)") {
                                 Image(systemName: "chevron.right").foregroundStyle(ReaderStyle.secondary)
                             }
                         }.buttonStyle(.plain)

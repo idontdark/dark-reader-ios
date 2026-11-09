@@ -24,8 +24,63 @@ struct FlibustaBookSource: BookSourceAdapter {
     let source: SourceDescriptor
     func search(_ query: String, byAuthor: Bool, onPage: CatalogSearchProgress?) async throws -> [CatalogBook] {
         let result = try await CatalogProviders.search(query: query, mode: byAuthor ? "author" : "title", provider: "flibusta",
-            customURL: "", customParameter: "", onResults: { await onPage?(stamp($0)) })
-        return stamp(result)
+            customURL: "", customParameter: "", onResults: { await onPage?(stamp(byAuthor ? $0.filter { $0.epubURL != nil } : $0)) })
+        guard byAuthor else { return stamp(result) }
+        var books = result.filter { $0.epubURL != nil }
+        var pages = result.filter { $0.epubURL == nil && $0.navigationURL != nil }.prefix(8).makeIterator()
+        try await withThrowingTaskGroup(of: [CatalogBook].self) { group in
+            func add(_ entry: CatalogBook) {
+                group.addTask {
+                    guard let url = entry.navigationURL else { return [] }
+                    do { return try await OPDSClient(searchEndpoint: "", queryParameter: "").browse(url, maxPages: 2) }
+                    catch is CancellationError { throw CancellationError() } catch { return [] }
+                }
+            }
+            for _ in 0..<2 { if let entry = pages.next() { add(entry) } }
+            while let entries = try await group.next() {
+                try Task.checkCancellation()
+                books += entries.filter { $0.epubURL != nil }
+                await onPage?(stamp(books))
+                if let entry = pages.next() { add(entry) }
+            }
+        }
+        return stamp(books)
+    }
+    func browse(genre: String?, shelf: RecommendationShelf, language: String?) async throws -> [CatalogBook] {
+        let root = source.homepage.appendingPathComponent("opds")
+        let entries = try await OPDSClient(searchEndpoint: "", queryParameter: "").browse(root, maxPages: 1)
+        let labels = genre != nil ? ["Р¶Р°РЅСЂ", "genre"] : shelf == .popular ? ["РїРѕРїСѓР»СЏСЂ", "popular"] : ["РЅРѕРІРёРЅ", "new"]
+        guard let section = entries.first(where: { book in labels.contains { GenreTaxonomy.normalized(book.title).contains($0) } })?.navigationURL else { return [] }
+        let books = try await descend(section, genre: genre, depth: genre == nil ? 1 : 3)
+        return stamp(books.enumerated().map { index, entry in
+            var book = entry
+            if genre == nil && shelf == .popular {
+                book.popularity = Double(books.count - index)
+                book.popularityBasis = "РџРѕР·РёС†РёСЏ РІ РїРѕРїСѓР»СЏСЂРЅРѕРј РєР°С‚Р°Р»РѕРіРµ Р¤Р»РёР±СѓСЃС‚С‹"
+            }
+            return book
+        })
+    }
+    private func descend(_ url: URL, genre: String?, depth: Int) async throws -> [CatalogBook] {
+        guard depth > 0 else { return [] }
+        let entries = try await OPDSClient(searchEndpoint: "", queryParameter: "").browse(url, maxPages: 2)
+        var found = entries.filter { $0.epubURL != nil }
+        let sections = entries.filter { $0.epubURL == nil && $0.navigationURL != nil }
+        for section in sections.prefix(40) {
+            try Task.checkCancellation()
+            let metadataGenres = GenreTaxonomy.normalize([section.title])
+            guard genre == nil || metadataGenres.contains(genre!) || (depth == 3 && metadataGenres.isEmpty) else { continue }
+            if let target = section.navigationURL {
+                var batch = try await descend(target, genre: metadataGenres.contains(genre ?? "") ? nil : genre, depth: depth - 1)
+                // An actual catalog genre node is metadata; a search phrase is not.
+                if let genre, metadataGenres.contains(genre) {
+                    batch = batch.map { var book = $0; book.genres = Array(Set((book.genres ?? []) + [genre])); return book }
+                }
+                found += batch
+            }
+            if found.count >= 60 { break }
+        }
+        return Array(found.prefix(60))
     }
 }
 struct GutenbergBookSource: BookSourceAdapter {
@@ -60,7 +115,7 @@ struct GutenbergBookSource: BookSourceAdapter {
                 coverURL: formats["image/jpeg"].flatMap(URL.init(string:)), summary: (row["summaries"] as? [String])?.first,
                 downloadFormat: "epub", sourceID: source.id, language: languages.joined(separator: " "),
                 genres: GenreTaxonomy.normalize(subjects), popularity: (row["download_count"] as? NSNumber)?.doubleValue,
-                popularityBasis: "Количество скачиваний в Project Gutenberg",
+                popularityBasis: "РљРѕР»РёС‡РµСЃС‚РІРѕ СЃРєР°С‡РёРІР°РЅРёР№ РІ Project Gutenberg",
                 offers: [BookOffer(sourceID: source.id, sourceName: source.name, pageURL: page, fileURL: address, format: "epub")])
         }
     }
@@ -95,12 +150,12 @@ struct ArchiveBookSource: BookSourceAdapter {
             guard let id = row["identifier"] as? String, let title = row["title"] as? String,
                   let page = URL(string: "https://archive.org/details/")?.appendingPathComponent(id) else { return nil }
             let subjects = row["subject"] as? [String] ?? HTMLSourceParser.scalar(row["subject"]).map { [$0] } ?? []
-            return CatalogBook(id: "archive-book:" + id, title: title, author: HTMLSourceParser.scalar(row["creator"]) ?? "Неизвестный автор",
+            return CatalogBook(id: "archive-book:" + id, title: title, author: HTMLSourceParser.scalar(row["creator"]) ?? "РќРµРёР·РІРµСЃС‚РЅС‹Р№ Р°РІС‚РѕСЂ",
                 epubURL: nil, navigationURL: page, coverURL: URL(string: "https://archive.org/services/img/")?.appendingPathComponent(id),
                 summary: HTMLSourceParser.scalar(row["description"]), sourceID: source.id,
                 language: (row["language"] as? [String])?.joined(separator: " ") ?? HTMLSourceParser.scalar(row["language"]),
                 genres: GenreTaxonomy.normalize(subjects), publicationDate: HTMLSourceParser.scalar(row["date"] ?? row["year"]),
-                popularity: (row["downloads"] as? NSNumber)?.doubleValue, popularityBasis: "Количество скачиваний в Internet Archive",
+                popularity: (row["downloads"] as? NSNumber)?.doubleValue, popularityBasis: "РљРѕР»РёС‡РµСЃС‚РІРѕ СЃРєР°С‡РёРІР°РЅРёР№ РІ Internet Archive",
                 offers: [BookOffer(sourceID: source.id, sourceName: source.name, pageURL: page)])
         }
     }
@@ -133,18 +188,60 @@ struct HTMLBookSource: BookSourceAdapter {
         let response = try await SourceHTTPClient.shared.load(form.request(query))
         let links = try HTMLSourceParser.bookLinks(HTMLSourceParser.document(response), base: response.url)
         var found: [CatalogBook] = []
-        // Bounded detail hydration. Emit every successfully parsed card immediately.
-        for (url, title) in links.prefix(20) {
-            try Task.checkCancellation()
-            do {
-                let page = try await SourceHTTPClient.shared.load(url)
-                let book = try HTMLSourceParser.book(HTMLSourceParser.document(page), url: page.url, source: source, fallbackTitle: title)
-                if byAuthor, !GenreTaxonomy.normalized(book.author).contains(GenreTaxonomy.normalized(query)) { continue }
-                found.append(book); await onPage?(found)
-            } catch is CancellationError { throw CancellationError() } catch { continue }
+        var iterator = links.prefix(30).makeIterator()
+        try await withThrowingTaskGroup(of: CatalogBook?.self) { group in
+            func add(_ link: (URL, String)) {
+                group.addTask {
+                    do {
+                        let page = try await SourceHTTPClient.shared.load(link.0)
+                        let book = try HTMLSourceParser.book(HTMLSourceParser.document(page), url: page.url, source: source, fallbackTitle: link.1)
+                        return SearchQueryPolicy.matches(title: book.title, author: book.author, query: query, byAuthor: byAuthor) ? book : nil
+                    } catch is CancellationError { throw CancellationError() } catch { return nil }
+                }
+            }
+            for _ in 0..<3 { if let link = iterator.next() { add(link) } }
+            while let book = try await group.next() {
+                try Task.checkCancellation()
+                if let book { found.append(book); await onPage?(found) }
+                if let link = iterator.next() { add(link) }
+            }
         }
         return found
     }
+    func browse(genre: String?, shelf: RecommendationShelf, language: String?) async throws -> [CatalogBook] {
+        let home = try await SourceHTTPClient.shared.load(source.homepage)
+        let doc = try HTMLSourceParser.document(home)
+        var selected: URL?
+        for link in try doc.select("a[href]") {
+            let label = try link.text()
+            let text = GenreTaxonomy.normalized(label)
+            let matches = genre.map { GenreTaxonomy.normalize([label]).contains($0) } ??
+                (shelf == .recent ? text.contains("новин") || text.contains("new releases") : text.contains("популяр") || text.contains("popular"))
+            if matches, let url = HTMLSourceParser.url(try link.attr("href"), base: home.url), url.host == home.url.host { selected = url; break }
+        }
+        let response = try await SourceHTTPClient.shared.load(selected ?? home.url)
+        let links = try HTMLSourceParser.bookLinks(HTMLSourceParser.document(response), base: response.url)
+        var iterator = links.prefix(40).makeIterator()
+        var found: [CatalogBook] = []
+        try await withThrowingTaskGroup(of: CatalogBook?.self) { group in
+            func add(_ link: (URL, String)) {
+                group.addTask {
+                    do {
+                        let page = try await SourceHTTPClient.shared.load(link.0)
+                        return try HTMLSourceParser.book(HTMLSourceParser.document(page), url: page.url, source: source, fallbackTitle: link.1)
+                    } catch is CancellationError { throw CancellationError() } catch { return nil }
+                }
+            }
+            for _ in 0..<3 { if let link = iterator.next() { add(link) } }
+            while let book = try await group.next() {
+                try Task.checkCancellation()
+                if let book { found.append(book) }
+                if let link = iterator.next() { add(link) }
+            }
+        }
+        return found
+    }
+
     func detail(_ book: CatalogBook) async throws -> CatalogBook {
         guard let url = book.navigationURL else { return book }
         let page = try await SourceHTTPClient.shared.load(url)

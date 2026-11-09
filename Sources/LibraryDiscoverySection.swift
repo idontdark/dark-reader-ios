@@ -5,6 +5,7 @@ struct LibraryDiscoverySection: View {
     @EnvironmentObject private var navigation: ReaderNavigation
     @AppStorage("appLanguage") private var language = "ru"
     @AppStorage("preferredGenresJSON") private var genresJSON = "[]"
+    @AppStorage("preferredAudioGenresJSON") private var audioGenresJSON = ""
     @AppStorage("accentHex") private var accentHex = ReaderStyle.defaultAccent
 
     var body: some View {
@@ -14,7 +15,7 @@ struct LibraryDiscoverySection: View {
             ReaderInsetGroup {
                 NavigationLink {
                     if audio {
-                        AudioCollectionScreen(title: "Для вас", genres: RecommendationProfile.genres(ReaderPreferences.array(genresJSON)), personalized: true)
+                        AudioCollectionScreen(title: "Для вас", genres: RecommendationProfile.genres(ReaderPreferences.array(audioGenresJSON.isEmpty ? genresJSON : audioGenresJSON), kind: .audio), personalized: true)
                     } else {
                         DiscoveryCollectionScreen(title: "Для вас", genres: RecommendationProfile.genres(ReaderPreferences.array(genresJSON)), personalized: true)
                     }

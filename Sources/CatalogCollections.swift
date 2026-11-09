@@ -8,6 +8,11 @@ struct DiscoveryCollectionScreen:View {
     @EnvironmentObject private var library:BookshelfStore
     @AppStorage("appLanguage") private var language="ru"
     @AppStorage("preferredBookLanguage") private var bookLanguage="auto"
+    @AppStorage(SourcePreferences.key) private var enabledSources = Data()
+    @AppStorage("preferredGenresJSON") private var bookGenres = "[]"
+    @AppStorage("preferredAudioGenresJSON") private var audioGenres = ""
+    @AppStorage("preferredAuthorsJSON") private var favoriteAuthors = "[]"
+    private var preferenceRevision: String { enabledSources.base64EncodedString() + bookGenres + audioGenres + favoriteAuthors }
     private var contentLanguage:String {bookLanguage == "auto" ? language:bookLanguage}
     @State private var books:[DiscoveryBook]=[]
     @State private var loading=true
@@ -31,7 +36,7 @@ struct DiscoveryCollectionScreen:View {
                 }
             }.padding(ReaderMetrics.screenInset)
         }.readerCanvas().readerNavigationTitle(title).navigationBarTitleDisplayMode(.inline)
-            .task(id:contentLanguage+sort+String(personalized)+genres.joined(separator:",")) {await load()}
+            .task(id:preferenceRevision+contentLanguage+sort+String(personalized)+genres.joined(separator:",")) {await load()}
             .refreshable {await load()}
             .fullScreenCover(item:$selected) {DiscoveryBookDetail(book:$0)}
     }
@@ -39,10 +44,10 @@ struct DiscoveryCollectionScreen:View {
         let token=UUID();requestID=token;loading=true;message=nil;failed=false
         defer {if requestID == token {loading=false}}
         do {
-            let found=try await DiscoveryService.books(genres:genres,language:contentLanguage,limit:24,sort:sort)
+            let found=try await DiscoveryService.books(genres:genres,language:contentLanguage,limit:24,sort:sort, shelf: personalized ? .personalized : sort == "new" ? .recent : genres.isEmpty ? .popular : .genre)
             try Task.checkCancellation()
             guard requestID == token else{return}
-            books=personalized ? RecommendationProfile.rank(found,excluding:library.books.map(\.title)):found
+            books=found
             if books.isEmpty {message="На выбранном языке пока нет подходящих книг."}
         } catch is CancellationError {} catch {
             guard !Task.isCancelled,requestID == token else{return}
@@ -58,9 +63,12 @@ struct AudioCollectionScreen:View {
     @EnvironmentObject private var player:AudioPlayerModel
     @AppStorage("appLanguage") private var language="ru"
     @AppStorage("preferredBookLanguage") private var bookLanguage="auto"
+    @AppStorage(SourcePreferences.key) private var enabledSources = Data()
+    @AppStorage("preferredGenresJSON") private var bookGenres = "[]"
+    @AppStorage("preferredAudioGenresJSON") private var audioGenres = ""
+    @AppStorage("preferredAuthorsJSON") private var favoriteAuthors = "[]"
+    private var preferenceRevision: String { enabledSources.base64EncodedString() + bookGenres + audioGenres + favoriteAuthors }
     private var contentLanguage:String {bookLanguage == "auto" ? language:bookLanguage}
-    @AppStorage("preferredAudioSource") private var source:AudioSource = .archive
-    @AppStorage("disabledAudioSources") private var disabled=""
     @State private var books:[AudioBook]=[]
     @State private var loading=true
     @State private var message:String?
@@ -83,7 +91,7 @@ struct AudioCollectionScreen:View {
                 }
             }.padding(ReaderMetrics.screenInset)
         }.readerCanvas().readerNavigationTitle(title).navigationBarTitleDisplayMode(.inline)
-            .task(id:contentLanguage+source.rawValue+disabled+String(personalized)+genres.joined(separator:",")) {await load()}
+            .task(id:preferenceRevision+contentLanguage+String(personalized)+genres.joined(separator:",")) {await load()}
             .refreshable {await load()}
             .fullScreenCover(item:$selected) {AudioBookDetailScreen(book:$0){}.environmentObject(player)}
     }
@@ -162,7 +170,6 @@ struct CatalogSeriesScreen:View {
 
     let audio:Bool
     @EnvironmentObject private var navigation:ReaderNavigation
-    @AppStorage("catalogProvider") private var provider="flibusta"
     @State private var target:URL?
     @State private var loading=true
     @State private var message:String?
@@ -186,9 +193,9 @@ struct CatalogSeriesScreen:View {
             .task {
                 defer {loading=false}
                 guard !audio else {message="Раздел серий пока недоступен. Если он будет востребован, я добавлю его, когда найду подходящий сервис. Пока книги серии можно искать по названию.";return}
-                let saved=OPDSSources.decode(UserDefaults.standard.string(forKey:"savedOPDSCatalogs") ?? "[]")
-                let address=provider == "flibusta" ? "https://flibusta.is/opds":saved.first(where:{"opds:"+$0.id.uuidString == provider})?.url
-                guard let address,let root=URL(string:address) else {message="Для просмотра серий выберите OPDS-каталог, который их поддерживает.";return}
+                guard let root = SourcePreferences.enabled(.books).first(where: { $0.adapter == .flibusta })?.homepage.appendingPathComponent("opds") else {
+                    message = "Включённые источники пока не предоставляют каталог серий."; return
+                }
                 do {
                     let entries=try await CatalogProviders.browse(url:root)
                     target=entries.first {($0.title.localizedCaseInsensitiveContains("серии") || $0.title.localizedCaseInsensitiveContains("series")) && $0.navigationURL != nil}?.navigationURL

@@ -8,7 +8,6 @@ struct OnboardingFlow: View {
 
     @AppStorage("appLanguage") private var language = "ru"
     @AppStorage("preferredBookLanguage") private var bookLanguage = "auto"
-    @AppStorage("catalogProvider") private var catalogProvider = "flibusta"
     @AppStorage("wantsBooks") private var wantsBooks = true
     @AppStorage("wantsAudiobooks") private var wantsAudio = false
     @AppStorage("preferredGenresJSON") private var genresJSON = "[]"
@@ -90,7 +89,6 @@ struct OnboardingFlow: View {
         Button {
             language=code
             bookLanguage=code
-            catalogProvider=code == "en" ? "gutendex":"flibusta"
             UserDefaults.standard.set(code == "ru" ? AudioSource.archive.rawValue:AudioSource.librivox.rawValue,forKey:"preferredAudioSource")
         } label: {
             HStack(spacing:12) {
@@ -188,11 +186,6 @@ struct OnboardingFlow: View {
             language = key
             bookLanguage = key
             UserDefaults.standard.set(key == "ru" ? AudioSource.archive.rawValue : AudioSource.librivox.rawValue, forKey: "preferredAudioSource")
-            // Automatically suggest English or Russian for public-domain catalogs,
-            // while keeping catalog language separately adjustable in Settings.
-            if catalogProvider == "flibusta" || catalogProvider == "gutendex" {
-                catalogProvider = key == "en" ? "gutendex" : "flibusta"
-            }
         } label: {
             HStack(spacing: 14) {
                 Text(emoji).font(.title)

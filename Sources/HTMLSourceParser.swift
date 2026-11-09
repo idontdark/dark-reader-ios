@@ -57,7 +57,9 @@ enum HTMLSourceParser {
     }
     static func url(_ value: String?, base: URL) -> URL? {
         guard let value, !value.isEmpty, let url = URL(string: value, relativeTo: base)?.absoluteURL, url.scheme == "https" else { return nil }
-        return url
+        var parts = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        parts?.fragment = nil
+        return parts?.url
     }
     static func field(_ labels: [String], in doc: Document) -> String? {
         for row in (try? doc.select("tr").array()) ?? [] {
@@ -66,6 +68,16 @@ enum HTMLSourceParser {
             return scalar(try? cells[1].text())
         }
         return nil
+    }
+    static func duration(_ value: String?) -> Double? {
+        guard let value else { return nil }
+        if let number = Double(value), number > 0 { return number }
+        let pattern = #"^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?$"#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: value, range: NSRange(value.startIndex..., in: value)) else { return nil }
+        func number(_ index: Int) -> Double { Range(match.range(at: index), in: value).flatMap { Double(value[$0]) } ?? 0 }
+        let result = number(1) * 3600 + number(2) * 60 + number(3)
+        return result > 0 ? result : nil
     }
     static func bookLinks(_ doc: Document, base: URL) throws -> [(URL, String)] {
         let pattern = #"/(?:book|books|b|audiobook|kniga)/[^/?#]+|/\d{2,}[^/]*\.html|/lib/[^/]+/[^/]+\.html"#
@@ -100,15 +112,36 @@ enum HTMLSourceParser {
         let priority = ["epub", "fb2", "zip", "mobi", "pdf", "txt", "rtf", "doc"]
         offers.sort { (priority.firstIndex(of: $0.format ?? "") ?? 99) < (priority.firstIndex(of: $1.format ?? "") ?? 99) }
         if offers.isEmpty { offers = [BookOffer(sourceID: source.id, sourceName: source.name, pageURL: page)] }
+        let rating = ld["aggregateRating"] as? [String: Any] ?? [:]
+        let ratingValue = scalar(rating["ratingValue"]).flatMap(Double.init)
+        let ratingCount = scalar(rating["ratingCount"] ?? rating["reviewCount"]).flatMap(Double.init)
+        let popularity = ratingValue.flatMap { value in ratingCount.map { value * $0 } }
         return CatalogBook(id: source.id + ":" + page.absoluteString, title: title, author: author,
                            epubURL: offers.first?.fileURL, navigationURL: page, coverURL: self.url(image, base: page),
                            summary: scalar(ld["description"]) ?? value("[itemprop=description], meta[property=og:description]", in: doc),
                            downloadFormat: offers.first?.format, sourceID: source.id, language: lang,
                            genres: genres, isbn: scalar(ld["isbn"]), publicationDate: scalar(ld["datePublished"]),
-                           offers: offers)
+                           popularity: popularity, popularityBasis: popularity == nil ? nil : "Рейтинг и число оценок в источнике",
+                           offers: offers, series: scalar(ld["isPartOf"]) ?? field(["серия", "цикл", "series"], in: doc),
+                           seriesNumber: scalar(ld["position"]).flatMap(Double.init))
     }
     static func chapters(_ doc: Document, base: URL) throws -> [AudioChapter] {
         var result: [AudioChapter] = []; var seen = Set<URL>()
+        // Aknigi24's ordinary web player uses the explicit chapterBase and chapter
+        // numbers from this JSON. No private API, token synthesis or URL guessing.
+        if base.host == "aknigi24.com", let node = try doc.select("script#player-data[type=application/json]").first(),
+           let data = try node.data().data(using: .utf8),
+           let player = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let prefix = scalar(player["chapterBase"]), let chapterBase = url(prefix, base: base), chapterBase.host == base.host {
+            for chapter in player["chapters"] as? [[String: Any]] ?? [] {
+                guard let number = chapter["n"] as? Int, number > 0 else { continue }
+                let address = chapterBase.appendingPathComponent(String(number))
+                if seen.insert(address).inserted {
+                    result.append(AudioChapter(id: address.absoluteString, title: scalar(chapter["title"]) ?? String(number),
+                        url: address, durationSeconds: (chapter["d"] as? NSNumber)?.doubleValue))
+                }
+            }
+        }
         for object in linkedData(doc) {
             if let address = url(scalar(object["contentUrl"] ?? object["contentURL"]), base: base), seen.insert(address).inserted {
                 result.append(AudioChapter(id: address.absoluteString, title: scalar(object["name"]) ?? "Аудиокнига", url: address, durationSeconds: nil))
