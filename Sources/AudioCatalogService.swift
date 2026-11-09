@@ -20,7 +20,7 @@ enum AudioCatalogService {
         }
         var variants = searchVariants(term)
         for value in SearchQueryPolicy.variants(term,byAuthor:byAuthor) where !variants.contains(value) { variants.append(value) }
-        if !byAuthor,RecommendationProfile.normalized(term) == "Р»СЋР±РѕРІСЊ" {variants += ["love","Р»СЋР±РІ"]}
+        if !byAuthor,RecommendationProfile.normalized(term) == "любовь" {variants += ["love","любв"]}
         var results:[AudioBook]=[]
         var seen=Set<String>()
         var lastError:Error?
@@ -55,22 +55,22 @@ enum AudioCatalogService {
     static func matchesLanguage(_ value: String?, choice: String?) -> Bool {
         guard let choice, choice != "all" else { return true }
         let tokens = (value ?? "").lowercased().components(separatedBy: CharacterSet.letters.inverted)
-        return choice == "ru" ? tokens.contains(where: { ["ru", "rus", "russian", "СЂСѓСЃСЃРєРёР№"].contains($0) })
+        return choice == "ru" ? tokens.contains(where: { ["ru", "rus", "russian", "русский"].contains($0) })
             : tokens.contains(where: { ["en", "eng", "english"].contains($0) })
     }
 
     static func searchVariants(_ term: String) -> [String] {
         let aliases = [
-            "Р±РѕРіР°С‚С‹Р№ РїР°РїР°": "Rich Dad Poor Dad",
-            "Р±РѕРіР°С‚С‹Р№ РїР°РїР° Р±РµРґРЅС‹Р№ РїР°РїР°": "Rich Dad Poor Dad",
-            "РјР°СЃС‚РµСЂ Рё РјР°СЂРіР°СЂРёС‚Р°": "Master and Margarita",
-            "РїСЂРµСЃС‚СѓРїР»РµРЅРёРµ Рё РЅР°РєР°Р·Р°РЅРёРµ": "Crime and Punishment",
-            "РІРѕР№РЅР° Рё РјРёСЂ": "War and Peace",
-            "Р°РЅРЅР° РєР°СЂРµРЅРёРЅР°": "Anna Karenina",
-            "РґРѕСЃС‚РѕРµРІСЃРєРёР№": "Dostoyevsky", "С‚РѕР»СЃС‚РѕР№": "Tolstoy",
-            "Р±СѓР»РіР°РєРѕРІ": "Bulgakov", "РєРёР№РѕСЃР°РєРё": "Kiyosaki",
-            "dostoevsky": "Dostoyevsky", "dostoyevsky": "Р”РѕСЃС‚РѕРµРІСЃРєРёР№",
-            "tolstoy": "РўРѕР»СЃС‚РѕР№", "bulgakov": "Р‘СѓР»РіР°РєРѕРІ", "kiyosaki": "РљРёР№РѕСЃР°РєРё"
+            "богатый папа": "Rich Dad Poor Dad",
+            "богатый папа бедный папа": "Rich Dad Poor Dad",
+            "мастер и маргарита": "Master and Margarita",
+            "преступление и наказание": "Crime and Punishment",
+            "война и мир": "War and Peace",
+            "анна каренина": "Anna Karenina",
+            "достоевский": "Dostoyevsky", "толстой": "Tolstoy",
+            "булгаков": "Bulgakov", "кийосаки": "Kiyosaki",
+            "dostoevsky": "Dostoyevsky", "dostoyevsky": "Достоевский",
+            "tolstoy": "Толстой", "bulgakov": "Булгаков", "kiyosaki": "Кийосаки"
         ]
         let normalized = RecommendationProfile.normalized(term)
         if let alias = aliases[normalized] { return [term, alias] }
@@ -100,7 +100,7 @@ enum AudioCatalogService {
     private static func archiveFeatured(language:String?,genres:[String],newest:Bool,librivoxOnly:Bool) async throws -> [AudioBook] {
             var components = URLComponents(string: "https://archive.org/advancedsearch.php")!
             components.queryItems = [
-                .init(name: "q", value: "mediatype:audio AND " + (librivoxOnly ? "collection:librivoxaudio":"(collection:librivoxaudio OR collection:audio_bookspoetry OR subject:audiobooks OR subject:Р°СѓРґРёРѕРєРЅРёРіРё)") + languageQuery(language) + (genres.first.flatMap { audioGenreQuery($0, archive: true) } ?? "")),
+                .init(name: "q", value: "mediatype:audio AND " + (librivoxOnly ? "collection:librivoxaudio":"(collection:librivoxaudio OR collection:audio_bookspoetry OR subject:audiobooks OR subject:аудиокниги)") + languageQuery(language) + (genres.first.flatMap { audioGenreQuery($0, archive: true) } ?? "")),
                 .init(name: "fl[]", value: "language"),
                 .init(name: "fl[]", value: "subject"),
             .init(name: "fl[]", value: "date"),
@@ -156,7 +156,7 @@ enum AudioCatalogService {
                       let url = secureURL(address) else { return nil }
                 return AudioChapter(
                     id: "\(book.id):\(index)",
-                    title: string(value["title"]) ?? "Р“Р»Р°РІР° \(index + 1)",
+                    title: string(value["title"]) ?? "Глава \(index + 1)",
                     url: url,
                     durationSeconds: Double(string(value["playtime"]) ?? "")
                 )
@@ -218,7 +218,7 @@ enum AudioCatalogService {
             }.filter { !$0.isEmpty }
             return AudioBook(
                 id: "librivox:\(id)", source: .librivox, sourceID: id,
-                title: title, author: names.joined(separator: ", ").isEmpty ? "РќРµРёР·РІРµСЃС‚РЅС‹Р№ Р°РІС‚РѕСЂ" : names.joined(separator: ", "),
+                title: title, author: names.joined(separator: ", ").isEmpty ? "Неизвестный автор" : names.joined(separator: ", "),
                 description: string(entry["description"]) ?? "",
                 coverURL: secureURL(string(entry["coverart_thumbnail"]) ?? string(entry["coverart_jpg"]) ?? ""),
                 language: string(entry["language"]),
@@ -233,7 +233,7 @@ enum AudioCatalogService {
 
     private static func searchArchive(_ term: String, byAuthor: Bool, language: String?, librivoxOnly:Bool=false) async throws -> [AudioBook] {
         guard let words = archiveSearchExpression(term, byAuthor: byAuthor) else { return [] }
-        let scope=librivoxOnly ? "collection:librivoxaudio":"(subject:audiobooks OR subject:Р°СѓРґРёРѕРєРЅРёРіРё OR subject:\"audio books\" OR collection:librivoxaudio OR collection:audio_bookspoetry)"
+        let scope=librivoxOnly ? "collection:librivoxaudio":"(subject:audiobooks OR subject:аудиокниги OR subject:\"audio books\" OR collection:librivoxaudio OR collection:audio_bookspoetry)"
         let query = "mediatype:audio AND \(scope) AND (\(words))" + languageQuery(language)
         var components = URLComponents(string: "https://archive.org/advancedsearch.php")!
         components.queryItems = [
@@ -263,7 +263,7 @@ enum AudioCatalogService {
             guard let id = item["identifier"] as? String,
                   !id.isEmpty, id.count < 160,
                   let title = string(item["title"]) else { return nil }
-            let author = string(item["creator"]) ?? "РќРµРёР·РІРµСЃС‚РЅС‹Р№ Р°РІС‚РѕСЂ"
+            let author = string(item["creator"]) ?? "Неизвестный автор"
             return AudioBook(
                 id: "archive:\(id)", source: .archive, sourceID: id,
                 title: title, author: author, description: string(item["description"]) ?? "",
@@ -272,13 +272,13 @@ enum AudioCatalogService {
                 genres: GenreTaxonomy.normalize((item["subject"] as? [String]) ?? string(item["subject"]).map { [$0] } ?? []),
                 publicationDate: string(item["date"] ?? item["year"]),
                 popularity: (item["downloads"] as? NSNumber)?.doubleValue,
-                popularityBasis: "РљРѕР»РёС‡РµСЃС‚РІРѕ СЃРєР°С‡РёРІР°РЅРёР№ РІ Internet Archive"
+                popularityBasis: "Количество скачиваний в Internet Archive"
             )
         }
     }
 
     static func archiveSearchExpression(_ term: String, byAuthor: Bool) -> String? {
-        let stopwords: Set<String> = ["Рё", "РІ", "РІРѕ", "РЅР°", "СЃ", "the", "a", "an", "and", "of"]
+        let stopwords: Set<String> = ["и", "в", "во", "на", "с", "the", "a", "an", "and", "of"]
         let tokens = RecommendationProfile.normalized(term).split(separator: " ").map(String.init)
             .filter { !stopwords.contains($0) }
         guard !tokens.isEmpty else { return nil }
@@ -292,7 +292,7 @@ enum AudioCatalogService {
                       "nonfiction":"non fiction", "children":"children", "thriller":"thriller"]
         guard let topic = topics[genre] else { return nil }
         if archive {
-            let queries=["romance":"romance OR novel OR СЂРѕРјР°РЅ OR СЂРѕРјР°РЅС‹","fantasy":"fantasy OR С„СЌРЅС‚РµР·Рё", "science_fiction":"science fiction OR С„Р°РЅС‚Р°СЃС‚РёРєР°","detective":"mystery OR detective OR РґРµС‚РµРєС‚РёРІ","classics":"classics OR classic OR РєР»Р°СЃСЃРёРєР°","adventure":"adventure OR РїСЂРёРєР»СЋС‡РµРЅРёСЏ","children":"children OR fairy tales OR СЃРєР°Р·РєРё"]
+            let queries=["romance":"romance OR novel OR роман OR романы","fantasy":"fantasy OR фэнтези", "science_fiction":"science fiction OR фантастика","detective":"mystery OR detective OR детектив","classics":"classics OR classic OR классика","adventure":"adventure OR приключения","children":"children OR fairy tales OR сказки"]
             return " AND subject:(\(queries[genre] ?? topic))"
         }
         return topic

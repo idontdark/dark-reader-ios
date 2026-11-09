@@ -1,18 +1,5 @@
 import SwiftUI
 
-enum DownloadState: String, Codable {
-    case queued, connecting, downloading, paused, downloaded, failed
-    var title: String {
-        switch self {
-        case .queued: "В очереди"
-        case .connecting: "Подключение"
-        case .downloading: "Загрузка"
-        case .paused: "Пауза"
-        case .downloaded: "Загружено"
-        case .failed: "Не удалось загрузить"
-        }
-    }
-}
 struct BookDownload: Identifiable, Codable {
     var book: CatalogBook
     var state: DownloadState = .queued

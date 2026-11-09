@@ -54,7 +54,7 @@ struct SourceListScreen: View {
                 }
                 vpnNote.padding(.top, 8)
             } else {
-                Text(verbatim: L10n.text("Ещё не проверен", language: language)).font(.caption).foregroundStyle(ReaderStyle.secondary).padding(.top, 8)
+                Text(verbatim: L10n.text(source.defaultEnabled ? "Ещё не проверен" : "Источник не проверен и выключен по умолчанию.", language: language)).font(.caption).foregroundStyle(ReaderStyle.secondary).padding(.top, 8)
             }
             HStack {
                 Button("Проверить") { Task { await check(source) } }.disabled(checking.contains(source.id)).frame(minHeight: 44)

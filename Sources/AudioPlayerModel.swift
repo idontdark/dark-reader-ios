@@ -33,6 +33,7 @@ final class AudioPlayerModel: ObservableObject {
     @Published private(set) var completedDownloads = 0
     @Published private(set) var totalDownloads = 0
     @Published private(set) var downloadError: String?
+    @Published private(set) var downloadJobs: [AudioDownloadJob] = []
     private var downloadTask: Task<Void, Never>?
     private lazy var downloadSession: URLSession = {
         let configuration = URLSessionConfiguration.default
@@ -56,7 +57,15 @@ final class AudioPlayerModel: ObservableObject {
 
     init() {
         downloaded = Set(settings.stringArray(forKey: downloadKey) ?? [])
+        if let raw = settings.data(forKey: "audio.downloadQueue.v1"), let saved = try? JSONDecoder().decode([AudioDownloadJob].self, from: raw) {
+            downloadJobs = saved.map { item in
+                var value = item
+                if value.state == .downloading || value.state == .connecting { value.state = .queued }
+                return value
+            }
+        }
         setUpRemoteCommands()
+        Task { @MainActor [weak self] in self?.pumpDownloads() }
     }
 
     func open(_ selected: AudioBook, tracks: [AudioChapter], bookmark: Bookmark? = nil) {
@@ -276,43 +285,59 @@ final class AudioPlayerModel: ObservableObject {
     }
 
     func startDownload(_ selected: AudioBook, tracks: [AudioChapter]) {
-        guard downloadTask == nil, !tracks.isEmpty else { return }
-        downloadError = nil
-        downloadBytes=0;downloadExpectedBytes=0
-        downloadingBookID = selected.id
-        totalDownloads = tracks.count
-        completedDownloads = tracks.filter { localURL(for: $0) != nil }.count
-        saveToHistory(selected)
-        // The catalog caches the full chapter list before this point. Never replace it
-        // with the one chapter requested from the player menu.
+        guard !tracks.isEmpty, downloadingBookID != selected.id else { return }
+        downloadJobs.removeAll { $0.id == selected.id }
+        downloadJobs.append(AudioDownloadJob(book: selected, tracks: tracks))
+        saveToHistory(selected); persistDownloads(); pumpDownloads()
+    }
+    private func persistDownloads() {
+        settings.set(try? JSONEncoder().encode(downloadJobs), forKey: "audio.downloadQueue.v1")
+    }
+    private func updateDownload(_ id: String, state: DownloadState) {
+        if let index = downloadJobs.firstIndex(where: { $0.id == id }) { downloadJobs[index].state = state }
+        persistDownloads()
+    }
+    private func pumpDownloads() {
+        guard downloadTask == nil, let job = downloadJobs.first(where: { $0.state == .queued }) else { return }
+        downloadError = nil; downloadBytes = 0; downloadExpectedBytes = 0
+        downloadingBookID = job.id; totalDownloads = job.tracks.count
+        completedDownloads = job.tracks.filter { localURL(for: $0) != nil }.count
+        updateDownload(job.id, state: .downloading)
         downloadTask = Task { [weak self] in
             guard let self else { return }
             defer {
-                self.downloadingChapter = nil
-                self.downloadingBookID = nil
-                self.downloadTask = nil
+                self.downloadingChapter = nil; self.downloadingBookID = nil; self.downloadTask = nil
+                self.pumpDownloads()
             }
             do {
-                for track in tracks {
+                for track in job.tracks {
                     try Task.checkCancellation()
                     guard self.localURL(for: track) == nil else { continue }
                     self.downloadingChapter = track.id
                     try await self.download(track)
                     self.completedDownloads += 1
                 }
-            } catch is CancellationError {
-                // Completed chapters stay available for the next attempt.
-            } catch {
-                if !Task.isCancelled {
-                    self.downloadError = L10n.text("Не удалось скачать аудиокнигу. Сохранённые главы доступны. Повторите загрузку, чтобы продолжить.") + " " + L10n.errorDescription(error)
-                }
+                self.updateDownload(job.id, state: .downloaded)
+            } catch is CancellationError { self.updateDownload(job.id, state: .paused) }
+            catch {
+                self.updateDownload(job.id, state: Task.isCancelled ? .paused : .failed)
+                if !Task.isCancelled { self.downloadError = L10n.text("Не удалось скачать аудиокнигу. Сохранённые главы доступны. Повторите загрузку, чтобы продолжить.") + " " + L10n.errorDescription(error) }
             }
         }
     }
-
-    func cancelDownload() { downloadTask?.cancel() }
+    func cancelDownload() {
+        if let id = downloadingBookID { updateDownload(id, state: .paused) }
+        downloadTask?.cancel()
+    }
+    func cancelDownload(_ id: String) {
+        if downloadingBookID == id { cancelDownload() }
+        else { updateDownload(id, state: .paused) }
+    }
 
     private func download(_ track: AudioChapter) async throws {
+        let permit = try await MediaTransferGate.shared.acquire()
+        defer { Task { await MediaTransferGate.shared.release(permit) } }
+        try Task.checkCancellation()
         var request = URLRequest(url: track.url)
         request.setValue("DarkReader/1.0 (iOS; audiobook download)", forHTTPHeaderField: "User-Agent")
         downloadBytes=0;downloadExpectedBytes=0
@@ -322,13 +347,28 @@ final class AudioPlayerModel: ObservableObject {
                 self.downloadBytes=bytes;self.downloadExpectedBytes=expected
             }
         }
-        let (temporary, response) = try await downloadSession.download(for: request,delegate:progress)
+        let resumeURL = try audioFolder().appendingPathComponent(safeFilename(for: track) + ".resume")
+        let temporary: URL; let response: URLResponse
+        do {
+            if let resume = try? Data(contentsOf: resumeURL), !resume.isEmpty {
+                (temporary, response) = try await downloadSession.download(resumeFrom: resume, delegate: progress)
+            } else { (temporary, response) = try await downloadSession.download(for: request, delegate: progress) }
+        } catch {
+            if let resume = (error as NSError).userInfo[NSURLSessionDownloadTaskResumeData] as? Data { try? resume.write(to: resumeURL, options: .atomic) }
+            else { try? FileManager.default.removeItem(at: resumeURL) }
+            throw error
+        }
+        try? FileManager.default.removeItem(at: resumeURL)
         defer { try? FileManager.default.removeItem(at: temporary) }
         try Task.checkCancellation()
         guard let http = response as? HTTPURLResponse,
               (200..<300).contains(http.statusCode) else {
             throw AudioCatalogError.unavailable
         }
+        let length = (try FileManager.default.attributesOfItem(atPath: temporary.path)[.size] as? NSNumber)?.int64Value ?? 0
+        let expected = http.statusCode == 206 ? http.value(forHTTPHeaderField: "Content-Range")?.split(separator: "/").last.flatMap { Int64($0) } : (response.expectedContentLength > 0 ? response.expectedContentLength : nil)
+        guard length > 0, length <= 2_000_000_000 else { throw ImportFormatError.oversized }
+        if let expected, http.value(forHTTPHeaderField: "Content-Encoding") == nil, expected != length { throw ImportFormatError.corrupt }
         // AVFoundation identifies local formats from the extension: URLSession's .tmp
         // URL can report zero audio tracks for a valid MP3. Stage with its real suffix.
         let base=try audioFolder()
@@ -375,7 +415,7 @@ final class AudioPlayerModel: ObservableObject {
         for byte in track.id.utf8 {
             hash = (hash ^ UInt64(byte)) &* 1_099_511_628_211
         }
-        let ext = ["mp3", "m4a", "m4b"].contains(track.url.pathExtension.lowercased()) ? track.url.pathExtension.lowercased() : "mp3"
+        let ext = ["mp3", "m4a", "m4b", "aac", "flac", "wav"].contains(track.url.pathExtension.lowercased()) ? track.url.pathExtension.lowercased() : "mp3"
         return String(hash, radix: 16) + "." + (legacy ? "mp3" : ext)
     }
 

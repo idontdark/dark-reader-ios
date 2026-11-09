@@ -37,7 +37,13 @@ jobs:
           xcode-version: latest-stable
       - name: Install XcodeGen
         run: brew install xcodegen
+      - uses: actions/cache@v4
+        with:
+          path: scripts/core-regressions/.build
+          key: source-core-${{ runner.os }}-${{ hashFiles('scripts/core-regressions/Package.swift') }}
       - name: Run real import and backup round trips on macOS
+        id: core-tests
+        continue-on-error: true
         run: |
           cp Sources/{SourceHTTPClient,SourceFileProbe,SourceHealthChecker,SearchQueryPolicy,CatalogSearchAccumulator,OPDSClient,CatalogProviders,FlibustaCatalog,HTMLSourceParser,BookSourceAdapters,AudioSourceAdapters,AudioModels,AudioCatalogService,AudioTrackCache,AudioWebCatalogModels,WebAudioSourceService,EditionIdentity,UnifiedSearchService,UnifiedDiscoveryService,RecommendationEngine,RecommendationProfile,DiscoveryModels,SourceCatalog,SourceCatalogGenerated,GenreTaxonomy,DocumentImport,Book,BookFormatConverter,FB2Document,BookMetadata,ReaderOptions,CloudLibraryModels,LocalLibraryBackup}.swift scripts/core-regressions/Harness/
           swift run --package-path scripts/core-regressions ReaderCoreRegressions
@@ -58,3 +64,6 @@ jobs:
           path: build.log
           if-no-files-found: ignore
           retention-days: 7
+      - name: Require passing core regressions
+        if: always() && steps.core-tests.outcome == 'failure'
+        run: exit 1

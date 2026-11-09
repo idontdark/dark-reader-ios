@@ -49,14 +49,14 @@ struct FlibustaBookSource: BookSourceAdapter {
     func browse(genre: String?, shelf: RecommendationShelf, language: String?) async throws -> [CatalogBook] {
         let root = source.homepage.appendingPathComponent("opds")
         let entries = try await OPDSClient(searchEndpoint: "", queryParameter: "").browse(root, maxPages: 1)
-        let labels = genre != nil ? ["Р¶Р°РЅСЂ", "genre"] : shelf == .popular ? ["РїРѕРїСѓР»СЏСЂ", "popular"] : ["РЅРѕРІРёРЅ", "new"]
+        let labels = genre != nil ? ["жанр", "genre"] : shelf == .popular ? ["популяр", "popular"] : ["новин", "new"]
         guard let section = entries.first(where: { book in labels.contains { GenreTaxonomy.normalized(book.title).contains($0) } })?.navigationURL else { return [] }
         let books = try await descend(section, genre: genre, depth: genre == nil ? 1 : 3)
         return stamp(books.enumerated().map { index, entry in
             var book = entry
             if genre == nil && shelf == .popular {
                 book.popularity = Double(books.count - index)
-                book.popularityBasis = "РџРѕР·РёС†РёСЏ РІ РїРѕРїСѓР»СЏСЂРЅРѕРј РєР°С‚Р°Р»РѕРіРµ Р¤Р»РёР±СѓСЃС‚С‹"
+                book.popularityBasis = "Позиция в популярном каталоге Флибусты"
             }
             return book
         })
@@ -86,11 +86,24 @@ struct FlibustaBookSource: BookSourceAdapter {
 struct GutenbergBookSource: BookSourceAdapter {
     let source: SourceDescriptor
     func search(_ query: String, byAuthor: Bool, onPage: CatalogSearchProgress?) async throws -> [CatalogBook] {
-        let books = try await load(search: query, genre: nil, language: nil, shelf: .popular)
-        await onPage?(books); return books
+        do {
+            let books = try await load(search: query, genre: nil, language: nil, shelf: .popular)
+            await onPage?(books); return books
+        } catch is CancellationError { throw CancellationError() }
+        catch {
+            // Gutendex is a community mirror; the official OPDS remains independent.
+            let books = try await OPDSClient(searchEndpoint: "https://www.gutenberg.org/ebooks/search.opds/", queryParameter: "query").search(query)
+            let found = stamp(books); await onPage?(found); return found
+        }
     }
     func browse(genre: String?, shelf: RecommendationShelf, language: String?) async throws -> [CatalogBook] {
-        try await load(search: nil, genre: genre, language: language, shelf: shelf)
+        do { return try await load(search: nil, genre: genre, language: language, shelf: shelf) }
+        catch is CancellationError { throw CancellationError() }
+        catch {
+            guard let genre, let term = GenreTaxonomy.aliases[genre]?.first(where: { $0.range(of: "^[a-z ]+$", options: .regularExpression) != nil }) else { throw SourceError.unavailable }
+            let entries = try await OPDSClient(searchEndpoint: "https://www.gutenberg.org/ebooks/search.opds/", queryParameter: "query").search("subject:" + term)
+            return stamp(entries)
+        }
     }
     private func load(search: String?, genre: String?, language: String?, shelf: RecommendationShelf) async throws -> [CatalogBook] {
         var url = URLComponents(string: "https://gutendex.com/books/")!
@@ -115,7 +128,7 @@ struct GutenbergBookSource: BookSourceAdapter {
                 coverURL: formats["image/jpeg"].flatMap(URL.init(string:)), summary: (row["summaries"] as? [String])?.first,
                 downloadFormat: "epub", sourceID: source.id, language: languages.joined(separator: " "),
                 genres: GenreTaxonomy.normalize(subjects), popularity: (row["download_count"] as? NSNumber)?.doubleValue,
-                popularityBasis: "РљРѕР»РёС‡РµСЃС‚РІРѕ СЃРєР°С‡РёРІР°РЅРёР№ РІ Project Gutenberg",
+                popularityBasis: "Количество скачиваний в Project Gutenberg",
                 offers: [BookOffer(sourceID: source.id, sourceName: source.name, pageURL: page, fileURL: address, format: "epub")])
         }
     }
@@ -150,12 +163,12 @@ struct ArchiveBookSource: BookSourceAdapter {
             guard let id = row["identifier"] as? String, let title = row["title"] as? String,
                   let page = URL(string: "https://archive.org/details/")?.appendingPathComponent(id) else { return nil }
             let subjects = row["subject"] as? [String] ?? HTMLSourceParser.scalar(row["subject"]).map { [$0] } ?? []
-            return CatalogBook(id: "archive-book:" + id, title: title, author: HTMLSourceParser.scalar(row["creator"]) ?? "РќРµРёР·РІРµСЃС‚РЅС‹Р№ Р°РІС‚РѕСЂ",
+            return CatalogBook(id: "archive-book:" + id, title: title, author: HTMLSourceParser.scalar(row["creator"]) ?? "Неизвестный автор",
                 epubURL: nil, navigationURL: page, coverURL: URL(string: "https://archive.org/services/img/")?.appendingPathComponent(id),
                 summary: HTMLSourceParser.scalar(row["description"]), sourceID: source.id,
                 language: (row["language"] as? [String])?.joined(separator: " ") ?? HTMLSourceParser.scalar(row["language"]),
                 genres: GenreTaxonomy.normalize(subjects), publicationDate: HTMLSourceParser.scalar(row["date"] ?? row["year"]),
-                popularity: (row["downloads"] as? NSNumber)?.doubleValue, popularityBasis: "РљРѕР»РёС‡РµСЃС‚РІРѕ СЃРєР°С‡РёРІР°РЅРёР№ РІ Internet Archive",
+                popularity: (row["downloads"] as? NSNumber)?.doubleValue, popularityBasis: "Количество скачиваний в Internet Archive",
                 offers: [BookOffer(sourceID: source.id, sourceName: source.name, pageURL: page)])
         }
     }

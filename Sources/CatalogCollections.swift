@@ -32,7 +32,7 @@ struct DiscoveryCollectionScreen:View {
                     }
                 }
                 ForEach(books) {book in
-                    Button {selected=book} label:{CatalogResultRow(title:book.title,author:book.author,coverURL:book.coverURL)}.buttonStyle(.plain)
+                    Button {selected=book} label:{CatalogResultRow(title:book.title,author:book.author,coverURL:book.coverURL,reason:book.catalogBook?.recommendationReason)}.buttonStyle(.plain)
                 }
             }.padding(ReaderMetrics.screenInset)
         }.readerCanvas().readerNavigationTitle(title).navigationBarTitleDisplayMode(.inline)
@@ -87,7 +87,7 @@ struct AudioCollectionScreen:View {
                     }
                 }
                 ForEach(books) {book in
-                    Button {selected=book} label:{CatalogResultRow(title:book.title,author:book.author,coverURL:book.coverURL)}.buttonStyle(.plain)
+                    Button {selected=book} label:{CatalogResultRow(title:book.title,author:book.author,coverURL:book.coverURL,reason:book.recommendationReason)}.buttonStyle(.plain)
                 }
             }.padding(ReaderMetrics.screenInset)
         }.readerCanvas().readerNavigationTitle(title).navigationBarTitleDisplayMode(.inline)

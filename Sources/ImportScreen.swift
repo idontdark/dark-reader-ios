@@ -239,7 +239,7 @@ struct ImportTutorialScreen: View {
                 ReaderCard {
                     Label("Скачать напрямую с Флибусты", systemImage: "books.vertical")
                         .font(.headline)
-                    Text(verbatim:L10n.render("В библиотеке выберите Флибусту или Project Gutenberg, найдите книгу по названию или автору и нажмите кнопку скачивания.",language:localizationLanguage))
+                    Text(verbatim:L10n.render("Найдите книгу по названию или автору. Приложение проверит все включённые источники и покажет доступные форматы.",language:localizationLanguage))
                         .font(.subheadline)
                         .foregroundStyle(ReaderStyle.secondary)
                         .padding(.top, 7)

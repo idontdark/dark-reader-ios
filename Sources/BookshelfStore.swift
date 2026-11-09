@@ -54,6 +54,9 @@ final class BookshelfStore: ObservableObject {
     func download(_ book: CatalogBook, progress: (@MainActor (Double) -> Void)? = nil, resumeData: Data? = nil) async throws {
         guard !books.contains(where: { $0.catalogID == book.id }) else { return }
         guard let epubURL = book.epubURL, ["http", "https"].contains(epubURL.scheme ?? "") else { throw ReaderError.noEPUB }
+        let permit = try await MediaTransferGate.shared.acquire()
+        defer { Task { await MediaTransferGate.shared.release(permit) } }
+        try Task.checkCancellation()
         let delegate = ReaderDownloadDelegate { value in
             Task { @MainActor in progress?(value) }
         }

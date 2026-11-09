@@ -24,19 +24,24 @@ struct AudioDownloadAction: View {
                     Text(verbatim: String(format: L10n.text("Скачано глав: %d из %d", language: language), player.completedDownloads, player.totalDownloads))
                         .font(.caption).foregroundStyle(ReaderStyle.secondary)
                     Spacer()
-                    Button(L10n.text("Отмена", language: language)) { player.cancelDownload() }
+                    Button(L10n.text("Приостановить", language: language)) { player.cancelDownload() }
                         .frame(minWidth: 44, minHeight: 44)
                 }
             } else if complete {
                 Label(L10n.text("Доступно без интернета", language: language), systemImage: "checkmark.circle.fill")
                     .font(.subheadline).foregroundStyle(ReaderStyle.secondary).frame(minHeight: 44)
             } else {
-                PurpleAction(title: "Скачать аудиокнигу", icon: "arrow.down.to.line") {
+                let state = player.downloadJobs.first { $0.id == book.id }?.state
+                if state == .queued {
+                    HStack {
+                        Text(verbatim: L10n.text("В очереди аудиокниг", language: language)).font(.caption)
+                        Spacer()
+                        Button(L10n.text("Отмена", language: language)) { player.cancelDownload(book.id) }.frame(minHeight: 44)
+                    }
+                } else {
+                PurpleAction(title: state == .failed || state == .paused ? "Продолжить загрузку" : "Скачать аудиокнигу", icon: "arrow.down.to.line") {
                     player.startDownload(book, tracks: chapters)
-                }.disabled(chapters.isEmpty || player.downloadingBookID != nil)
-                if player.downloadingBookID != nil {
-                    Text(verbatim: L10n.text("Дождитесь завершения текущей загрузки.", language: language))
-                        .font(.caption).foregroundStyle(ReaderStyle.secondary)
+                }.disabled(chapters.isEmpty)
                 }
             }
             if let error = player.downloadError {

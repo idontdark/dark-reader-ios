@@ -47,7 +47,7 @@ private struct SourceWebBrowser: UIViewRepresentable {
         func webView(_ webView: WKWebView, decidePolicyFor navigationResponse: WKNavigationResponse,
                      decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
             let mime = navigationResponse.response.mimeType?.lowercased() ?? ""
-            let bookFile = ["application/epub+zip", "application/fb2", "application/x-fictionbook+xml", "application/zip", "application/x-mobipocket-ebook"].contains(mime)
+            let bookFile = ["application/pdf", "text/plain", "application/rtf", "application/msword", "application/epub+zip", "application/fb2", "application/x-fictionbook+xml", "application/zip", "application/x-mobipocket-ebook"].contains(mime)
             decisionHandler(bookFile || !navigationResponse.canShowMIMEType ? .download : .allow)
         }
         func webView(_ webView: WKWebView, navigationAction: WKNavigationAction, didBecome download: WKDownload) { download.delegate = self }

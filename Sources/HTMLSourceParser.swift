@@ -46,7 +46,7 @@ enum HTMLSourceParser {
         return result
     }
     static func linkedData(_ doc: Document) -> [[String: Any]] {
-        ((try? doc.select("script[type=application/ld+json]").array()) ?? []).flatMap { script in
+        ((try? doc.select("script[type=application/ld+json]").array()) ?? []).flatMap { script -> [[String: Any]] in
             guard let data = (try? script.data())?.data(using: .utf8), let object = try? JSONSerialization.jsonObject(with: data) else { return [] }
             return objects(object)
         }
@@ -79,12 +79,20 @@ enum HTMLSourceParser {
         let result = number(1) * 3600 + number(2) * 60 + number(3)
         return result > 0 ? result : nil
     }
+    private static func sourceRecordLink(_ url: URL) -> Bool {
+        let path = url.path
+        if url.host == "libgen.li" { return ["/edition.php", "/ads.php"].contains(path) && url.query?.isEmpty == false }
+        if url.host == "annas-archive.gl" { return path.hasPrefix("/md5/") }
+        if url.host == "litmir.club" { return path == "/bd/" && URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.contains { $0.name == "b" } == true }
+        return false
+    }
     static func bookLinks(_ doc: Document, base: URL) throws -> [(URL, String)] {
         let pattern = #"/(?:book|books|b|audiobook|kniga)/[^/?#]+|/\d{2,}[^/]*\.html|/lib/[^/]+/[^/]+\.html"#
         var seen = Set<URL>()
         return try doc.select("a[href]").array().compactMap { anchor in
             guard let address = url(try anchor.attr("href"), base: base), address.host == base.host,
-                  address.path.range(of: pattern, options: .regularExpression) != nil,
+                  (address.path.range(of: pattern, options: .regularExpression) != nil ||
+                   (sourceRecordLink(address))),
                   let title = scalar(try anchor.text()), title.count >= 3, title.count <= 350, seen.insert(address).inserted else { return nil }
             return (address, title)
         }

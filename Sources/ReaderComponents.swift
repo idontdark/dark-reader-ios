@@ -83,6 +83,7 @@ struct CatalogResultRow:View {
     let title:String
     let author:String
     let coverURL:URL?
+    var reason: String? = nil
     var body:some View {
         ReaderCard(inset:12) {
             HStack(spacing:12) {
@@ -90,6 +91,7 @@ struct CatalogResultRow:View {
                 VStack(alignment:.leading,spacing:6) {
                     Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(.white).lineLimit(2)
                     Text(verbatim:L10n.authorName(author)).font(.caption).foregroundStyle(ReaderStyle.secondary).lineLimit(2)
+                    if let reason { Text(verbatim: L10n.render(reason)).font(.caption2).foregroundStyle(ReaderStyle.secondary).lineLimit(2) }
                 }.frame(maxWidth:.infinity,alignment:.leading).fixedSize(horizontal:false,vertical:true)
                 Image(systemName:"chevron.right").font(.caption2).foregroundStyle(ReaderStyle.secondary)
             }.frame(minHeight:80)
