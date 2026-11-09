@@ -71,6 +71,7 @@ jobs:
         with:
           tag_name: v1.0.0-build-${{ github.run_number }}
           name: Dark Reader — dark-signer [v1.1] (build ${{ github.run_number }})
+          target_commitish: ${{ github.sha }}
           prerelease: true
           generate_release_notes: false
           body_path: docs/RELEASE_UNIFIED_SOURCES.md
