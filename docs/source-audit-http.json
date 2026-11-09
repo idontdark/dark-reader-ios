@@ -1,0 +1,3270 @@
+[
+  {
+    "domain": "akniga.org",
+    "checkedAt": "2026-11-09T15:55:40Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [
+      {
+        "query": "Пушкин",
+        "url": "https://akniga.org/search/books?q=%D0%9F%D1%83%D1%88%D0%BA%D0%B8%D0%BD",
+        "status": 200,
+        "candidateCards": 0
+      },
+      {
+        "query": "Чехов",
+        "url": "https://akniga.org/search/books?q=%D0%A7%D0%B5%D1%85%D0%BE%D0%B2",
+        "status": 200,
+        "candidateCards": 0
+      },
+      {
+        "query": "Толстой",
+        "url": "https://akniga.org/search/books?q=%D0%A2%D0%BE%D0%BB%D1%81%D1%82%D0%BE%D0%B9",
+        "status": 200,
+        "candidateCards": 0
+      },
+      {
+        "query": "Достоевский",
+        "url": "https://akniga.org/search/books?q=%D0%94%D0%BE%D1%81%D1%82%D0%BE%D0%B5%D0%B2%D1%81%D0%BA%D0%B8%D0%B9",
+        "status": 200,
+        "candidateCards": 0
+      },
+      {
+        "query": "Дойл",
+        "url": "https://akniga.org/search/books?q=%D0%94%D0%BE%D0%B9%D0%BB",
+        "status": 200,
+        "candidateCards": 0
+      }
+    ],
+    "details": [],
+    "homeStatus": 200,
+    "finalURL": "https://akniga.org/",
+    "forms": [
+      {
+        "action": "https://akniga.org/search/books",
+        "method": "get",
+        "inputs": {
+          "q": {
+            "type": "text",
+            "value": ""
+          }
+        }
+      },
+      {
+        "action": "https://akniga.org/index/page__page__/",
+        "method": "get",
+        "inputs": {
+          "customPageId": {
+            "type": "text",
+            "value": ""
+          }
+        }
+      },
+      {
+        "action": "https://akniga.org/skin/switch/",
+        "method": "post",
+        "inputs": {
+          "skin": {
+            "type": "hidden",
+            "value": "new"
+          },
+          "security_ls_key": {
+            "type": "hidden",
+            "value": "7d36fa2e9112a2653c89f257211e386a"
+          },
+          "return": {
+            "type": "hidden",
+            "value": "/"
+          }
+        }
+      },
+      {
+        "action": "https://akniga.org/auth/login/",
+        "method": "post",
+        "inputs": {
+          "login": {
+            "type": "text",
+            "value": ""
+          },
+          "password": {
+            "type": "password",
+            "value": ""
+          },
+          "remember": {
+            "type": "checkbox",
+            "value": "1"
+          },
+          "return-path": {
+            "type": "hidden",
+            "value": "https://akniga.org/"
+          }
+        }
+      }
+    ],
+    "searchForm": {
+      "url": "https://akniga.org/search/books",
+      "method": "get",
+      "field": "q",
+      "hidden": {}
+    },
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "aknigi24.com",
+    "checkedAt": "2026-11-09T15:55:44Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [
+      {
+        "query": "Пушкин",
+        "url": "https://aknigi24.com/search?q=%D0%9F%D1%83%D1%88%D0%BA%D0%B8%D0%BD",
+        "status": 200,
+        "candidateCards": 31
+      },
+      {
+        "query": "Чехов",
+        "url": "https://aknigi24.com/search?q=%D0%A7%D0%B5%D1%85%D0%BE%D0%B2",
+        "status": 200,
+        "candidateCards": 31
+      },
+      {
+        "query": "Толстой",
+        "url": "https://aknigi24.com/search?q=%D0%A2%D0%BE%D0%BB%D1%81%D1%82%D0%BE%D0%B9",
+        "status": 200,
+        "candidateCards": 31
+      },
+      {
+        "query": "Достоевский",
+        "url": "https://aknigi24.com/search?q=%D0%94%D0%BE%D1%81%D1%82%D0%BE%D0%B5%D0%B2%D1%81%D0%BA%D0%B8%D0%B9",
+        "status": 200,
+        "candidateCards": 31
+      },
+      {
+        "query": "Дойл",
+        "url": "https://aknigi24.com/search?q=%D0%94%D0%BE%D0%B9%D0%BB",
+        "status": 200,
+        "candidateCards": 30
+      }
+    ],
+    "details": [
+      {
+        "url": "https://aknigi24.com/book/zeltoe-lico-doil-artur-konan-vasilevskii-petr",
+        "status": 200,
+        "title": "Желтое лицо — скачать аудиокнигу бесплатно в mp3 или слушать онлайн | Дойл Артур Конан | читает Василевский Пётр | Aknigi24",
+        "fileLinks": []
+      },
+      {
+        "url": "https://aknigi24.com/book/celestial-adept-avantiuristov-red-kerrot-gavrilova-nadezda",
+        "status": 200,
+        "title": "Целестиал. Адепт авантюристов — скачать аудиокнигу бесплатно в mp3 или слушать онлайн | Рэд Кэррот | читает Гаврилова Надежда | Aknigi24",
+        "fileLinks": []
+      },
+      {
+        "url": "https://aknigi24.com/book/cumazlai-grabinskii-stefan-platonov-anton",
+        "status": 200,
+        "title": "Чумазлай — скачать аудиокнигу бесплатно в mp3 или слушать онлайн | Грабинский Стефан | читает Платонов Антон | Aknigi24",
+        "fileLinks": []
+      },
+      {
+        "url": "https://aknigi24.com/book/pecatnaia-masinka-morrell-devid-toman-eduard",
+        "status": 200,
+        "title": "Печатная машинка — скачать аудиокнигу бесплатно в mp3 или слушать онлайн | Моррелл Дэвид | читает Томан Эдуард | Aknigi24",
+        "fileLinks": []
+      },
+      {
+        "url": "https://aknigi24.com/book/cernye-botinki-makkammon-robert-buldakov-oleg",
+        "status": 200,
+        "title": "Чёрные ботинки — скачать аудиокнигу бесплатно в mp3 или слушать онлайн | Маккаммон Роберт | читает Булдаков Олег | Aknigi24",
+        "fileLinks": []
+      }
+    ],
+    "homeStatus": 200,
+    "finalURL": "https://aknigi24.com/",
+    "forms": [
+      {
+        "action": "https://aknigi24.com/search",
+        "method": "get",
+        "inputs": {
+          "q": {
+            "type": "search",
+            "value": ""
+          }
+        }
+      },
+      {
+        "action": "https://aknigi24.com/search",
+        "method": "get",
+        "inputs": {
+          "q": {
+            "type": "search",
+            "value": ""
+          }
+        }
+      }
+    ],
+    "searchForm": {
+      "url": "https://aknigi24.com/search",
+      "method": "get",
+      "field": "q",
+      "hidden": {}
+    },
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "annas-archive.gl",
+    "checkedAt": "2026-11-09T15:54:34Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [
+      {
+        "query": "Пушкин",
+        "error": "HTTP Error 403: Forbidden"
+      },
+      {
+        "query": "Чехов",
+        "error": "HTTP Error 403: Forbidden"
+      },
+      {
+        "query": "Толстой",
+        "error": "HTTP Error 403: Forbidden"
+      },
+      {
+        "query": "Достоевский",
+        "error": "HTTP Error 403: Forbidden"
+      },
+      {
+        "query": "Дойл",
+        "error": "HTTP Error 403: Forbidden"
+      }
+    ],
+    "details": [],
+    "homeStatus": 200,
+    "finalURL": "https://annas-archive.gl/",
+    "forms": [
+      {
+        "action": "/search",
+        "method": "get",
+        "inputs": {
+          "q": {
+            "type": "search",
+            "value": ""
+          }
+        }
+      },
+      {
+        "action": "/search",
+        "method": "get",
+        "inputs": {
+          "q": {
+            "type": "search",
+            "value": ""
+          }
+        }
+      },
+      {
+        "action": "/scidb/",
+        "method": "get",
+        "inputs": {
+          "doi": {
+            "type": "search",
+            "value": ""
+          }
+        }
+      }
+    ],
+    "searchForm": {
+      "url": "https://annas-archive.gl/search",
+      "method": "get",
+      "field": "q",
+      "hidden": {}
+    },
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "archive.org",
+    "checkedAt": "2026-11-09T15:54:51Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [],
+    "details": [],
+    "homeStatus": 200,
+    "finalURL": "https://archive.org/",
+    "forms": [],
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "asbook.ru",
+    "checkedAt": "2026-11-09T15:55:48Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [
+      {
+        "query": "Пушкин",
+        "url": "https://asbook.ru/",
+        "status": 200,
+        "candidateCards": 12
+      },
+      {
+        "query": "Чехов",
+        "url": "https://asbook.ru/",
+        "status": 200,
+        "candidateCards": 12
+      },
+      {
+        "query": "Толстой",
+        "url": "https://asbook.ru/",
+        "status": 200,
+        "candidateCards": 12
+      },
+      {
+        "query": "Достоевский",
+        "url": "https://asbook.ru/",
+        "status": 200,
+        "candidateCards": 12
+      },
+      {
+        "query": "Дойл",
+        "url": "https://asbook.ru/",
+        "status": 200,
+        "candidateCards": 12
+      }
+    ],
+    "details": [
+      {
+        "url": "https://asbook.ru/abooks/zarlit/4570-vzveshivaya-dushi-andre-morua.html",
+        "status": 200,
+        "title": null,
+        "fileLinks": []
+      },
+      {
+        "url": "https://asbook.ru/abooks/fantastic/4569-put-voina-deyv-dunkan.html",
+        "status": 200,
+        "title": null,
+        "fileLinks": []
+      },
+      {
+        "url": "https://asbook.ru/abooks/fantastic/4568-gospodstvo-bentli-littl.html",
+        "status": 200,
+        "title": null,
+        "fileLinks": []
+      },
+      {
+        "url": "https://asbook.ru/abooks/russlit/4567-nevernaya-igor-efimov.html",
+        "status": 200,
+        "title": null,
+        "fileLinks": []
+      },
+      {
+        "url": "https://asbook.ru/abooks/fantastic/4566-dolg-pered-vidom-pavel-shumil.html",
+        "status": 200,
+        "title": null,
+        "fileLinks": []
+      }
+    ],
+    "homeStatus": 200,
+    "finalURL": "https://asbook.ru/",
+    "forms": [
+      {
+        "action": "",
+        "method": "post",
+        "inputs": {
+          "login_name": {
+            "type": "text",
+            "value": "Логин"
+          },
+          "login_password": {
+            "type": "password",
+            "value": "*****"
+          },
+          "login_not_save": {
+            "type": "checkbox",
+            "value": "1"
+          },
+          "login": {
+            "type": "hidden",
+            "value": "submit"
+          }
+        }
+      },
+      {
+        "action": "",
+        "method": "post",
+        "inputs": {
+          "do": {
+            "type": "hidden",
+            "value": "search"
+          },
+          "subaction": {
+            "type": "hidden",
+            "value": "search"
+          },
+          "story": {
+            "type": "text",
+            "value": "Поиск..."
+          }
+        }
+      },
+      {
+        "action": "",
+        "method": "post",
+        "inputs": {
+          "dlenewssortby": {
+            "type": "hidden",
+            "value": "date"
+          },
+          "dledirection": {
+            "type": "hidden",
+            "value": "DESC"
+          },
+          "set_new_sort": {
+            "type": "hidden",
+            "value": "dle_sort_main"
+          },
+          "set_direction_sort": {
+            "type": "hidden",
+            "value": "dle_direction_main"
+          }
+        }
+      }
+    ],
+    "searchForm": {
+      "url": "https://asbook.ru/",
+      "method": "post",
+      "field": "story",
+      "hidden": {
+        "do": "search",
+        "subaction": "search"
+      }
+    },
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "audio-knigi.club",
+    "checkedAt": "2026-11-09T15:55:57Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [],
+    "details": [],
+    "limitation": "HTTP Error 403: Forbidden"
+  },
+  {
+    "domain": "audiokniga.io",
+    "checkedAt": "2026-11-09T15:55:51Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [
+      {
+        "query": "Пушкин",
+        "url": "https://audiokniga.io/",
+        "status": 200,
+        "candidateCards": 28
+      },
+      {
+        "query": "Чехов",
+        "url": "https://audiokniga.io/",
+        "status": 200,
+        "candidateCards": 28
+      },
+      {
+        "query": "Толстой",
+        "url": "https://audiokniga.io/",
+        "status": 200,
+        "candidateCards": 28
+      },
+      {
+        "query": "Достоевский",
+        "url": "https://audiokniga.io/",
+        "status": 200,
+        "candidateCards": 28
+      },
+      {
+        "query": "Дойл",
+        "url": "https://audiokniga.io/",
+        "status": 200,
+        "candidateCards": 28
+      }
+    ],
+    "details": [
+      {
+        "url": "https://audiokniga.io/fantastika-i-fentezi/16079-provodnik-haosa-kniga-12.html",
+        "status": 200,
+        "title": "Проводник Хаоса. Книга 12",
+        "fileLinks": []
+      },
+      {
+        "url": "https://audiokniga.io/uzhasy-i-mistika/6756-dom-dlya-svoih.html",
+        "status": 200,
+        "title": "Дом для своих",
+        "fileLinks": []
+      },
+      {
+        "url": "https://audiokniga.io/audiospektakli/59028-hronika-gnusnyh-vremen-3.html",
+        "status": 200,
+        "title": "Хроника гнусных времен",
+        "fileLinks": []
+      },
+      {
+        "url": "https://audiokniga.io/audiospektakli/8040-nachalo.html",
+        "status": 200,
+        "title": "Начало",
+        "fileLinks": []
+      },
+      {
+        "url": "https://audiokniga.io/audiospektakli/24066-rabota-za-dyavola.html",
+        "status": 200,
+        "title": "Работа за дьявола",
+        "fileLinks": []
+      }
+    ],
+    "homeStatus": 200,
+    "finalURL": "https://audiokniga.io/",
+    "forms": [
+      {
+        "action": "",
+        "method": "post",
+        "inputs": {
+          "do": {
+            "type": "hidden",
+            "value": "search"
+          },
+          "subaction": {
+            "type": "hidden",
+            "value": "search"
+          },
+          "story": {
+            "type": "text",
+            "value": ""
+          }
+        }
+      },
+      {
+        "action": "",
+        "method": "post",
+        "inputs": {
+          "dlenewssortby": {
+            "type": "hidden",
+            "value": "date"
+          },
+          "dledirection": {
+            "type": "hidden",
+            "value": "DESC"
+          },
+          "set_new_sort": {
+            "type": "hidden",
+            "value": "dle_sort_main"
+          },
+          "set_direction_sort": {
+            "type": "hidden",
+            "value": "dle_direction_main"
+          }
+        }
+      },
+      {
+        "action": "",
+        "method": "post",
+        "inputs": {
+          "login_name": {
+            "type": "text",
+            "value": ""
+          },
+          "login_password": {
+            "type": "password",
+            "value": ""
+          },
+          "login_not_save": {
+            "type": "checkbox",
+            "value": "1"
+          },
+          "login": {
+            "type": "hidden",
+            "value": "submit"
+          }
+        }
+      }
+    ],
+    "searchForm": {
+      "url": "https://audiokniga.io/",
+      "method": "post",
+      "field": "story",
+      "hidden": {
+        "do": "search",
+        "subaction": "search"
+      }
+    },
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "audioknigi.cc",
+    "checkedAt": "2026-11-09T15:55:58Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [
+      {
+        "query": "Пушкин",
+        "url": "https://audioknigi.cc/",
+        "status": 200,
+        "candidateCards": 22
+      },
+      {
+        "query": "Чехов",
+        "url": "https://audioknigi.cc/",
+        "status": 200,
+        "candidateCards": 28
+      },
+      {
+        "query": "Толстой",
+        "url": "https://audioknigi.cc/",
+        "status": 200,
+        "candidateCards": 31
+      },
+      {
+        "query": "Достоевский",
+        "url": "https://audioknigi.cc/",
+        "status": 200,
+        "candidateCards": 31
+      },
+      {
+        "query": "Дойл",
+        "url": "https://audioknigi.cc/",
+        "status": 200,
+        "candidateCards": 25
+      }
+    ],
+    "details": [
+      {
+        "url": "https://audioknigi.cc/popadancy/9092420-shans.html",
+        "status": 200,
+        "title": "Шанс",
+        "fileLinks": []
+      },
+      {
+        "url": "https://audioknigi.cc/popadancy/9092418-knjaz-medvedev-1.html",
+        "status": 200,
+        "title": "Князь Медведев 1",
+        "fileLinks": []
+      },
+      {
+        "url": "https://audioknigi.cc/postapokalipsis/9092419-stalker-istorija-levala.html",
+        "status": 200,
+        "title": "S.T.A.L.K.E.R. История Левала",
+        "fileLinks": []
+      },
+      {
+        "url": "https://audioknigi.cc/detektivy/9092417-dekster-v-dele.html",
+        "status": 200,
+        "title": "Декстер в деле",
+        "fileLinks": []
+      },
+      {
+        "url": "https://audioknigi.cc/klasika/9092415-palata-6.html",
+        "status": 200,
+        "title": "Палата №6",
+        "fileLinks": []
+      }
+    ],
+    "homeStatus": 200,
+    "finalURL": "https://audioknigi.cc/",
+    "forms": [
+      {
+        "action": "",
+        "method": "post",
+        "inputs": {
+          "do": {
+            "type": "hidden",
+            "value": "search"
+          },
+          "subaction": {
+            "type": "hidden",
+            "value": "search"
+          },
+          "story": {
+            "type": "text",
+            "value": ""
+          }
+        }
+      },
+      {
+        "action": "",
+        "method": "post",
+        "inputs": {
+          "login_name": {
+            "type": "text",
+            "value": ""
+          },
+          "login_password": {
+            "type": "password",
+            "value": ""
+          },
+          "login_not_save": {
+            "type": "checkbox",
+            "value": "1"
+          },
+          "login": {
+            "type": "hidden",
+            "value": "submit"
+          }
+        }
+      }
+    ],
+    "searchForm": {
+      "url": "https://audioknigi.cc/",
+      "method": "post",
+      "field": "story",
+      "hidden": {
+        "do": "search",
+        "subaction": "search"
+      }
+    },
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "baza-knig.info",
+    "checkedAt": "2026-11-09T15:55:50Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [],
+    "details": [],
+    "homeStatus": 200,
+    "finalURL": "https://baza-knig.info/",
+    "forms": [
+      {
+        "action": "/search",
+        "method": "get",
+        "inputs": {
+          "text": {
+            "type": "text",
+            "value": ""
+          }
+        }
+      }
+    ],
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "bookbear.net",
+    "checkedAt": "2026-11-09T15:55:38Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [],
+    "details": [],
+    "limitation": "HTTP Error 403: Forbidden"
+  },
+  {
+    "domain": "booklis.com",
+    "checkedAt": "2026-11-09T15:55:49Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [],
+    "details": [
+      {
+        "url": "https://booklis.com/book/11796--pustoshi-alterri-kniga-v",
+        "status": 200,
+        "title": "Аудиокнига Пустоши Альтерры. Книга V, автор Александр Казанцев, читает Кирилл Головин",
+        "fileLinks": []
+      },
+      {
+        "url": "https://booklis.com/book/11795--te-kto-ostalis-tom-1",
+        "status": 200,
+        "title": "Аудиокнига Те, кто остались. Том 1, автор Константин Федотов, читает Сергей Трушин",
+        "fileLinks": []
+      },
+      {
+        "url": "https://booklis.com/book/11794--tunguska-puls-zemli",
+        "status": 200,
+        "title": "Аудиокнига Тунгуска: пульс Земли, автор Денис Пожидаев, читает Никита Степаненко",
+        "fileLinks": []
+      },
+      {
+        "url": "https://booklis.com/book/11793--otrechenie",
+        "status": 200,
+        "title": "Аудиокнига Отречение, автор Ричард Ли Байерс, читает Кирилл Головин, Шад Ибраев",
+        "fileLinks": []
+      },
+      {
+        "url": "https://booklis.com/book/11785--vremennie-trudnosti-kniga-i",
+        "status": 200,
+        "title": "Аудиокнига Временные трудности. Книга I, автор Максим Томилко, читает Кирилл Головин",
+        "fileLinks": []
+      }
+    ],
+    "homeStatus": 200,
+    "finalURL": "https://booklis.com/",
+    "forms": [
+      {
+        "action": "/login",
+        "method": "post",
+        "inputs": {
+          "login_email": {
+            "type": "email",
+            "value": ""
+          },
+          "login_pass": {
+            "type": "password",
+            "value": ""
+          }
+        }
+      },
+      {
+        "action": "/register",
+        "method": "post",
+        "inputs": {
+          "full_name": {
+            "type": "text",
+            "value": ""
+          },
+          "login_email": {
+            "type": "email",
+            "value": ""
+          },
+          "isAgeSelected": {
+            "type": "checkbox",
+            "value": "agree"
+          }
+        }
+      }
+    ],
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "books2you.ru",
+    "checkedAt": "2026-11-09T15:55:15Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [],
+    "details": [],
+    "limitation": "<urlopen error [SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1144)>"
+  },
+  {
+    "domain": "bookscafe.net",
+    "checkedAt": "2026-11-09T15:55:26Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [
+      {
+        "query": "Пушкин",
+        "url": "https://bookscafe.net/search?q=%D0%9F%D1%83%D1%88%D0%BA%D0%B8%D0%BD",
+        "status": 200,
+        "candidateCards": 34
+      },
+      {
+        "query": "Чехов",
+        "url": "https://bookscafe.net/search?q=%D0%A7%D0%B5%D1%85%D0%BE%D0%B2",
+        "status": 200,
+        "candidateCards": 12
+      },
+      {
+        "query": "Толстой",
+        "url": "https://bookscafe.net/search?q=%D0%A2%D0%BE%D0%BB%D1%81%D1%82%D0%BE%D0%B9",
+        "status": 200,
+        "candidateCards": 4
+      },
+      {
+        "query": "Достоевский",
+        "url": "https://bookscafe.net/search?q=%D0%94%D0%BE%D1%81%D1%82%D0%BE%D0%B5%D0%B2%D1%81%D0%BA%D0%B8%D0%B9",
+        "status": 200,
+        "candidateCards": 13
+      },
+      {
+        "query": "Дойл",
+        "url": "https://bookscafe.net/search?q=%D0%94%D0%BE%D0%B9%D0%BB",
+        "status": 200,
+        "candidateCards": 8
+      }
+    ],
+    "details": [
+      {
+        "url": "https://bookscafe.net/book/gasparyan_armen-operaciya_trest_sovetskaya_razvedka_protiv_russkoy_eimigracii_1921_1937_gg-155916.html",
+        "status": 200,
+        "title": null,
+        "fileLinks": []
+      },
+      {
+        "url": "https://bookscafe.net/book/gasparyan_armen-operaciya_trest_sovetskaya_razvedka_protiv_russkoy_eimigracii_1921_1937_gg-155916.html#comments",
+        "status": 200,
+        "title": null,
+        "fileLinks": []
+      },
+      {
+        "url": "https://bookscafe.net/book/nechuy_levickiy_ivan-prichepa-178854.html",
+        "status": 200,
+        "title": null,
+        "fileLinks": [
+          "https://bookscafe.net/download/nechuy_levickiy_ivan-prichepa-178854.fb2.zip",
+          "https://bookscafe.net/download/nechuy_levickiy_ivan-prichepa-178854.epub",
+          "https://bookscafe.net/download/nechuy_levickiy_ivan-prichepa-178854.rtf.zip",
+          "https://bookscafe.net/download/nechuy_levickiy_ivan-prichepa-178854.html.zip",
+          "https://bookscafe.net/download/nechuy_levickiy_ivan-prichepa-178854.txt.zip"
+        ]
+      },
+      {
+        "url": "https://bookscafe.net/book/nechuy_levickiy_ivan-prichepa-178854.html#comments",
+        "status": 200,
+        "title": null,
+        "fileLinks": [
+          "https://bookscafe.net/download/nechuy_levickiy_ivan-prichepa-178854.fb2.zip",
+          "https://bookscafe.net/download/nechuy_levickiy_ivan-prichepa-178854.epub",
+          "https://bookscafe.net/download/nechuy_levickiy_ivan-prichepa-178854.rtf.zip",
+          "https://bookscafe.net/download/nechuy_levickiy_ivan-prichepa-178854.html.zip",
+          "https://bookscafe.net/download/nechuy_levickiy_ivan-prichepa-178854.txt.zip"
+        ]
+      },
+      {
+        "url": "https://bookscafe.net/book/rymzhanov_timur-runy_groma-208909.html",
+        "status": 200,
+        "title": null,
+        "fileLinks": [
+          "https://bookscafe.net/download/rymzhanov_timur-runy_groma-208909.fb2.zip",
+          "https://bookscafe.net/download/rymzhanov_timur-runy_groma-208909.epub",
+          "https://bookscafe.net/download/rymzhanov_timur-runy_groma-208909.rtf.zip",
+          "https://bookscafe.net/download/rymzhanov_timur-runy_groma-208909.html.zip",
+          "https://bookscafe.net/download/rymzhanov_timur-runy_groma-208909.txt.zip"
+        ]
+      }
+    ],
+    "homeStatus": 200,
+    "finalURL": "https://bookscafe.net/",
+    "forms": [
+      {
+        "action": "https://bookscafe.net/search",
+        "method": "get",
+        "inputs": {
+          "q": {
+            "type": "text",
+            "value": ""
+          }
+        }
+      }
+    ],
+    "searchForm": {
+      "url": "https://bookscafe.net/search",
+      "method": "get",
+      "field": "q",
+      "hidden": {}
+    },
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "bookshake.net",
+    "checkedAt": "2026-11-09T15:55:39Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [],
+    "details": [],
+    "limitation": "HTTP Error 403: Forbidden"
+  },
+  {
+    "domain": "chitaka.club",
+    "checkedAt": "2026-11-09T15:55:11Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [],
+    "details": [],
+    "homeStatus": 200,
+    "finalURL": "https://chitaka.club/",
+    "forms": [
+      {
+        "action": "https://chitaka.club/",
+        "method": "get",
+        "inputs": {
+          "s": {
+            "type": "text",
+            "value": ""
+          }
+        }
+      },
+      {
+        "action": "https://chitaka.club/",
+        "method": "get",
+        "inputs": {
+          "s": {
+            "type": "text",
+            "value": ""
+          }
+        }
+      }
+    ],
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "coolib.net",
+    "checkedAt": "2026-11-09T15:55:26Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [],
+    "details": [],
+    "limitation": "<urlopen error [Errno 11001] getaddrinfo failed>"
+  },
+  {
+    "domain": "coollib.club",
+    "checkedAt": "2026-11-09T15:54:33Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [
+      {
+        "query": "Пушкин",
+        "url": "https://coollib.club/search/?ask=%D0%9F%D1%83%D1%88%D0%BA%D0%B8%D0%BD",
+        "status": 200,
+        "candidateCards": 28
+      },
+      {
+        "query": "Чехов",
+        "url": "https://coollib.club/search/?ask=%D0%A7%D0%B5%D1%85%D0%BE%D0%B2",
+        "status": 200,
+        "candidateCards": 23
+      },
+      {
+        "query": "Толстой",
+        "url": "https://coollib.club/search/?ask=%D0%A2%D0%BE%D0%BB%D1%81%D1%82%D0%BE%D0%B9",
+        "status": 200,
+        "candidateCards": 12
+      },
+      {
+        "query": "Достоевский",
+        "url": "https://coollib.club/search/?ask=%D0%94%D0%BE%D1%81%D1%82%D0%BE%D0%B5%D0%B2%D1%81%D0%BA%D0%B8%D0%B9",
+        "status": 200,
+        "candidateCards": 9
+      },
+      {
+        "query": "Дойл",
+        "url": "https://coollib.club/search/?ask=%D0%94%D0%BE%D0%B9%D0%BB",
+        "status": 200,
+        "candidateCards": 4
+      }
+    ],
+    "details": [
+      {
+        "url": "https://coollib.club/b/280787-belyiy-shtorm-spasenie-na-monblane/",
+        "status": 200,
+        "title": "Мадина Вестчестер. Белый шторм Спасение на Монблане читать онлайн",
+        "fileLinks": []
+      },
+      {
+        "url": "https://coollib.club/b/280786-1927-posledniy-reys-sinano-maru/",
+        "status": 200,
+        "title": "Мадина Вестчестер. 1927 Последний рейс Синано-мару читать онлайн",
+        "fileLinks": []
+      },
+      {
+        "url": "https://coollib.club/b/280785-ubiystva-na-hinterkayfeke/",
+        "status": 200,
+        "title": "Мадина Вестчестер. Убийства на Хинтеркайфеке читать онлайн",
+        "fileLinks": []
+      },
+      {
+        "url": "https://coollib.club/b/280784-eto-moya-mechta/",
+        "status": 200,
+        "title": "Лириэль Нокт. Это моя мечта читать онлайн",
+        "fileLinks": []
+      },
+      {
+        "url": "https://coollib.club/b/280783-razbitaya-volna/",
+        "status": 200,
+        "title": "Лириэль Нокт. Разбитая волна читать онлайн",
+        "fileLinks": []
+      }
+    ],
+    "homeStatus": 200,
+    "finalURL": "https://coollib.club/",
+    "forms": [
+      {
+        "action": "/search/",
+        "method": "get",
+        "inputs": {
+          "ask": {
+            "type": "text",
+            "value": "Что ищем?"
+          }
+        }
+      },
+      {
+        "action": "/node/?destination=node",
+        "method": "post",
+        "inputs": {
+          "name": {
+            "type": "text",
+            "value": ""
+          },
+          "pass": {
+            "type": "password",
+            "value": ""
+          },
+          "op": {
+            "type": "submit",
+            "value": "Вход"
+          },
+          "form_build_id": {
+            "type": "hidden",
+            "value": "form-qsr6AI0bwAE2QKobB5quI3OX_Yus0N5elTX_7BFGb1o"
+          },
+          "form_id": {
+            "type": "hidden",
+            "value": "user_login_block"
+          }
+        }
+      }
+    ],
+    "searchForm": {
+      "url": "https://coollib.club/search/",
+      "method": "get",
+      "field": "ask",
+      "hidden": {}
+    },
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "coollib.net",
+    "checkedAt": "2026-11-09T15:54:33Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [
+      {
+        "query": "Пушкин",
+        "url": "https://coollib.net/booksearch?ask=%D0%9F%D1%83%D1%88%D0%BA%D0%B8%D0%BD",
+        "status": 200,
+        "candidateCards": 287
+      },
+      {
+        "query": "Чехов",
+        "url": "https://coollib.net/booksearch?ask=%D0%A7%D0%B5%D1%85%D0%BE%D0%B2",
+        "status": 200,
+        "candidateCards": 353
+      },
+      {
+        "query": "Толстой",
+        "url": "https://coollib.net/booksearch?ask=%D0%A2%D0%BE%D0%BB%D1%81%D1%82%D0%BE%D0%B9",
+        "status": 200,
+        "candidateCards": 399
+      },
+      {
+        "query": "Достоевский",
+        "url": "https://coollib.net/booksearch?ask=%D0%94%D0%BE%D1%81%D1%82%D0%BE%D0%B5%D0%B2%D1%81%D0%BA%D0%B8%D0%B9",
+        "status": 200,
+        "candidateCards": 287
+      },
+      {
+        "query": "Дойл",
+        "url": "https://coollib.net/booksearch?ask=%D0%94%D0%BE%D0%B9%D0%BB",
+        "status": 200,
+        "candidateCards": 27
+      }
+    ],
+    "details": [
+      {
+        "url": "https://coollib.net/b/864740-vadim-koshelev-katorga",
+        "status": 200,
+        "title": "Вадим  Кошелев. Каторга (fb2)",
+        "fileLinks": []
+      },
+      {
+        "url": "https://coollib.net/b/864187-konstantin-gradov-manchzhurskiy-hvat-1",
+        "status": 200,
+        "title": "Константин  Градов. Манчжурский хват 1 (fb2)",
+        "fileLinks": []
+      },
+      {
+        "url": "https://coollib.net/b/861776-maksimilian-borisovich-zhirnov-saga-o-letchike-delo-chesti",
+        "status": 200,
+        "title": "Максимилиан Борисович Жирнов. Сага о летчике. Дело чести (fb2)",
+        "fileLinks": []
+      },
+      {
+        "url": "https://coollib.net/b/18952-saymon-klark-tma-sguschaetsya",
+        "status": 200,
+        "title": "Саймон  Кларк. Тьма сгущается (fb2)",
+        "fileLinks": []
+      },
+      {
+        "url": "https://coollib.net/b/865012-german-ivanovich-romanov-kamen-pretknoveniya",
+        "status": 200,
+        "title": "Герман Иванович Романов. Камень преткновения (fb2)",
+        "fileLinks": []
+      }
+    ],
+    "homeStatus": 200,
+    "finalURL": "https://coollib.net/",
+    "forms": [
+      {
+        "action": "/booksearch",
+        "method": "get",
+        "inputs": {
+          "ask": {
+            "type": "text",
+            "value": "Что ищем?"
+          }
+        }
+      },
+      {
+        "action": "/node?destination=node",
+        "method": "post",
+        "inputs": {
+          "openid_identifier": {
+            "type": "text",
+            "value": ""
+          },
+          "name": {
+            "type": "text",
+            "value": ""
+          },
+          "pass": {
+            "type": "password",
+            "value": ""
+          },
+          "persistent_login": {
+            "type": "checkbox",
+            "value": "1"
+          },
+          "op": {
+            "type": "submit",
+            "value": "Вход"
+          },
+          "form_build_id": {
+            "type": "hidden",
+            "value": "form-sI0c6l5MUmyWu8RBwlVGm8cyX0rB75p-cxjIiAu6dd8"
+          },
+          "form_id": {
+            "type": "hidden",
+            "value": "user_login_block"
+          },
+          "openid.return_to": {
+            "type": "hidden",
+            "value": "https://coollib.net/openid/authenticate?destination=node"
+          }
+        }
+      }
+    ],
+    "searchForm": {
+      "url": "https://coollib.net/booksearch",
+      "method": "get",
+      "field": "ask",
+      "hidden": {}
+    },
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "ebook.surf",
+    "checkedAt": "2026-11-09T15:54:51Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [],
+    "details": [],
+    "homeStatus": 200,
+    "finalURL": "https://arcade.now/lp1/play",
+    "forms": [],
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "fantasywiki.ru",
+    "checkedAt": "2026-11-09T15:55:34Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [],
+    "details": [],
+    "homeStatus": 200,
+    "finalURL": "https://fantasywiki.ru/",
+    "forms": [
+      {
+        "action": "https://fantasywiki.ru/",
+        "method": "get",
+        "inputs": {
+          "s": {
+            "type": "search",
+            "value": ""
+          }
+        }
+      }
+    ],
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "fb2.top",
+    "checkedAt": "2026-11-09T15:54:53Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [],
+    "details": [],
+    "homeStatus": 200,
+    "finalURL": "https://fb2.top/",
+    "forms": [],
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "flibusta.is",
+    "checkedAt": "2026-11-09T15:54:33Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [
+      {
+        "query": "Пушкин",
+        "url": "https://flibusta.is/booksearch?ask=%D0%9F%D1%83%D1%88%D0%BA%D0%B8%D0%BD",
+        "status": 200,
+        "candidateCards": 60
+      },
+      {
+        "query": "Чехов",
+        "url": "https://flibusta.is/booksearch?ask=%D0%A7%D0%B5%D1%85%D0%BE%D0%B2",
+        "status": 200,
+        "candidateCards": 60
+      },
+      {
+        "query": "Толстой",
+        "url": "https://flibusta.is/booksearch?ask=%D0%A2%D0%BE%D0%BB%D1%81%D1%82%D0%BE%D0%B9",
+        "status": 200,
+        "candidateCards": 60
+      },
+      {
+        "query": "Достоевский",
+        "url": "https://flibusta.is/booksearch?ask=%D0%94%D0%BE%D1%81%D1%82%D0%BE%D0%B5%D0%B2%D1%81%D0%BA%D0%B8%D0%B9",
+        "status": 200,
+        "candidateCards": 60
+      },
+      {
+        "query": "Дойл",
+        "url": "https://flibusta.is/booksearch?ask=%D0%94%D0%BE%D0%B9%D0%BB",
+        "status": 200,
+        "candidateCards": 41
+      }
+    ],
+    "details": [
+      {
+        "url": "https://flibusta.is/b/198797",
+        "status": 200,
+        "title": null,
+        "fileLinks": [
+          "https://flibusta.is/catalog/catalog.zip"
+        ]
+      },
+      {
+        "url": "https://flibusta.is/b/441861",
+        "status": 200,
+        "title": null,
+        "fileLinks": [
+          "https://flibusta.is/catalog/catalog.zip"
+        ]
+      },
+      {
+        "url": "https://flibusta.is/b/735999",
+        "status": 200,
+        "title": null,
+        "fileLinks": [
+          "https://flibusta.is/catalog/catalog.zip"
+        ]
+      },
+      {
+        "url": "https://flibusta.is/b/895074",
+        "status": 200,
+        "title": null,
+        "fileLinks": [
+          "https://flibusta.is/catalog/catalog.zip"
+        ]
+      },
+      {
+        "url": "https://flibusta.is/b/215513",
+        "status": 200,
+        "title": null,
+        "fileLinks": [
+          "https://flibusta.is/catalog/catalog.zip"
+        ]
+      }
+    ],
+    "homeStatus": 200,
+    "finalURL": "https://flibusta.is/",
+    "forms": [
+      {
+        "action": "/booksearch",
+        "method": "get",
+        "inputs": {
+          "ask": {
+            "type": "text",
+            "value": ""
+          }
+        }
+      },
+      {
+        "action": "/node?destination=node",
+        "method": "post",
+        "inputs": {
+          "openid_identifier": {
+            "type": "text",
+            "value": ""
+          },
+          "name": {
+            "type": "text",
+            "value": ""
+          },
+          "pass": {
+            "type": "password",
+            "value": ""
+          },
+          "persistent_login": {
+            "type": "checkbox",
+            "value": "1"
+          },
+          "op": {
+            "type": "submit",
+            "value": "Вход в систему"
+          },
+          "form_build_id": {
+            "type": "hidden",
+            "value": "form-zpfiEIugiLix5cjzgH1MoqiwPsEwkflK_Kawy2q8mKg"
+          },
+          "form_id": {
+            "type": "hidden",
+            "value": "user_login_block"
+          },
+          "openid.return_to": {
+            "type": "hidden",
+            "value": "http://flibusta.is/openid/authenticate?destination=node"
+          }
+        }
+      }
+    ],
+    "searchForm": {
+      "url": "https://flibusta.is/booksearch",
+      "method": "get",
+      "field": "ask",
+      "hidden": {}
+    },
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "flibusta.su",
+    "checkedAt": "2026-11-09T15:55:28Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [
+      {
+        "query": "Пушкин",
+        "url": "https://flibusta.su/booksearch/?ask=%D0%9F%D1%83%D1%88%D0%BA%D0%B8%D0%BD",
+        "status": 200,
+        "candidateCards": 53
+      },
+      {
+        "query": "Чехов",
+        "url": "https://flibusta.su/booksearch/?ask=%D0%A7%D0%B5%D1%85%D0%BE%D0%B2",
+        "status": 200,
+        "candidateCards": 43
+      },
+      {
+        "query": "Толстой",
+        "url": "https://flibusta.su/booksearch/?ask=%D0%A2%D0%BE%D0%BB%D1%81%D1%82%D0%BE%D0%B9",
+        "status": 200,
+        "candidateCards": 56
+      },
+      {
+        "query": "Достоевский",
+        "url": "https://flibusta.su/booksearch/?ask=%D0%94%D0%BE%D1%81%D1%82%D0%BE%D0%B5%D0%B2%D1%81%D0%BA%D0%B8%D0%B9",
+        "status": 200,
+        "candidateCards": 56
+      },
+      {
+        "query": "Дойл",
+        "url": "https://flibusta.su/booksearch/?ask=%D0%94%D0%BE%D0%B9%D0%BB",
+        "status": 200,
+        "candidateCards": 27
+      }
+    ],
+    "details": [
+      {
+        "url": "https://flibusta.su/book/454017-ludi-za-spinoj-tom-1-podarok/read/",
+        "status": 200,
+        "title": "Люди за спиной. Том 1 читать онлайн бесплатно Александра Маринина",
+        "fileLinks": []
+      },
+      {
+        "url": "https://flibusta.su/book/454017-ludi-za-spinoj-tom-1-podarok/",
+        "status": 200,
+        "title": "Люди за спиной. Том 1 скачать бесплатно в epub, fb2, pdf, txt, Александра Маринина",
+        "fileLinks": []
+      },
+      {
+        "url": "https://flibusta.su/book/453371-zvezdnaa-krov-sem-drev-antandera-bl/read/",
+        "status": 200,
+        "title": "Звездная Кровь. Семь Древ Янтандера читать онлайн бесплатно Роман Прокофьев",
+        "fileLinks": []
+      },
+      {
+        "url": "https://flibusta.su/book/453371-zvezdnaa-krov-sem-drev-antandera-bl/",
+        "status": 200,
+        "title": "Звездная Кровь. Семь Древ Янтандера скачать бесплатно в epub, fb2, pdf, txt, Роман Прокофьев",
+        "fileLinks": []
+      },
+      {
+        "url": "https://flibusta.su/book/455217-ludi-za-spinoj-tom-2/read/",
+        "status": 200,
+        "title": "Люди за спиной. Том 2 читать онлайн бесплатно Александра Маринина",
+        "fileLinks": []
+      }
+    ],
+    "homeStatus": 200,
+    "finalURL": "https://flibusta.su/",
+    "forms": [
+      {
+        "action": "/booksearch/",
+        "method": "get",
+        "inputs": {
+          "ask": {
+            "type": "text",
+            "value": ""
+          }
+        }
+      },
+      {
+        "action": "/node/?destination=node",
+        "method": "post",
+        "inputs": {
+          "name": {
+            "type": "text",
+            "value": ""
+          },
+          "pass": {
+            "type": "password",
+            "value": ""
+          },
+          "op": {
+            "type": "submit",
+            "value": "Вход"
+          },
+          "form_build_id": {
+            "type": "hidden",
+            "value": "form-6MRPAvYFhngCTVFMa5bBe2Bil925D0IQVDBmhKmEjJ4"
+          },
+          "form_id": {
+            "type": "hidden",
+            "value": "user_login_block"
+          }
+        }
+      }
+    ],
+    "searchForm": {
+      "url": "https://flibusta.su/booksearch/",
+      "method": "get",
+      "field": "ask",
+      "hidden": {}
+    },
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "gutenberg.org",
+    "checkedAt": "2026-11-09T15:54:50Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [],
+    "details": [],
+    "limitation": "<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1144)>"
+  },
+  {
+    "domain": "itexts.net",
+    "checkedAt": "2026-11-09T15:54:59Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [
+      {
+        "query": "Пушкин",
+        "url": "https://itexts.net/",
+        "status": 200,
+        "candidateCards": 35
+      },
+      {
+        "query": "Чехов",
+        "url": "https://itexts.net/",
+        "status": 200,
+        "candidateCards": 35
+      },
+      {
+        "query": "Толстой",
+        "url": "https://itexts.net/",
+        "status": 200,
+        "candidateCards": 35
+      },
+      {
+        "query": "Достоевский",
+        "url": "https://itexts.net/",
+        "status": 200,
+        "candidateCards": 35
+      },
+      {
+        "query": "Дойл",
+        "url": "https://itexts.net/",
+        "status": 200,
+        "candidateCards": 35
+      }
+    ],
+    "details": [
+      {
+        "url": "https://itexts.net/avtor-tamara-lash/462759-quotdrayv-pritvorschiki-drive-the-pretendersquot-1-lp-tamara-lash.html",
+        "status": 200,
+        "title": "\"Драйв - притворщики | Drive-The Pretenders\" #1 (ЛП)",
+        "fileLinks": []
+      },
+      {
+        "url": "https://itexts.net/avtor-tamara-lash/462751-quotcrash-the-pretenders-krash-pritvorschikiquot-2-lp-tamara-lash.html",
+        "status": 200,
+        "title": "\"Crash - The Pretenders | Краш - Притворщики\" #2 (ЛП)",
+        "fileLinks": []
+      },
+      {
+        "url": "https://itexts.net/avtor-tamara-lash/462798-burn-the-pretenders-sgorat-pritvorschiki-3-lp-tamara-lash.html",
+        "status": 200,
+        "title": "Burn - The Pretenders | Сгорать - Притворщики #3 (ЛП)",
+        "fileLinks": []
+      },
+      {
+        "url": "https://itexts.net/avtor-evgeniy-averyanov/462690-vozvraschenie-si-evgeniy-averyanov.html",
+        "status": 200,
+        "title": "Возвращение (СИ)",
+        "fileLinks": []
+      },
+      {
+        "url": "https://itexts.net/avtor-anna-yarovaya/462720-razvod-muzh-privel-ee-v-nash-dom-si-anna-yarovaya.html",
+        "status": 200,
+        "title": "Развод. Муж привел ее в наш дом (СИ)",
+        "fileLinks": []
+      }
+    ],
+    "homeStatus": 200,
+    "finalURL": "https://itexts.net/",
+    "forms": [
+      {
+        "action": "",
+        "method": "post",
+        "inputs": {
+          "login": {
+            "type": "hidden",
+            "value": "submit"
+          },
+          "login_name": {
+            "type": "text",
+            "value": "Введите логин"
+          },
+          "login_password": {
+            "type": "password",
+            "value": "И пароль"
+          },
+          "image": {
+            "type": "submit",
+            "value": "Войти"
+          }
+        }
+      },
+      {
+        "action": "",
+        "method": "post",
+        "inputs": {
+          "do": {
+            "type": "hidden",
+            "value": "search"
+          },
+          "subaction": {
+            "type": "hidden",
+            "value": "search"
+          },
+          "titleonly": {
+            "type": "hidden",
+            "value": "3"
+          },
+          "story": {
+            "type": "text",
+            "value": ""
+          }
+        }
+      }
+    ],
+    "searchForm": {
+      "url": "https://itexts.net/",
+      "method": "post",
+      "field": "story",
+      "hidden": {
+        "do": "search",
+        "subaction": "search",
+        "titleonly": "3"
+      }
+    },
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "knigavuhe.org",
+    "checkedAt": "2026-11-09T15:55:41Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [
+      {
+        "query": "Пушкин",
+        "url": "https://knigavuhe.org/search/?q=%D0%9F%D1%83%D1%88%D0%BA%D0%B8%D0%BD",
+        "status": 200,
+        "candidateCards": 16
+      },
+      {
+        "query": "Чехов",
+        "url": "https://knigavuhe.org/search/?q=%D0%A7%D0%B5%D1%85%D0%BE%D0%B2",
+        "status": 200,
+        "candidateCards": 16
+      },
+      {
+        "query": "Толстой",
+        "url": "https://knigavuhe.org/search/?q=%D0%A2%D0%BE%D0%BB%D1%81%D1%82%D0%BE%D0%B9",
+        "status": 200,
+        "candidateCards": 15
+      },
+      {
+        "query": "Достоевский",
+        "url": "https://knigavuhe.org/search/?q=%D0%94%D0%BE%D1%81%D1%82%D0%BE%D0%B5%D0%B2%D1%81%D0%BA%D0%B8%D0%B9",
+        "status": 200,
+        "candidateCards": 16
+      },
+      {
+        "query": "Дойл",
+        "url": "https://knigavuhe.org/search/?q=%D0%94%D0%BE%D0%B9%D0%BB",
+        "status": 200,
+        "candidateCards": 16
+      }
+    ],
+    "details": [
+      {
+        "url": "https://knigavuhe.org/book/devjatiehtazhka-1/#comment569191",
+        "status": 200,
+        "title": "Клим Ветров - Девятиэтажка",
+        "fileLinks": []
+      },
+      {
+        "url": "https://knigavuhe.org/book/devjatiehtazhka-1/",
+        "status": 200,
+        "title": "Клим Ветров - Девятиэтажка",
+        "fileLinks": []
+      },
+      {
+        "url": "https://knigavuhe.org/book/devjatiehtazhka-1/#comment569190",
+        "status": 200,
+        "title": "Клим Ветров - Девятиэтажка",
+        "fileLinks": []
+      },
+      {
+        "url": "https://knigavuhe.org/book/dvojjnik-5/#comment569189",
+        "status": 200,
+        "title": "Тесс Герритсен - Двойник",
+        "fileLinks": []
+      },
+      {
+        "url": "https://knigavuhe.org/book/dvojjnik-5/",
+        "status": 200,
+        "title": "Тесс Герритсен - Двойник",
+        "fileLinks": []
+      }
+    ],
+    "homeStatus": 200,
+    "finalURL": "https://knigavuhe.org/",
+    "forms": [
+      {
+        "action": "/search/",
+        "method": "get",
+        "inputs": {
+          "q": {
+            "type": "text",
+            "value": ""
+          }
+        }
+      }
+    ],
+    "searchForm": {
+      "url": "https://knigavuhe.org/search/",
+      "method": "get",
+      "field": "q",
+      "hidden": {}
+    },
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "knigi-gb2.net",
+    "checkedAt": "2026-11-09T15:55:38Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [],
+    "details": [],
+    "limitation": "<urlopen error [Errno 11001] getaddrinfo failed>"
+  },
+  {
+    "domain": "knigid.ru",
+    "checkedAt": "2026-11-09T15:55:08Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [],
+    "details": [],
+    "limitation": "<urlopen error [Errno 11001] getaddrinfo failed>"
+  },
+  {
+    "domain": "knigism.online",
+    "checkedAt": "2026-11-09T15:55:23Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [],
+    "details": [],
+    "limitation": "The read operation timed out"
+  },
+  {
+    "domain": "knigochei.net",
+    "checkedAt": "2026-11-09T15:55:39Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [
+      {
+        "query": "Пушкин",
+        "url": "https://knigochei.net/",
+        "status": 200,
+        "candidateCards": 15
+      },
+      {
+        "query": "Чехов",
+        "url": "https://knigochei.net/",
+        "status": 200,
+        "candidateCards": 12
+      },
+      {
+        "query": "Толстой",
+        "url": "https://knigochei.net/",
+        "status": 200,
+        "candidateCards": 15
+      },
+      {
+        "query": "Достоевский",
+        "url": "https://knigochei.net/",
+        "status": 200,
+        "candidateCards": 15
+      },
+      {
+        "query": "Дойл",
+        "url": "https://knigochei.net/",
+        "status": 200,
+        "candidateCards": 15
+      }
+    ],
+    "details": [
+      {
+        "url": "https://knigochei.net/lyubovnye-romany/lyubovnaya-fantastika/32212-izbrannaya-volkami.html",
+        "status": 200,
+        "title": "Избранная волками",
+        "fileLinks": []
+      },
+      {
+        "url": "https://knigochei.net/lyubovnye-romany/sovremennye-lyubovnye-romany/32211-ne-moya-devochka.html",
+        "status": 200,
+        "title": "Не моя девочка",
+        "fileLinks": []
+      },
+      {
+        "url": "https://knigochei.net/fantastika-i-fentezi/popadancy/32210-mne-ne-nuzhen-muzh-chto-znachit-vy-nastaivaete.html",
+        "status": 200,
+        "title": "Мне не нужен муж! Что значит, вы настаиваете?!",
+        "fileLinks": []
+      },
+      {
+        "url": "https://knigochei.net/lyubovnye-romany/lyubovnaya-fantastika/32209-koroleva-atelii.html",
+        "status": 200,
+        "title": "Королева Ателии",
+        "fileLinks": []
+      },
+      {
+        "url": "https://knigochei.net/lyubovnye-romany/sovremennye-lyubovnye-romany/32208-prikovannyy.html",
+        "status": 200,
+        "title": "Прикованный",
+        "fileLinks": []
+      }
+    ],
+    "homeStatus": 200,
+    "finalURL": "https://knigochei.net/",
+    "forms": [
+      {
+        "action": "",
+        "method": "post",
+        "inputs": {
+          "do": {
+            "type": "hidden",
+            "value": "search"
+          },
+          "subaction": {
+            "type": "hidden",
+            "value": "search"
+          },
+          "story": {
+            "type": "text",
+            "value": ""
+          }
+        }
+      },
+      {
+        "action": "",
+        "method": "post",
+        "inputs": {
+          "vote_check": {
+            "type": "radio",
+            "value": "4"
+          },
+          "vote_action": {
+            "type": "hidden",
+            "value": "vote"
+          },
+          "vote_id": {
+            "type": "hidden",
+            "value": "5"
+          }
+        }
+      },
+      {
+        "action": "",
+        "method": "post",
+        "inputs": {
+          "login_name": {
+            "type": "text",
+            "value": ""
+          },
+          "login_password": {
+            "type": "password",
+            "value": ""
+          },
+          "login": {
+            "type": "hidden",
+            "value": "submit"
+          },
+          "login_not_save": {
+            "type": "checkbox",
+            "value": "1"
+          }
+        }
+      }
+    ],
+    "searchForm": {
+      "url": "https://knigochei.net/",
+      "method": "post",
+      "field": "story",
+      "hidden": {
+        "do": "search",
+        "subaction": "search"
+      }
+    },
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "knigochei.org",
+    "checkedAt": "2026-11-09T15:55:12Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [
+      {
+        "query": "Пушкин",
+        "url": "https://knigochei.org/",
+        "status": 200,
+        "candidateCards": 28
+      },
+      {
+        "query": "Чехов",
+        "url": "https://knigochei.org/",
+        "status": 200,
+        "candidateCards": 28
+      },
+      {
+        "query": "Толстой",
+        "url": "https://knigochei.org/",
+        "status": 200,
+        "candidateCards": 28
+      },
+      {
+        "query": "Достоевский",
+        "url": "https://knigochei.org/",
+        "status": 200,
+        "candidateCards": 28
+      },
+      {
+        "query": "Дойл",
+        "url": "https://knigochei.org/",
+        "status": 200,
+        "candidateCards": 28
+      }
+    ],
+    "details": [
+      {
+        "url": "https://knigochei.org/lyubovnye-romany/lyubovnaya-fantastika/65514-serdce-drakona-puteshestvie.html",
+        "status": 200,
+        "title": "Сердце Дракона. Путешествие",
+        "fileLinks": []
+      },
+      {
+        "url": "https://knigochei.org/lyubovnye-romany/lyubovnaya-fantastika/65513-sekretar-drakona.html",
+        "status": 200,
+        "title": "Секретарь дракона",
+        "fileLinks": []
+      },
+      {
+        "url": "https://knigochei.org/fantastika-i-fentezi/popadancy/65512-slasti-strasti-i-tayny-korolevskogo-dvora.html",
+        "status": 200,
+        "title": "Сласти, страсти и тайны королевского двора",
+        "fileLinks": []
+      },
+      {
+        "url": "https://knigochei.org/fantastika-i-fentezi/popadancy/65511-popadanka-dlya-buntarki.html",
+        "status": 200,
+        "title": "Попаданка для Бунтарки",
+        "fileLinks": []
+      },
+      {
+        "url": "https://knigochei.org/lyubovnye-romany/lyubovnaya-fantastika/65510-kak-zombi-iz-truschob-vernula-svoy-kayf.html",
+        "status": 200,
+        "title": "Как зомби из трущоб вернула свой кайф",
+        "fileLinks": []
+      }
+    ],
+    "homeStatus": 200,
+    "finalURL": "https://knigochei.org/",
+    "forms": [
+      {
+        "action": "",
+        "method": "post",
+        "inputs": {
+          "do": {
+            "type": "hidden",
+            "value": "search"
+          },
+          "subaction": {
+            "type": "hidden",
+            "value": "search"
+          },
+          "story": {
+            "type": "text",
+            "value": ""
+          }
+        }
+      },
+      {
+        "action": "",
+        "method": "post",
+        "inputs": {
+          "login_name": {
+            "type": "text",
+            "value": ""
+          },
+          "login_password": {
+            "type": "password",
+            "value": ""
+          },
+          "login": {
+            "type": "hidden",
+            "value": "submit"
+          },
+          "login_not_save": {
+            "type": "checkbox",
+            "value": "1"
+          }
+        }
+      }
+    ],
+    "searchForm": {
+      "url": "https://knigochei.org/",
+      "method": "post",
+      "field": "story",
+      "hidden": {
+        "do": "search",
+        "subaction": "search"
+      }
+    },
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "knigoed.net",
+    "checkedAt": "2026-11-09T15:54:53Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [
+      {
+        "query": "Пушкин",
+        "url": "https://knigoed.net/",
+        "status": 200,
+        "candidateCards": 12
+      },
+      {
+        "query": "Чехов",
+        "url": "https://knigoed.net/",
+        "status": 200,
+        "candidateCards": 12
+      },
+      {
+        "query": "Толстой",
+        "url": "https://knigoed.net/",
+        "status": 200,
+        "candidateCards": 12
+      },
+      {
+        "query": "Достоевский",
+        "url": "https://knigoed.net/",
+        "status": 200,
+        "candidateCards": 12
+      },
+      {
+        "query": "Дойл",
+        "url": "https://knigoed.net/",
+        "status": 200,
+        "candidateCards": 12
+      }
+    ],
+    "details": [
+      {
+        "url": "https://knigoed.net/book/63364-rozhdestvenskie-novelly.html",
+        "status": 200,
+        "title": "Рождественские новеллы",
+        "fileLinks": []
+      },
+      {
+        "url": "https://knigoed.net/book/63363-enn-iz-zelenyh-mezoninov.html",
+        "status": 200,
+        "title": "Энн из Зеленых Мезонинов",
+        "fileLinks": []
+      },
+      {
+        "url": "https://knigoed.net/book/63362-bukanerki.html",
+        "status": 200,
+        "title": "Буканьерки",
+        "fileLinks": []
+      },
+      {
+        "url": "https://knigoed.net/book/63361-24-chasa-iz-zhizni-zhenschiny.html",
+        "status": 200,
+        "title": "24 часа из жизни женщины",
+        "fileLinks": []
+      },
+      {
+        "url": "https://knigoed.net/book/63360-dym-zerkala-i-prostupki.html",
+        "status": 200,
+        "title": "Дым, зеркала и проступки",
+        "fileLinks": []
+      }
+    ],
+    "homeStatus": 200,
+    "finalURL": "https://knigoed.net/",
+    "forms": [
+      {
+        "action": "",
+        "method": "post",
+        "inputs": {
+          "login_name": {
+            "type": "text",
+            "value": ""
+          },
+          "login_password": {
+            "type": "password",
+            "value": ""
+          },
+          "login": {
+            "type": "hidden",
+            "value": "submit"
+          }
+        }
+      },
+      {
+        "action": "",
+        "method": "post",
+        "inputs": {
+          "do": {
+            "type": "hidden",
+            "value": "search"
+          },
+          "subaction": {
+            "type": "hidden",
+            "value": "search"
+          },
+          "story": {
+            "type": "text",
+            "value": ""
+          }
+        }
+      },
+      {
+        "action": "",
+        "method": "get",
+        "inputs": {}
+      }
+    ],
+    "searchForm": {
+      "url": "https://knigoed.net/",
+      "method": "post",
+      "field": "story",
+      "hidden": {
+        "do": "search",
+        "subaction": "search"
+      }
+    },
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "knigogo.net",
+    "checkedAt": "2026-11-09T15:55:36Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [],
+    "details": [],
+    "homeStatus": 200,
+    "finalURL": "https://knigogo.com/",
+    "forms": [
+      {
+        "action": "https://knigogo.com/",
+        "method": "get",
+        "inputs": {
+          "s": {
+            "type": "text",
+            "value": ""
+          }
+        }
+      }
+    ],
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "knigoguru.net",
+    "checkedAt": "2026-11-09T15:55:21Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [],
+    "details": [],
+    "homeStatus": 200,
+    "finalURL": "https://knigoguru.com/",
+    "forms": [
+      {
+        "action": "https://knigoguru.com/",
+        "method": "get",
+        "inputs": {
+          "s": {
+            "type": "text",
+            "value": ""
+          }
+        }
+      }
+    ],
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "knigolub.net",
+    "checkedAt": "2026-11-09T15:55:26Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [
+      {
+        "query": "Пушкин",
+        "url": "https://knigofil.org/",
+        "status": 200,
+        "candidateCards": 15
+      },
+      {
+        "query": "Чехов",
+        "url": "https://knigofil.org/",
+        "status": 200,
+        "candidateCards": 14
+      },
+      {
+        "query": "Толстой",
+        "url": "https://knigofil.org/",
+        "status": 200,
+        "candidateCards": 16
+      },
+      {
+        "query": "Достоевский",
+        "url": "https://knigofil.org/",
+        "status": 200,
+        "candidateCards": 15
+      },
+      {
+        "query": "Дойл",
+        "url": "https://knigofil.org/",
+        "status": 200,
+        "candidateCards": 16
+      }
+    ],
+    "details": [
+      {
+        "url": "https://knigofil.org/fantasy/20450-ee-uzhasnaya-nechist.html",
+        "status": 200,
+        "title": "Ее ужасная нечисть",
+        "fileLinks": [
+          "https://knigofil.org/uploads/book/Cherchen_Moya-prekrasnaya-nechist_3_Ee-uzhasnaya-nechist.fb2",
+          "https://knigofil.org/uploads/book/Cherchen_Moya-prekrasnaya-nechist_3_Ee-uzhasnaya-nechist.pdf",
+          "https://knigofil.org/uploads/book/Cherchen_Moya-prekrasnaya-nechist_3_Ee-uzhasnaya-nechist.epub"
+        ]
+      },
+      {
+        "url": "https://knigofil.org/romance-fiction/20449-silnoe-zveno-akademii-drakonov.html",
+        "status": 200,
+        "title": "Сильное звено Академии Драконов",
+        "fileLinks": [
+          "https://knigofil.org/uploads/book/Grinberga_Zvenya-Akademii-Drakonov_2_Silnoe-zveno-Akademii-Drakonov.fb2",
+          "https://knigofil.org/uploads/book/Grinberga_Zvenya-Akademii-Drakonov_2_Silnoe-zveno-Akademii-Drakonov.pdf",
+          "https://knigofil.org/uploads/book/Grinberga_Zvenya-Akademii-Drakonov_2_Silnoe-zveno-Akademii-Drakonov.epub"
+        ]
+      },
+      {
+        "url": "https://knigofil.org/popadantsy/20448-gospozha-portniha.html",
+        "status": 200,
+        "title": "Госпожа портниха",
+        "fileLinks": [
+          "https://knigofil.org/uploads/book/Strelnikova_Mir-arrini_3_Gospozha-portniha.fb2",
+          "https://knigofil.org/uploads/book/Strelnikova_Mir-arrini_3_Gospozha-portniha.pdf",
+          "https://knigofil.org/uploads/book/Strelnikova_Mir-arrini_3_Gospozha-portniha.epub"
+        ]
+      },
+      {
+        "url": "https://knigofil.org/romance-fiction/20447-oskolki-vechnosti-v-akademii-sudby.html",
+        "status": 200,
+        "title": "Осколки вечности в Академии Судьбы",
+        "fileLinks": [
+          "https://knigofil.org/uploads/book/Knyazhina_Oskolki-vechnosti-v-Akademii-Sudby.fb2",
+          "https://knigofil.org/uploads/book/Knyazhina_Oskolki-vechnosti-v-Akademii-Sudby.pdf",
+          "https://knigofil.org/uploads/book/Knyazhina_Oskolki-vechnosti-v-Akademii-Sudby.epub"
+        ]
+      },
+      {
+        "url": "https://knigofil.org/romance-fiction/20446-slaboe-zveno-akademii-drakonov.html",
+        "status": 200,
+        "title": "Слабое звено Академии Драконов",
+        "fileLinks": [
+          "https://knigofil.org/uploads/book/Grinberga_Zvenya-Akademii-Drakonov_1_Slaboe-zveno-Akademii-Drakonov.fb2",
+          "https://knigofil.org/uploads/book/Grinberga_Zvenya-Akademii-Drakonov_1_Slaboe-zveno-Akademii-Drakonov.pdf",
+          "https://knigofil.org/uploads/book/Grinberga_Zvenya-Akademii-Drakonov_1_Slaboe-zveno-Akademii-Drakonov.epub"
+        ]
+      }
+    ],
+    "homeStatus": 200,
+    "finalURL": "https://knigofil.org/",
+    "forms": [
+      {
+        "action": "",
+        "method": "post",
+        "inputs": {
+          "do": {
+            "type": "hidden",
+            "value": "search"
+          },
+          "subaction": {
+            "type": "hidden",
+            "value": "search"
+          },
+          "story": {
+            "type": "text",
+            "value": ""
+          }
+        }
+      },
+      {
+        "action": "",
+        "method": "post",
+        "inputs": {
+          "do": {
+            "type": "hidden",
+            "value": "search"
+          },
+          "subaction": {
+            "type": "hidden",
+            "value": "search"
+          },
+          "story": {
+            "type": "text",
+            "value": ""
+          }
+        }
+      },
+      {
+        "action": "",
+        "method": "post",
+        "inputs": {
+          "dlenewssortby": {
+            "type": "hidden",
+            "value": "date"
+          },
+          "dledirection": {
+            "type": "hidden",
+            "value": "DESC"
+          },
+          "set_new_sort": {
+            "type": "hidden",
+            "value": "dle_sort_main"
+          },
+          "set_direction_sort": {
+            "type": "hidden",
+            "value": "dle_direction_main"
+          }
+        }
+      },
+      {
+        "action": "",
+        "method": "post",
+        "inputs": {
+          "login_name": {
+            "type": "text",
+            "value": ""
+          },
+          "login_password": {
+            "type": "password",
+            "value": ""
+          },
+          "login": {
+            "type": "hidden",
+            "value": "submit"
+          },
+          "login_not_save": {
+            "type": "checkbox",
+            "value": "1"
+          }
+        }
+      }
+    ],
+    "searchForm": {
+      "url": "https://knigofil.org/",
+      "method": "post",
+      "field": "story",
+      "hidden": {
+        "do": "search",
+        "subaction": "search"
+      }
+    },
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "knizhnik.org",
+    "checkedAt": "2026-11-09T15:55:24Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [],
+    "details": [],
+    "limitation": "HTTP Error 403: Forbidden"
+  },
+  {
+    "domain": "libgen.li",
+    "checkedAt": "2026-11-09T15:54:35Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [
+      {
+        "query": "Пушкин",
+        "url": "https://libgen.li/index.php?req=%D0%9F%D1%83%D1%88%D0%BA%D0%B8%D0%BD",
+        "status": 200,
+        "candidateCards": 54
+      },
+      {
+        "query": "Чехов",
+        "url": "https://libgen.li/index.php?req=%D0%A7%D0%B5%D1%85%D0%BE%D0%B2",
+        "status": 200,
+        "candidateCards": 56
+      },
+      {
+        "query": "Толстой",
+        "url": "https://libgen.li/index.php?req=%D0%A2%D0%BE%D0%BB%D1%81%D1%82%D0%BE%D0%B9",
+        "status": 200,
+        "candidateCards": 54
+      },
+      {
+        "query": "Достоевский",
+        "url": "https://libgen.li/index.php?req=%D0%94%D0%BE%D1%81%D1%82%D0%BE%D0%B5%D0%B2%D1%81%D0%BA%D0%B8%D0%B9",
+        "status": 200,
+        "candidateCards": 57
+      },
+      {
+        "query": "Дойл",
+        "url": "https://libgen.li/index.php?req=%D0%94%D0%BE%D0%B9%D0%BB",
+        "status": 200,
+        "candidateCards": 50
+      }
+    ],
+    "details": [],
+    "homeStatus": 200,
+    "finalURL": "https://libgen.li/",
+    "forms": [
+      {
+        "action": "index.php",
+        "method": "get",
+        "inputs": {
+          "req": {
+            "type": "text",
+            "value": ""
+          },
+          "columns[]": {
+            "type": "checkbox",
+            "value": "i"
+          },
+          "objects[]": {
+            "type": "checkbox",
+            "value": "w"
+          },
+          "topics[]": {
+            "type": "checkbox",
+            "value": "s"
+          },
+          "covers": {
+            "type": "checkbox",
+            "value": ""
+          },
+          "showch": {
+            "type": "checkbox",
+            "value": ""
+          },
+          "gmode": {
+            "type": "checkbox",
+            "value": ""
+          },
+          "filesuns": {
+            "type": "radio",
+            "value": "unsort"
+          }
+        }
+      }
+    ],
+    "searchForm": {
+      "url": "https://libgen.li/index.php",
+      "method": "get",
+      "field": "req",
+      "hidden": {}
+    },
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "librivox.org",
+    "checkedAt": "2026-11-09T15:56:00Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [
+      {
+        "query": "Пушкин",
+        "url": "https://librivox.org/search?q=%D0%9F%D1%83%D1%88%D0%BA%D0%B8%D0%BD",
+        "status": 200,
+        "candidateCards": 0
+      },
+      {
+        "query": "Чехов",
+        "url": "https://librivox.org/search?q=%D0%A7%D0%B5%D1%85%D0%BE%D0%B2",
+        "status": 200,
+        "candidateCards": 0
+      },
+      {
+        "query": "Толстой",
+        "url": "https://librivox.org/search?q=%D0%A2%D0%BE%D0%BB%D1%81%D1%82%D0%BE%D0%B9",
+        "status": 200,
+        "candidateCards": 0
+      },
+      {
+        "query": "Достоевский",
+        "url": "https://librivox.org/search?q=%D0%94%D0%BE%D1%81%D1%82%D0%BE%D0%B5%D0%B2%D1%81%D0%BA%D0%B8%D0%B9",
+        "status": 200,
+        "candidateCards": 0
+      },
+      {
+        "query": "Дойл",
+        "url": "https://librivox.org/search?q=%D0%94%D0%BE%D0%B9%D0%BB",
+        "status": 200,
+        "candidateCards": 0
+      }
+    ],
+    "details": [],
+    "homeStatus": 200,
+    "finalURL": "https://librivox.org/",
+    "forms": [
+      {
+        "action": "https://librivox.org/search",
+        "method": "get",
+        "inputs": {
+          "q": {
+            "type": "text",
+            "value": ""
+          }
+        }
+      }
+    ],
+    "searchForm": {
+      "url": "https://librivox.org/search",
+      "method": "get",
+      "field": "q",
+      "hidden": {}
+    },
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "litlib.net",
+    "checkedAt": "2026-11-09T15:55:32Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [],
+    "details": [],
+    "homeStatus": 200,
+    "finalURL": "https://www.litlib.net/",
+    "forms": [],
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "litlife.club",
+    "checkedAt": "2026-11-09T15:54:33Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [],
+    "details": [],
+    "limitation": "HTTP Error 403: Forbidden"
+  },
+  {
+    "domain": "litmir.club",
+    "checkedAt": "2026-11-09T15:54:33Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [],
+    "details": [],
+    "homeStatus": 200,
+    "finalURL": "https://litmir.club/",
+    "forms": [
+      {
+        "action": "/br/?b=964515&p=88",
+        "method": "post",
+        "inputs": {
+          "logining[login]": {
+            "type": "text",
+            "value": ""
+          },
+          "logining[password]": {
+            "type": "password",
+            "value": ""
+          },
+          "hidden": {
+            "type": "checkbox",
+            "value": ""
+          }
+        }
+      },
+      {
+        "action": "",
+        "method": "post",
+        "inputs": {
+          "SendInivite[u_email]": {
+            "type": "text",
+            "value": ""
+          }
+        }
+      },
+      {
+        "action": "/SphinxSearch",
+        "method": "get",
+        "inputs": {
+          "name": {
+            "type": "text",
+            "value": ""
+          }
+        }
+      },
+      {
+        "action": "/main_page/?type=OnShowDown&rs=5%7C1%7C0",
+        "method": "get",
+        "inputs": {
+          "type": {
+            "type": "hidden",
+            "value": "OnShowDown"
+          },
+          "rs": {
+            "type": "hidden",
+            "value": "5|1|0"
+          },
+          "p": {
+            "type": "text",
+            "value": "1"
+          }
+        }
+      },
+      {
+        "action": "/main_page/?type=OnShowDown&rs=5%7C1%7C0",
+        "method": "get",
+        "inputs": {
+          "type": {
+            "type": "hidden",
+            "value": "OnShowDown"
+          },
+          "rs": {
+            "type": "hidden",
+            "value": "5|1|0"
+          },
+          "o": {
+            "type": "text",
+            "value": "10"
+          }
+        }
+      }
+    ],
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "litvek.com",
+    "checkedAt": "2026-11-09T15:55:27Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [],
+    "details": [],
+    "homeStatus": 200,
+    "finalURL": "https://litvek.com/",
+    "forms": [
+      {
+        "action": "/book-search",
+        "method": "get",
+        "inputs": {
+          "zap": {
+            "type": "text",
+            "value": ""
+          }
+        }
+      },
+      {
+        "action": "",
+        "method": "get",
+        "inputs": {
+          "page": {
+            "type": "text",
+            "value": "0"
+          }
+        }
+      },
+      {
+        "action": "",
+        "method": "get",
+        "inputs": {
+          "page": {
+            "type": "text",
+            "value": "0"
+          }
+        }
+      }
+    ],
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "magbook.net",
+    "checkedAt": "2026-11-09T15:54:52Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [],
+    "details": [],
+    "limitation": "HTTP Error 403: Forbidden"
+  },
+  {
+    "domain": "massolit.site",
+    "checkedAt": "2026-11-09T15:55:22Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [
+      {
+        "query": "Пушкин",
+        "url": "https://massolit.site/search?search=%D0%9F%D1%83%D1%88%D0%BA%D0%B8%D0%BD",
+        "status": 200,
+        "candidateCards": 40
+      },
+      {
+        "query": "Чехов",
+        "url": "https://massolit.site/search?search=%D0%A7%D0%B5%D1%85%D0%BE%D0%B2",
+        "status": 200,
+        "candidateCards": 21
+      },
+      {
+        "query": "Толстой",
+        "url": "https://massolit.site/search?search=%D0%A2%D0%BE%D0%BB%D1%81%D1%82%D0%BE%D0%B9",
+        "status": 200,
+        "candidateCards": 11
+      },
+      {
+        "query": "Достоевский",
+        "url": "https://massolit.site/search?search=%D0%94%D0%BE%D1%81%D1%82%D0%BE%D0%B5%D0%B2%D1%81%D0%BA%D0%B8%D0%B9",
+        "status": 200,
+        "candidateCards": 18
+      },
+      {
+        "query": "Дойл",
+        "url": "https://massolit.site/search?search=%D0%94%D0%BE%D0%B9%D0%BB",
+        "status": 200,
+        "candidateCards": 0
+      }
+    ],
+    "details": [
+      {
+        "url": "http://massolit.site/book/teni-yuzhnoj-nochi",
+        "status": 200,
+        "title": "Тени южной ночи ",
+        "fileLinks": []
+      },
+      {
+        "url": "http://massolit.site/book/vozvraschenie-sinej-borodi",
+        "status": 200,
+        "title": "Возвращение Синей Бороды ",
+        "fileLinks": []
+      },
+      {
+        "url": "http://massolit.site/book/po-oskolkam-tvoego-serdtsa",
+        "status": 200,
+        "title": "По осколкам твоего сердца ",
+        "fileLinks": []
+      },
+      {
+        "url": "http://massolit.site/book/forsajt",
+        "status": 200,
+        "title": "Форсайт ",
+        "fileLinks": []
+      },
+      {
+        "url": "https://massolit.site/book/kopiya-veri",
+        "status": 200,
+        "title": "Копия Веры ",
+        "fileLinks": []
+      }
+    ],
+    "homeStatus": 200,
+    "finalURL": "https://massolit.site/",
+    "forms": [
+      {
+        "action": "https://massolit.site/search",
+        "method": "get",
+        "inputs": {
+          "search": {
+            "type": "text",
+            "value": ""
+          }
+        }
+      },
+      {
+        "action": "",
+        "method": "get",
+        "inputs": {
+          "email": {
+            "type": "email",
+            "value": ""
+          },
+          "password": {
+            "type": "password",
+            "value": ""
+          }
+        }
+      },
+      {
+        "action": "",
+        "method": "get",
+        "inputs": {}
+      },
+      {
+        "action": "",
+        "method": "get",
+        "inputs": {
+          "login": {
+            "type": "text",
+            "value": ""
+          },
+          "password": {
+            "type": "password",
+            "value": ""
+          }
+        }
+      },
+      {
+        "action": "",
+        "method": "get",
+        "inputs": {
+          "email": {
+            "type": "text",
+            "value": ""
+          }
+        }
+      }
+    ],
+    "searchForm": {
+      "url": "https://massolit.site/search",
+      "method": "get",
+      "field": "search",
+      "hidden": {}
+    },
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "mediakniga.club",
+    "checkedAt": "2026-11-09T15:55:58Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [],
+    "details": [],
+    "homeStatus": 200,
+    "finalURL": "https://mediakniga.club/",
+    "forms": [
+      {
+        "action": "https://mediakniga.club/",
+        "method": "get",
+        "inputs": {
+          "s": {
+            "type": "search",
+            "value": ""
+          }
+        }
+      }
+    ],
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "mognb.ru",
+    "checkedAt": "2026-11-09T15:55:15Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [],
+    "details": [],
+    "limitation": "<urlopen error [Errno 11001] getaddrinfo failed>"
+  },
+  {
+    "domain": "moreknig.org",
+    "checkedAt": "2026-11-09T15:54:54Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [
+      {
+        "query": "Пушкин",
+        "url": "https://moreknig.org/",
+        "status": 200,
+        "candidateCards": 29
+      },
+      {
+        "query": "Чехов",
+        "url": "https://moreknig.org/",
+        "status": 200,
+        "candidateCards": 29
+      },
+      {
+        "query": "Толстой",
+        "url": "https://moreknig.org/",
+        "status": 200,
+        "candidateCards": 29
+      },
+      {
+        "query": "Достоевский",
+        "error": "The read operation timed out"
+      },
+      {
+        "query": "Дойл",
+        "url": "https://moreknig.org/",
+        "status": 200,
+        "candidateCards": 29
+      }
+    ],
+    "details": [
+      {
+        "url": "https://moreknig.org/fantastika/boevaya-fantastika/462332-fantastika-2026-218-kompilyaciya-knigi-1-29.html",
+        "status": 200,
+        "title": "\"Фантастика 2026-218\". Компиляция. Книги 1-29",
+        "fileLinks": []
+      },
+      {
+        "url": "https://moreknig.org/gumanitarnye-nauki/pedagogika/462331-ponyat-pochuvstvovat-pomoch-kak-stat-obrazcovym-vzroslym-dlya-detey-i-podrostkov.html",
+        "status": 200,
+        "title": "Понять, почувствовать, помочь. Как стать образцовым взрослым для детей и подростков",
+        "fileLinks": []
+      },
+      {
+        "url": "https://moreknig.org/religiya-ezoterika/religioznaya-literatura-prochee/462330-smelost-byt-schastlivym-kak-cenit-sebya-i-vystraivat-svoyu-zhizn-tak-kak-hochetsya-imenno-vam.html",
+        "status": 200,
+        "title": "Смелость быть счастливым. Как ценить себя и выстраивать свою жизнь так, как хочется именно вам",
+        "fileLinks": []
+      },
+      {
+        "url": "https://moreknig.org/psihologiya/462329-vabi-sabi-magiya-nesovershenstva.html",
+        "status": 200,
+        "title": "Ваби-саби. Магия несовершенства",
+        "fileLinks": []
+      },
+      {
+        "url": "https://moreknig.org/fentezi/yumoristicheskoe-fentezi/462328-ne-drakonte-lekarku.html",
+        "status": 200,
+        "title": "Не драконьте лекарку",
+        "fileLinks": []
+      }
+    ],
+    "homeStatus": 200,
+    "finalURL": "https://moreknig.org/",
+    "forms": [
+      {
+        "action": "",
+        "method": "post",
+        "inputs": {
+          "do": {
+            "type": "hidden",
+            "value": "search"
+          },
+          "subaction": {
+            "type": "hidden",
+            "value": "search"
+          },
+          "story": {
+            "type": "text",
+            "value": ""
+          }
+        }
+      },
+      {
+        "action": "",
+        "method": "post",
+        "inputs": {
+          "login_name": {
+            "type": "text",
+            "value": ""
+          },
+          "login_password": {
+            "type": "password",
+            "value": ""
+          },
+          "login": {
+            "type": "hidden",
+            "value": "submit"
+          },
+          "login_not_save": {
+            "type": "checkbox",
+            "value": "1"
+          }
+        }
+      }
+    ],
+    "searchForm": {
+      "url": "https://moreknig.org/",
+      "method": "post",
+      "field": "story",
+      "hidden": {
+        "do": "search",
+        "subaction": "search"
+      }
+    },
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "rbook.top",
+    "checkedAt": "2026-11-09T15:55:08Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [],
+    "details": [],
+    "limitation": "HTTP Error 403: Forbidden"
+  },
+  {
+    "domain": "royallib.com",
+    "checkedAt": "2026-11-09T15:54:33Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [
+      {
+        "query": "Пушкин",
+        "url": "https://royallib.com/",
+        "status": 200,
+        "candidateCards": 9
+      },
+      {
+        "query": "Чехов",
+        "url": "https://royallib.com/",
+        "status": 200,
+        "candidateCards": 9
+      },
+      {
+        "query": "Толстой",
+        "url": "https://royallib.com/",
+        "status": 200,
+        "candidateCards": 9
+      },
+      {
+        "query": "Достоевский",
+        "url": "https://royallib.com/",
+        "status": 200,
+        "candidateCards": 9
+      },
+      {
+        "query": "Дойл",
+        "url": "https://royallib.com/",
+        "status": 200,
+        "candidateCards": 9
+      }
+    ],
+    "details": [
+      {
+        "url": "https://royallib.com/book/blok_aleksandr/dvenadtsat_ill_annenkova.html",
+        "status": 200,
+        "title": null,
+        "fileLinks": [
+          "https://royallib.com/get/fb2/blok_aleksandr/dvenadtsat_ill_annenkova.zip",
+          "https://royallib.com/get/doc/blok_aleksandr/dvenadtsat_ill_annenkova.zip",
+          "https://royallib.com/get/rtf/blok_aleksandr/dvenadtsat_ill_annenkova.zip",
+          "https://royallib.com/get/txt/blok_aleksandr/dvenadtsat_ill_annenkova.zip",
+          "https://royallib.com/get/html/blok_aleksandr/dvenadtsat_ill_annenkova.zip",
+          "https://royallib.com/get/epub/blok_aleksandr/dvenadtsat_ill_annenkova.zip"
+        ]
+      },
+      {
+        "url": "https://royallib.com/book/varufakis_yanis/tehnofeodalizm.html",
+        "status": 200,
+        "title": null,
+        "fileLinks": [
+          "https://royallib.com/get/fb2/varufakis_yanis/tehnofeodalizm.zip",
+          "https://royallib.com/get/doc/varufakis_yanis/tehnofeodalizm.zip",
+          "https://royallib.com/get/rtf/varufakis_yanis/tehnofeodalizm.zip",
+          "https://royallib.com/get/txt/varufakis_yanis/tehnofeodalizm.zip",
+          "https://royallib.com/get/html/varufakis_yanis/tehnofeodalizm.zip",
+          "https://royallib.com/get/epub/varufakis_yanis/tehnofeodalizm.zip"
+        ]
+      },
+      {
+        "url": "https://royallib.com/book/sharp_dgin/osvoboditelnaya_borba.html",
+        "status": 200,
+        "title": null,
+        "fileLinks": [
+          "https://royallib.com/get/fb2/sharp_dgin/osvoboditelnaya_borba.zip",
+          "https://royallib.com/get/doc/sharp_dgin/osvoboditelnaya_borba.zip",
+          "https://royallib.com/get/rtf/sharp_dgin/osvoboditelnaya_borba.zip",
+          "https://royallib.com/get/txt/sharp_dgin/osvoboditelnaya_borba.zip",
+          "https://royallib.com/get/html/sharp_dgin/osvoboditelnaya_borba.zip",
+          "https://royallib.com/get/epub/sharp_dgin/osvoboditelnaya_borba.zip"
+        ]
+      },
+      {
+        "url": "https://royallib.com/book/ivanov_anatoliy/vechniy_zov.html",
+        "status": 200,
+        "title": null,
+        "fileLinks": [
+          "https://royallib.com/get/fb2/ivanov_anatoliy/vechniy_zov.zip",
+          "https://royallib.com/get/doc/ivanov_anatoliy/vechniy_zov.zip",
+          "https://royallib.com/get/rtf/ivanov_anatoliy/vechniy_zov.zip",
+          "https://royallib.com/get/txt/ivanov_anatoliy/vechniy_zov.zip",
+          "https://royallib.com/get/html/ivanov_anatoliy/vechniy_zov.zip",
+          "https://royallib.com/get/epub/ivanov_anatoliy/vechniy_zov.zip"
+        ]
+      },
+      {
+        "url": "https://royallib.com/book/topilin_vladimir/nemtir.html",
+        "status": 200,
+        "title": null,
+        "fileLinks": [
+          "https://royallib.com/get/fb2/topilin_vladimir/nemtir.zip",
+          "https://royallib.com/get/doc/topilin_vladimir/nemtir.zip",
+          "https://royallib.com/get/rtf/topilin_vladimir/nemtir.zip",
+          "https://royallib.com/get/txt/topilin_vladimir/nemtir.zip",
+          "https://royallib.com/get/html/topilin_vladimir/nemtir.zip",
+          "https://royallib.com/get/epub/topilin_vladimir/nemtir.zip"
+        ]
+      }
+    ],
+    "homeStatus": 200,
+    "finalURL": "https://royallib.com/",
+    "forms": [
+      {
+        "action": "//royallib.com/search/",
+        "method": "post",
+        "inputs": {
+          "to": {
+            "type": "hidden",
+            "value": "result"
+          },
+          "q": {
+            "type": "text",
+            "value": ""
+          }
+        }
+      },
+      {
+        "action": "//royallib.com/users/registration",
+        "method": "post",
+        "inputs": {
+          "email": {
+            "type": "email",
+            "value": ""
+          },
+          "result_url": {
+            "type": "hidden",
+            "value": "/"
+          }
+        }
+      }
+    ],
+    "searchForm": {
+      "url": "https://royallib.com/search/",
+      "method": "post",
+      "field": "q",
+      "hidden": {
+        "to": "result"
+      }
+    },
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "ruwapa.net",
+    "checkedAt": "2026-11-09T15:55:09Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [],
+    "details": [],
+    "limitation": "<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: EE certificate key too weak (_ssl.c:1144)>"
+  },
+  {
+    "domain": "topbook.me",
+    "checkedAt": "2026-11-09T15:55:33Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [],
+    "details": [],
+    "limitation": "HTTP Error 403: Forbidden"
+  },
+  {
+    "domain": "topliba.com",
+    "checkedAt": "2026-11-09T15:54:53Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [
+      {
+        "query": "Пушкин",
+        "url": "https://topliba.com/?q=%D0%9F%D1%83%D1%88%D0%BA%D0%B8%D0%BD",
+        "status": 200,
+        "candidateCards": 0
+      },
+      {
+        "query": "Чехов",
+        "url": "https://topliba.com/?q=%D0%A7%D0%B5%D1%85%D0%BE%D0%B2",
+        "status": 200,
+        "candidateCards": 0
+      },
+      {
+        "query": "Толстой",
+        "url": "https://topliba.com/?q=%D0%A2%D0%BE%D0%BB%D1%81%D1%82%D0%BE%D0%B9",
+        "status": 200,
+        "candidateCards": 0
+      },
+      {
+        "query": "Достоевский",
+        "url": "https://topliba.com/?q=%D0%94%D0%BE%D1%81%D1%82%D0%BE%D0%B5%D0%B2%D1%81%D0%BA%D0%B8%D0%B9",
+        "status": 200,
+        "candidateCards": 0
+      },
+      {
+        "query": "Дойл",
+        "url": "https://topliba.com/?q=%D0%94%D0%BE%D0%B9%D0%BB",
+        "status": 200,
+        "candidateCards": 0
+      }
+    ],
+    "details": [],
+    "homeStatus": 200,
+    "finalURL": "https://topliba.com/",
+    "forms": [
+      {
+        "action": "/",
+        "method": "get",
+        "inputs": {
+          "q": {
+            "type": "text",
+            "value": ""
+          }
+        }
+      }
+    ],
+    "searchForm": {
+      "url": "https://topliba.com/",
+      "method": "get",
+      "field": "q",
+      "hidden": {}
+    },
+    "limitation": "HTTP probes only: native parser, playback and download verification still required"
+  },
+  {
+    "domain": "veshknigah.ru",
+    "checkedAt": "2026-11-09T15:55:10Z",
+    "verifiedAdapter": false,
+    "defaultEnabled": false,
+    "searches": [],
+    "details": [],
+    "limitation": "<urlopen error [Errno 11001] getaddrinfo failed>"
+  }
+]

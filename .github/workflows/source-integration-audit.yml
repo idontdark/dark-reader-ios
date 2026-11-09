@@ -1,0 +1,29 @@
+name: Audit real source integrations
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/unified-sources]
+    paths: ['.github/workflows/source-integration-audit.yml']
+permissions:
+  contents: read
+jobs:
+  sources:
+    runs-on: macos-15-intel
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: scripts/core-regressions/.build
+          key: source-core-${{ runner.os }}-${{ hashFiles('scripts/core-regressions/Package.swift') }}
+      - name: Run actual source adapters and record metadata quality
+        run: |
+          cp Sources/{SourceHTTPClient,SourceFileProbe,SourceHealthChecker,SearchQueryPolicy,CatalogSearchAccumulator,OPDSClient,CatalogProviders,FlibustaCatalog,HTMLSourceParser,BookSourceAdapters,AudioSourceAdapters,AudioModels,AudioCatalogService,AudioTrackCache,AudioWebCatalogModels,WebAudioSourceService,EditionIdentity,UnifiedSearchService,UnifiedDiscoveryService,RecommendationEngine,RecommendationProfile,DiscoveryModels,SourceCatalog,SourceCatalogGenerated,GenreTaxonomy,DocumentImport,Book,BookFormatConverter,FB2Document,BookMetadata,ReaderOptions,CloudLibraryModels,LocalLibraryBackup}.swift scripts/core-regressions/Harness/
+          swift run --package-path scripts/core-regressions ReaderCoreRegressions --live-audit
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: source-integration-audit
+          path: source-live-audit.json
+          if-no-files-found: warn
+          retention-days: 30
