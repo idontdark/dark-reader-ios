@@ -1,0 +1,969 @@
+{
+  "checkedAt": "2026-11-09T22:44:10Z",
+  "genres": [
+    {
+      "candidates": 129,
+      "genre": "history",
+      "matched": 20,
+      "requested": 20,
+      "titles": [
+        "The Indian Antiquary",
+        "Dr. B.R Ambedkar_CompleteWorks_Created by Dr. Anand Teltumbde",
+        "America's History",
+        "Antonio Gramsci Selections From The Prison Notebooks",
+        "Asia Folklore Tales Of The Beautiful Maiden Of Unai",
+        "Barangay Sixteenth Century Philippine Culture And Society",
+        "Documents on Diplomacy: Primary Source Documents and Lessons from the World of Foreign Affairs",
+        "History of The Arabs - Philip K. Hitti",
+        "The world In The Turmoil, Climate change, Fake News, Kids and Screens, Big Tech and Uncertainty_ Exploring how we got there",
+        "A Linguistic Theory Of Translation Oxford Univ. Press ( 1965)",
+        "Journeys In Persia And Kurdistan ( Vol.Ii).",
+        "Saint Irenaeus Against Heresies Complete",
+        "History-Of-Islam-Volume-1to6",
+        "The Secret Teachings Of All Ages",
+        "Tragedy and Hope",
+        "World History: Patterns of Interaction",
+        "AMSCO - World History: Modern",
+        "The Babur-nama in English (Memoirs of Babur)",
+        "The Bay of San Francisco : the metropolis of the Pacific Coast and its suburban cities : a history",
+        "History, gazetteer and directory of the County of Devon including the City of Exeter, and comprising a general survey of the County and separate historical, statistical and topographical descriptions of all the hundreds, unions, parishes, townships, chapelries, towns, ports, villages - hamlets"
+      ]
+    },
+    {
+      "candidates": 62,
+      "genre": "fantasy",
+      "matched": 20,
+      "requested": 20,
+      "titles": [
+        "Magic tree house 1 Dinosaurs Before Dark",
+        "Chaos Gnostic 2017",
+        "Geronimo Stilton usual series",
+        "Alfie Webcomic",
+        "Asia Folklore Tales Of The Beautiful Maiden Of Unai",
+        "The Citadel Journal",
+        "Final Fantasy X-X2 HD Remaster: Official Strategy Guide (BradyGames)",
+        "Hoodoo Conjuration WItchcraft & Rootwork",
+        "Liber Null and the Psychonaut",
+        "Percy Jackson's Greek Gods",
+        "The Complete Works Of H.P. Lovecraft",
+        "The Book of the Goetia of Solomon the King",
+        "Academe Master Baiter: An Academic Book",
+        "Ars Notoria: The Notory Art of Solomon",
+        "Ascendance Of A Bookworm Full Novel(epub)",
+        "The magus, or celestial intelligencer; being a complete system of occult philosophy. In three books: containing the antient and modern practice of the cabalistic art, natural and celestial magic, &c. ... : Exhibiting the sciences of natural magic; alchymy, or hermetic philosophy ... the constellatory practice, or talismanic magic ... Magnetism, and cabalistical or ceremonial magic ... and conjuration of spirits. To which is added biographia antiqua, or the lives of the most eminent philosophers, magi, &c. The whole illustrated with a great variety of curious engravings ...",
+        "The Key of Solomon the king (Clavicula Salomonis)",
+        "The book of the sacred magic of Abra-Melin the mage : as delivered by Abraham the Jew unto his son Lamech : a grimoire of the fifteenth century",
+        "D&D 3.5 Books Complete Set",
+        "The discoverie of witchcraft"
+      ]
+    },
+    {
+      "candidates": 64,
+      "genre": "science_fiction",
+      "matched": 20,
+      "requested": 20,
+      "titles": [
+        "1980's Science Fiction Fantasy Collection",
+        "23 SCIENCE FICTION BOOKS - ARTHUR CLARKE",
+        "Aliens Omnibus - Volume 1",
+        "Amazing Stories Volume 01 Number 01",
+        "Astounding Stories of Super Science 1930",
+        "Astounding Stories of Super Science 1931",
+        "Brave New World and Brave New World Revisited",
+        "Code Breakers Book Bundle",
+        "Harrison Bergeron (& Activity)",
+        "How to write science fiction and fantasy",
+        "Infocom Cabinet: Hitchhikers Guide to the Galaxy",
+        "Kintsugi Magazine",
+        "Blindsight",
+        "Prelude To Foundation",
+        "Root Of Unity (Russell's Attic Book 3)",
+        "Science fiction quotations : from the inner mind to the outer limits",
+        "Science fiction and the prediction of the future : essays on foresight and fallacy",
+        "Target of Desire: Episode 1",
+        "THE ADVENTURE - JAYANT NARLIKAR",
+        "The Feeling Of Power (& Activity)"
+      ]
+    },
+    {
+      "candidates": 61,
+      "genre": "detective",
+      "matched": 20,
+      "requested": 20,
+      "titles": [
+        "Franklin W. Dixon. HARDY BOYS book collection",
+        "British Library Crime Classics (116 books)",
+        "The Sixth And Seventh Books Of Moses",
+        "Mysteries Of Magic",
+        "( 2nd) Mystery Erik Von Markovik The Original Mystery Method Venusian Arts Handbook 2nd Edition",
+        "Agatha Christie short stories collection",
+        "Babylon Mystery Religion - Ralph Woodrow",
+        "Battle For The Mind",
+        "Children's Books 10. Reading and Learning Anywhere, Anytime",
+        "Children's Books 23. Oxford Phonics World",
+        "Book 65. Books by Enid Blyton",
+        "Enid Blyton - Mystery",
+        "The Girl from Malta - Fergus Hume",
+        "Brian David Hill v. United States of America (1:13-cr-435-1)(1:17-cv-1036)",
+        "The Mechanic's Curse",
+        "The Mystery of a Hansom Cab - Fergus Hume",
+        "New Age Bible Versions",
+        "Return To Little Russia: A 4-star international thriller inspired by true events and written by a former international journalist/US intelligence professional.",
+        "Serpent In The Sky - The High Wisdom Of Ancient Egypt",
+        "Studies in the Scriptures Volumes 1-7"
+      ]
+    },
+    {
+      "candidates": 62,
+      "genre": "romance",
+      "matched": 20,
+      "requested": 20,
+      "titles": [
+        "Asia Folklore Tales Of The Beautiful Maiden Of Unai",
+        "Betty Neels",
+        "Harlequin Mostly Presents",
+        "Kaguya Sama Wa Kokurasetai: Tensai-tachi no Renai Zunousen",
+        "The 3 Kingdoms, The Water Margin, & the Plum in the Golden Vase",
+        "Vintage gay fiction",
+        "A Court Of Thorns And Roses",
+        "The adventures of Hamza : painting and storytelling in Mughal India",
+        "Academe Master Baiter: An Academic Book",
+        "Call Me By Your Name, A Novel",
+        "Conflux The Lost Girls Jordan Wakefield",
+        "An etymological dictionary of the Romance languages",
+        "Genus (Complete)",
+        "I Was Never Yours",
+        "Invincible [Compendiums]",
+        "Jin Yong (Louis Cha) Novels Collection",
+        "Woman To Women",
+        "Just Listen To The Song",
+        "Kamisama Kiss",
+        "Lord Of The Forest"
+      ]
+    },
+    {
+      "candidates": 75,
+      "genre": "biography",
+      "matched": 20,
+      "requested": 20,
+      "titles": [
+        "My 60 Memorable Games - Bobby Fischer 2008",
+        "Indian History - Collection of Indian History - Collection 3",
+        "Decoded By Jay Z",
+        "The Life Of Muhammad, by Ibn Ishaq",
+        "Autobiography Of A Yogi By Paramahansa Yogananda",
+        "The Bay of San Francisco : the metropolis of the Pacific Coast and its suburban cities : a history",
+        "Biography Of Bhagat Singh",
+        "The confessions of St. Augustine",
+        "Cumberland County Illinois, 1843-1993",
+        "The founders of Anne Arundel and Howard Counties, Maryland. A genealogical and biographical review from wills, deeds and church records",
+        "The golden book of India, a genealogical and biographical dictionary of the ruling princes, chiefs, nobles, and other personages, titled or decorated, of the Indian empire",
+        "Haydn's univeral index of biography from the creation to the present time, for the use of the statesman, the historian, and the journalist",
+        "History of Delaware : 1609-1888",
+        "History of the early settlers of Sangamon County, Illinois : \"centennial record\"",
+        "History of Guernsey County, Ohio",
+        "History of Herkimer county, New York",
+        "History of Kern County, California, with biographical sketches of the leading men and women of the county who have been identified with its growth and development from the early days to the present;",
+        "History of Langlade County, Wisconsin, from U. S. government survey to present time, with biographical sketches",
+        "History of Nova Scotia",
+        "History of Perry County, Pennsylvania, including descriptions of Indians and pioneer life from the time of earliest settlement"
+      ]
+    },
+    {
+      "candidates": 66,
+      "genre": "adventure",
+      "matched": 20,
+      "requested": 20,
+      "titles": [
+        "0.5 The Assassins Blade",
+        "ADAM - finding the straight road (Adventure story)",
+        "Adventure Time Storyboards",
+        "Adventure Time - The Enchiridion & Marcy's Super Secret Scrapbook!!!",
+        "Around the World in 80 Days",
+        "Computer Gaming World Issue 148",
+        "Darna (Volume 1) [ENGLISH]",
+        "Digimon World: Prima's Official Strategy Guide",
+        "Children's Books 10. Reading and Learning Anywhere, Anytime",
+        "Book 65. Books by Enid Blyton",
+        "Escapade Magazine June 1956 D. D. Teoli Jr. A. C. ( 1)",
+        "Escapade Magazine May 1956 D.D. Teoli Jr. A.C.",
+        "Exodus Tales of Prophet Moses (Musa) & Prophet Haron (Aaron)",
+        "Flirt Magazine Aug 1953 D.D. Teoli Jr. A.C.",
+        "I Have No Mouth and I Must Scream",
+        "Infocom Cabinet: Hitchhikers Guide to the Galaxy",
+        "Root Of Unity (Russell's Attic Book 3)",
+        "THE ADVENTURE - JAYANT NARLIKAR",
+        "Adventures of Huckleberry Finn (Tom Sawyer's comrade)...",
+        "The adventures of Tom Sawyer"
+      ]
+    },
+    {
+      "candidates": 65,
+      "genre": "children",
+      "matched": 20,
+      "requested": 20,
+      "titles": [
+        "327417477 William Golding Lord Of The Flies Pdf",
+        "Ashraf's Blessings Of Marriage",
+        "Quantity recipes for school food service",
+        "Childrens Islamic Educational Series - Islamic Studies - Grades 01 To 12",
+        "Dennis the Menace Sundays: Gina",
+        "Exodus Tales of Prophet Moses (Musa) & Prophet Haron (Aaron)",
+        "From The Mixed Up Files Of Mrs Basil E. Frankweiler",
+        "Gadsby",
+        "How And Why Series",
+        "Islamic Education Series Grades 1-12 (Set of 12 eBooks) - Dar-us-Salam",
+        "H. P. Lovecraft & The Necronomicon",
+        "Midnight's Children",
+        "Pratham Books",
+        "SAVAGE INEQUALITIES - ENG - JONATHAN KOZOL",
+        "The Adventures Of Tom Sawyer",
+        "The psychoanalysis of children",
+        "The Secret Garden",
+        "The Boxcar Children",
+        "Attachment and loss",
+        "The rise of Kyoshi"
+      ]
+    },
+    {
+      "candidates": 60,
+      "genre": "nonfiction",
+      "matched": 20,
+      "requested": 20,
+      "titles": [
+        "EDUCATIONAL PHILOSOPHY OF MAHATMA GANDHI WITH SPECIAL REFERENCE TO CURRICULUM OF BASIC EDUCATION",
+        "Epictetus Discourses and Selected Writings",
+        "Albert Camus The Myth Of Sisyphus",
+        "Alfred Ayer - Language, Truth and Logic",
+        "Anastasia - The Ringing Cedars Of Russia series 1-10",
+        "140+ Anti Calvinist books in epub format and 40+ zPDF's (Cellphone PDF's)",
+        "Antonio Gramsci Selections From The Prison Notebooks",
+        "Destiny Distrupted History Of The World Through Islamic Eyes Tamim Ansary",
+        "The Will To Power",
+        "Introduction to Indian Philosophy",
+        "My Son Marshall, My Son Eminem Setting The Record Straight On My Life As Eminem's Mother By Debbie Johnson",
+        "Plato's Republic",
+        "Plato's Symposium",
+        "Descartes' Meditations",
+        "Routledge Encyclopedia Of Philosophy",
+        "Sacred Books East Various Oriental Scholars with Index. 50 vols Max Muller Oxford 1879.1910.",
+        "The Sacred And The Profane",
+        "The Book of Aquarius",
+        "Apuleius The Golden Ass - Penguin Classics",
+        "The Story Of Philosophy Will Durant"
+      ]
+    },
+    {
+      "candidates": 61,
+      "genre": "thriller",
+      "matched": 20,
+      "requested": 20,
+      "titles": [
+        "Girls And Corpses 01",
+        "[ 24] How To Draw Manga Occult And Horror",
+        "50 ghost stories",
+        "The Bataille Reader",
+        "CHRONOS",
+        "Collapse Vol. IV: Concept Horror",
+        "Crime Films Genres In American Cinema - Thomas Leitch",
+        "Tales Of Terror / Tales from the Crypt",
+        "Encyclopedia Of Film Schirmer Vol 2 - Criticism To Ideology",
+        "Horror Comics & Graphic Novels",
+        "The Thirst for Annihilation: George Bataille and Virulent Nihilism",
+        "Return To Little Russia: A 4-star international thriller inspired by true events and written by a former international journalist/US intelligence professional.",
+        "Root Of Unity (Russell's Attic Book 3)",
+        "The Complete Works Of H.P. Lovecraft",
+        "Aron Beauregard Playground",
+        "Call Of Cthulhu - 7th Edition Core Rulebook",
+        "Complete Books Of Blood Clive Barker",
+        "Conflux The Lost Girls Jordan Wakefield",
+        "Deities & Demigods (1st Print)",
+        "Horror story"
+      ]
+    }
+  ],
+  "note": "Asset checks inspect the first, middle and last chapter. They do not claim audible playback, headset or lock-screen testing on a real iPhone. A shortfall below five works or twenty genre matches remains unverified.",
+  "sources": [
+    {
+      "id": "audio:akniga.org",
+      "nativeVerified": false,
+      "query": "Дойл",
+      "works": [
+        {
+          "actualFile": false,
+          "author": "Конан Дойл Артур",
+          "chapters": 0,
+          "cover": false,
+          "error": "Источник не предоставил аудиофайлы приложению. Откройте книгу на сайте.",
+          "genres": [],
+          "language": "ru",
+          "playableAssets": [],
+          "testedTrackIndices": [],
+          "title": "Капитан Шарки. Морские рассказы"
+        },
+        {
+          "actualFile": false,
+          "author": "Дойл Артур Конан",
+          "chapters": 0,
+          "cover": false,
+          "error": "Источник не предоставил аудиофайлы приложению. Откройте книгу на сайте.",
+          "genres": [],
+          "language": "ru",
+          "playableAssets": [],
+          "testedTrackIndices": [],
+          "title": "Возвращение Шерлока Холмса"
+        },
+        {
+          "actualFile": false,
+          "author": "Карр Джон-Диксон, Дойл Адриан Конан",
+          "chapters": 0,
+          "cover": false,
+          "error": "Источник не предоставил аудиофайлы приложению. Откройте книгу на сайте.",
+          "genres": [],
+          "language": "ru",
+          "playableAssets": [],
+          "testedTrackIndices": [],
+          "title": "Восковые игроки"
+        },
+        {
+          "actualFile": false,
+          "author": "Карр Джон-Диксон, Дойл Адриан Конан",
+          "chapters": 0,
+          "cover": false,
+          "error": "Источник не предоставил аудиофайлы приложению. Откройте книгу на сайте.",
+          "genres": [],
+          "language": "ru",
+          "playableAssets": [],
+          "testedTrackIndices": [],
+          "title": "Тайна закрытой комнаты"
+        },
+        {
+          "actualFile": false,
+          "author": "Дойл Артур Конан",
+          "chapters": 0,
+          "cover": false,
+          "error": "Источник не предоставил аудиофайлы приложению. Откройте книгу на сайте.",
+          "genres": [],
+          "language": "ru",
+          "playableAssets": [],
+          "testedTrackIndices": [],
+          "title": "Зеленое знамя"
+        }
+      ]
+    },
+    {
+      "id": "audio:aknigi24.com",
+      "nativeVerified": false,
+      "query": "Дойл",
+      "works": [
+        {
+          "actualFile": false,
+          "author": "Карр Джон Диксон, Дойл Адриан Конан",
+          "chapters": 8,
+          "cover": true,
+          "genres": [
+            "detective",
+            "thriller"
+          ],
+          "language": "ru",
+          "playableAssets": [
+            false,
+            false,
+            false
+          ],
+          "testedTrackIndices": [
+            0,
+            4,
+            7
+          ],
+          "title": "Тайна закрытой комнаты"
+        },
+        {
+          "actualFile": false,
+          "author": "Дойл Артур Конан",
+          "chapters": 61,
+          "cover": true,
+          "genres": [
+            "detective",
+            "thriller"
+          ],
+          "language": "ru",
+          "playableAssets": [
+            false,
+            false,
+            false
+          ],
+          "testedTrackIndices": [
+            0,
+            30,
+            60
+          ],
+          "title": "Архив Шерлока Холмса"
+        },
+        {
+          "actualFile": false,
+          "author": "Дойл Артур Конан",
+          "chapters": 11,
+          "cover": true,
+          "genres": [
+            "detective",
+            "thriller"
+          ],
+          "language": "ru",
+          "playableAssets": [
+            false,
+            false,
+            false
+          ],
+          "testedTrackIndices": [
+            0,
+            5,
+            10
+          ],
+          "title": "Рассказы о Шерлоке Холмсе"
+        },
+        {
+          "actualFile": false,
+          "author": "Дойл Артур Конан",
+          "chapters": 64,
+          "cover": true,
+          "genres": [
+            "detective",
+            "thriller"
+          ],
+          "language": "ru",
+          "playableAssets": [
+            false,
+            false,
+            false
+          ],
+          "testedTrackIndices": [
+            0,
+            32,
+            63
+          ],
+          "title": "Записки о Шерлоке Холмсе"
+        },
+        {
+          "actualFile": false,
+          "author": "Дойл Артур Конан",
+          "chapters": 1,
+          "cover": true,
+          "genres": [
+            "detective",
+            "thriller"
+          ],
+          "language": "ru",
+          "playableAssets": [
+            false
+          ],
+          "testedTrackIndices": [
+            0
+          ],
+          "title": "Охотник за жуками"
+        }
+      ]
+    },
+    {
+      "id": "audio:archive.org",
+      "nativeVerified": true,
+      "query": "Doyle",
+      "works": [
+        {
+          "actualFile": false,
+          "author": "Sir Arthur Conan Doyle",
+          "chapters": 15,
+          "cover": true,
+          "genres": [],
+          "language": "eng",
+          "playableAssets": [
+            true,
+            true,
+            true
+          ],
+          "testedTrackIndices": [
+            0,
+            7,
+            14
+          ],
+          "title": "A Visit to Three Fronts: June 1916"
+        },
+        {
+          "actualFile": false,
+          "author": "Sir Arthur Conan Doyle",
+          "chapters": 45,
+          "cover": true,
+          "genres": [],
+          "language": "spa",
+          "playableAssets": [
+            true,
+            true,
+            true
+          ],
+          "testedTrackIndices": [
+            0,
+            22,
+            44
+          ],
+          "title": "La Mancha de Sangre"
+        },
+        {
+          "actualFile": false,
+          "author": "Sir Arthur Conan Doyle",
+          "chapters": 9,
+          "cover": true,
+          "genres": [
+            "fantasy",
+            "thriller"
+          ],
+          "language": "eng",
+          "playableAssets": [
+            true,
+            true,
+            true
+          ],
+          "testedTrackIndices": [
+            0,
+            4,
+            8
+          ],
+          "title": "Lot No. 249"
+        },
+        {
+          "actualFile": false,
+          "author": "Sir Arthur Conan Doyle",
+          "chapters": 28,
+          "cover": true,
+          "genres": [],
+          "language": "eng",
+          "playableAssets": [
+            true,
+            true,
+            true
+          ],
+          "testedTrackIndices": [
+            0,
+            14,
+            27
+          ],
+          "title": "A Study in Scarlet (version 3)"
+        },
+        {
+          "actualFile": false,
+          "author": "Arthur Conan Doyle",
+          "chapters": 1,
+          "cover": true,
+          "genres": [],
+          "language": "fre",
+          "playableAssets": [
+            true
+          ],
+          "testedTrackIndices": [
+            0
+          ],
+          "title": "Arthur Conan Doyle - Comment La Chose Arriva"
+        }
+      ]
+    },
+    {
+      "id": "audio:knigavuhe.org",
+      "nativeVerified": false,
+      "query": "Дойл",
+      "works": [
+        {
+          "actualFile": false,
+          "author": "Артур Конан Дойл",
+          "chapters": 1,
+          "cover": true,
+          "genres": [],
+          "playableAssets": [
+            true
+          ],
+          "testedTrackIndices": [
+            0
+          ],
+          "title": "Последнее дело. Рассказы. Из воспоминаний о Шерлоке Холмсе"
+        },
+        {
+          "actualFile": false,
+          "author": "Артур Конан Дойл",
+          "chapters": 9,
+          "cover": true,
+          "genres": [],
+          "playableAssets": [
+            true,
+            true,
+            true
+          ],
+          "testedTrackIndices": [
+            0,
+            4,
+            8
+          ],
+          "title": "МногоГолосье. Артур Конан Дойл"
+        },
+        {
+          "actualFile": false,
+          "author": "Артур Конан Дойл",
+          "chapters": 1,
+          "cover": true,
+          "genres": [],
+          "playableAssets": [
+            true
+          ],
+          "testedTrackIndices": [
+            0
+          ],
+          "title": "Новое дело Шерлока Холмса"
+        },
+        {
+          "actualFile": false,
+          "author": "Артур Конан Дойл",
+          "chapters": 0,
+          "cover": false,
+          "error": "Для этой аудиокниги пока нет доступных глав.",
+          "genres": [],
+          "playableAssets": [],
+          "testedTrackIndices": [],
+          "title": "Последнее дело Холмса"
+        },
+        {
+          "actualFile": false,
+          "author": "Артур Конан Дойл",
+          "chapters": 1,
+          "cover": true,
+          "genres": [],
+          "playableAssets": [
+            true
+          ],
+          "testedTrackIndices": [
+            0
+          ],
+          "title": "Дело старого фабриканта красок"
+        }
+      ]
+    },
+    {
+      "id": "audio:librivox.org",
+      "nativeVerified": true,
+      "query": "Doyle",
+      "works": [
+        {
+          "actualFile": false,
+          "author": "Sir Arthur Conan Doyle",
+          "chapters": 12,
+          "cover": true,
+          "genres": [
+            "detective"
+          ],
+          "language": "English",
+          "playableAssets": [
+            true,
+            true,
+            true
+          ],
+          "testedTrackIndices": [
+            0,
+            6,
+            11
+          ],
+          "title": "Adventures of Sherlock Holmes"
+        },
+        {
+          "actualFile": false,
+          "author": "Sir Arthur Conan Doyle",
+          "chapters": 16,
+          "cover": true,
+          "genres": [],
+          "language": "English",
+          "playableAssets": [
+            true,
+            true,
+            true
+          ],
+          "testedTrackIndices": [
+            0,
+            8,
+            15
+          ],
+          "title": "Lost World"
+        },
+        {
+          "actualFile": false,
+          "author": "Sir Arthur Conan Doyle",
+          "chapters": 4,
+          "cover": true,
+          "genres": [
+            "thriller"
+          ],
+          "language": "English",
+          "playableAssets": [
+            true,
+            true,
+            true
+          ],
+          "testedTrackIndices": [
+            0,
+            2,
+            3
+          ],
+          "title": "Parasite"
+        },
+        {
+          "actualFile": false,
+          "author": "Sir Arthur Conan Doyle",
+          "chapters": 11,
+          "cover": true,
+          "genres": [
+            "detective"
+          ],
+          "language": "English",
+          "playableAssets": [
+            true,
+            true,
+            true
+          ],
+          "testedTrackIndices": [
+            0,
+            5,
+            10
+          ],
+          "title": "Memoirs of Sherlock Holmes"
+        },
+        {
+          "actualFile": false,
+          "author": "Sir Arthur Conan Doyle",
+          "chapters": 15,
+          "cover": true,
+          "genres": [
+            "detective"
+          ],
+          "language": "English",
+          "playableAssets": [
+            true,
+            true,
+            true
+          ],
+          "testedTrackIndices": [
+            0,
+            7,
+            14
+          ],
+          "title": "Hound of the Baskervilles"
+        }
+      ]
+    },
+    {
+      "id": "books:archive.org",
+      "nativeVerified": false,
+      "query": "Doyle",
+      "works": [
+        {
+          "actualFile": true,
+          "author": "Doyle, Arthur Conan, 1859-1930, author",
+          "chapters": 0,
+          "cover": true,
+          "genres": [
+            "detective"
+          ],
+          "language": "eng",
+          "playableAssets": [],
+          "testedTrackIndices": [],
+          "title": "Adventures of Sherlock Holmes"
+        },
+        {
+          "actualFile": false,
+          "author": "Arthur Conan Doyle",
+          "chapters": 0,
+          "cover": true,
+          "genres": [
+            "classics",
+            "detective"
+          ],
+          "language": "eng",
+          "playableAssets": [],
+          "testedTrackIndices": [],
+          "title": "The Complete Sherlock Holmes"
+        },
+        {
+          "actualFile": false,
+          "author": "Doyle, Arthur Conan, 1859-1930",
+          "chapters": 0,
+          "cover": true,
+          "genres": [],
+          "language": "eng",
+          "playableAssets": [],
+          "testedTrackIndices": [],
+          "title": "Adventures of Sherlock Holmes"
+        },
+        {
+          "actualFile": false,
+          "author": "Doyle, Arthur Conan, Sir, 1859-1930",
+          "chapters": 0,
+          "cover": true,
+          "genres": [],
+          "language": "eng",
+          "playableAssets": [],
+          "testedTrackIndices": [],
+          "title": "The hound of the Baskervilles : another adventure of Sherlock Holmes"
+        },
+        {
+          "actualFile": true,
+          "author": "Doyle, Arthur Conan, 1859-1930, author",
+          "chapters": 0,
+          "cover": true,
+          "genres": [],
+          "language": "eng",
+          "playableAssets": [],
+          "testedTrackIndices": [],
+          "title": "A Study in scarlet : a novel"
+        }
+      ]
+    },
+    {
+      "id": "books:flibusta.is",
+      "nativeVerified": true,
+      "query": "Дойл",
+      "works": [
+        {
+          "actualFile": true,
+          "author": "Дойл Аманда",
+          "chapters": 0,
+          "cover": false,
+          "genres": [
+            "romance"
+          ],
+          "language": "ru",
+          "playableAssets": [],
+          "testedTrackIndices": [],
+          "title": "Верь мне! [The Outback Man - ru]"
+        },
+        {
+          "actualFile": true,
+          "author": "Дойл Аманда",
+          "chapters": 0,
+          "cover": true,
+          "genres": [
+            "romance"
+          ],
+          "language": "ru",
+          "playableAssets": [],
+          "testedTrackIndices": [],
+          "title": "Пробуждение души"
+        },
+        {
+          "actualFile": true,
+          "author": "Дойл Аманда",
+          "chapters": 0,
+          "cover": true,
+          "genres": [
+            "romance"
+          ],
+          "language": "ru",
+          "playableAssets": [],
+          "testedTrackIndices": [],
+          "title": "Верь мне! [The Outback Man - ru]"
+        },
+        {
+          "actualFile": true,
+          "author": "Дойл Аманда",
+          "chapters": 0,
+          "cover": true,
+          "genres": [
+            "romance"
+          ],
+          "language": "ru",
+          "playableAssets": [],
+          "testedTrackIndices": [],
+          "title": "Ловушка любви [Dilemma at Dulloora - ru]"
+        },
+        {
+          "actualFile": true,
+          "author": "Уэллс Герберт, Карр Джон Диксон, Дойл Адриан Конан, Ромер Сакс, Гамильтон Эдмонд Мур, Голембович Вацлав, Эркман Эмиль, Шатриан Александр, Хольт Г. Б., Пауэрс Пол С., Тозер Бэзил, Мик Стернер Сент-Пол, Сайлант Джефри, Кох-Варв Ф., Руд Энтони, Мунн Г. Уорнер, Эркман-Шатриан",
+          "chapters": 0,
+          "cover": true,
+          "genres": [
+            "adventure",
+            "science_fiction"
+          ],
+          "language": "ru",
+          "playableAssets": [],
+          "testedTrackIndices": [],
+          "title": "Арахна: Рассказы о пауках. Том 1 [антология]"
+        }
+      ]
+    },
+    {
+      "id": "books:gutenberg.org",
+      "nativeVerified": true,
+      "query": "Doyle",
+      "works": [
+        {
+          "actualFile": true,
+          "author": "Doyle, Arthur Conan",
+          "chapters": 0,
+          "cover": true,
+          "genres": [
+            "detective"
+          ],
+          "language": "en",
+          "playableAssets": [],
+          "testedTrackIndices": [],
+          "title": "The Adventures of Sherlock Holmes"
+        },
+        {
+          "actualFile": true,
+          "author": "Doyle, Arthur Conan",
+          "chapters": 0,
+          "cover": true,
+          "genres": [
+            "detective"
+          ],
+          "language": "en",
+          "playableAssets": [],
+          "testedTrackIndices": [],
+          "title": "The Hound of the Baskervilles"
+        },
+        {
+          "actualFile": true,
+          "author": "Doyle, Arthur Conan",
+          "chapters": 0,
+          "cover": true,
+          "genres": [
+            "detective"
+          ],
+          "language": "en",
+          "playableAssets": [],
+          "testedTrackIndices": [],
+          "title": "A Study in Scarlet"
+        },
+        {
+          "actualFile": true,
+          "author": "Doyle, Arthur Conan",
+          "chapters": 0,
+          "cover": true,
+          "genres": [
+            "detective"
+          ],
+          "language": "en",
+          "playableAssets": [],
+          "testedTrackIndices": [],
+          "title": "The Sign of the Four"
+        },
+        {
+          "actualFile": true,
+          "author": "Doyle, Arthur Conan",
+          "chapters": 0,
+          "cover": true,
+          "genres": [
+            "detective"
+          ],
+          "language": "en",
+          "playableAssets": [],
+          "testedTrackIndices": [],
+          "title": "The Return of Sherlock Holmes"
+        }
+      ]
+    }
+  ]
+}
