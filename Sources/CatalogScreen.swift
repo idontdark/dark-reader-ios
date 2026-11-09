@@ -45,8 +45,11 @@ struct CatalogScreen: View {
     @State private var readingBook:LocalBook?
     @State private var recommended: [CatalogBook] = []
     @State private var loadedRecommendations = false
+    @State private var acceptedRevision = 0
+    @State private var sourceFailures = 0
+    @AppStorage(SourcePreferences.key) private var enabledSourceData = Data()
 
-    private var providerName: String {
+    private var legacyProviderName: String {
         switch provider {
         case "flibusta": return L10n.text("Флибуста",language:language)
         case "gutenberg": return "Project Gutenberg"
@@ -68,23 +71,6 @@ struct CatalogScreen: View {
                     }
 
                     VStack(alignment: .leading, spacing: ReaderMetrics.formSpacing) {
-                        Menu {
-                            Button("Флибуста", systemImage: "book.closed") { provider = "flibusta" }
-                            Button("Gutendex · Project Gutenberg", systemImage: "book.closed") { provider = "gutendex" }
-                            if !OPDSSources.decode(savedOPDSCatalogs).filter {!$0.isAudio}.isEmpty {
-                                Divider()
-                                ForEach(OPDSSources.decode(savedOPDSCatalogs).filter {!$0.isAudio}) { item in
-                                    Button(item.name, systemImage: "books.vertical") {
-                                        provider = "opds:" + item.id.uuidString
-                                    }
-                                }
-                            }
-                            if provider == "custom" {
-                                Button("Другой OPDS", systemImage: "server.rack") { provider = "custom" }
-                            }
-                        } label: {ReaderSearchSourceLabel(title:providerName,icon:"book.closed")}
-
-
                         ReaderQueryField(query:$navigation.searchQuery, focus:$queryFocused) {if !searching {startSearch()}}
 
                         ReaderSegmentedControl(items:[("title","По названию"),("author","По автору")],selection:$mode)
@@ -162,10 +148,9 @@ struct CatalogScreen: View {
                                     .foregroundStyle(ReaderStyle.secondary)
                             }
                         }
-                        if !supportsLanguageFiltering && hasSearched {
-                            Text(verbatim:L10n.render("Этот каталог не поддерживает точную фильтрацию по языку.",language:localizationLanguage))
-                                .font(.caption)
-                                .foregroundStyle(ReaderStyle.secondary)
+                        if sourceFailures > 0 {
+                            Text(verbatim: L10n.text("Часть источников не ответила. Результаты остальных уже доступны."))
+                                .font(.caption).foregroundStyle(ReaderStyle.secondary)
                         }
                         if !history.isEmpty {
                             Button {
@@ -237,8 +222,8 @@ struct CatalogScreen: View {
                     UINotificationFeedbackGenerator().notificationOccurred(.success)
                 }
             }
-            .readerHint(isPresented:$showCatalogTip,title:"Найдите свою следующую книгу",message:"Выберите источник и язык, затем введите название или автора. Найденную книгу можно скачать в библиотеку.",icon:"magnifyingglass")
-            .onChange(of: provider) { _, _ in
+            .readerHint(isPresented:$showCatalogTip,title:"Найдите свою следующую книгу",message:"Введите название или автора. Поиск выполняется по всем включённым источникам, а результаты появляются постепенно.",icon:"magnifyingglass")
+            .onChange(of: enabledSourceData) { _, _ in
                 cancelSearch()
                 history = []
                 results = []
@@ -339,7 +324,6 @@ struct CatalogScreen: View {
         }
     }
 
-    private var supportsLanguageFiltering: Bool { provider == "gutendex" }
 
     private func handlePendingSearch() { handlePendingAuthor(); handlePendingBook() }
 
@@ -375,55 +359,25 @@ struct CatalogScreen: View {
         queryFocused = false
         guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         cancelSearch()
-        let token = UUID()
-        requestID = token
-        let selectedProvider = provider
-        let matchingOPDS = OPDSSources.decode(savedOPDSCatalogs).first {
-            selectedProvider == "opds:" + $0.id.uuidString
-        }
-        let term = query
-        let selectedMode = mode
-        let languageChoice = ReaderPreferences.effectiveLanguage(bookLanguage, appLanguage: language)
-        results = []; hasSearched = true; history = []; heading = "Результаты"
-        searching = true
-        showVPNHint = false
-        error = nil
-        vpnTask = Task {
-            do { try await Task.sleep(nanoseconds: 7_000_000_000) }
-            catch { return }
-            if searching && requestID == token { showVPNHint = true }
-        }
+        let token = UUID(); requestID = token
+        let term = query; let authorMode = mode == "author"
+        let selectedLanguage = ReaderPreferences.effectiveLanguage(bookLanguage, appLanguage: language)
+        results = []; history = []; hasSearched = true; heading = "Результаты"
+        acceptedRevision = 0; sourceFailures = 0; searching = true; error = nil
         searchTask = Task {
+            defer { if requestID == token { searching = false } }
             do {
-                let books = try await CatalogProviders.search(
-                    query: term, mode: selectedMode,
-                    provider: matchingOPDS == nil ? selectedProvider : "custom",
-                    customURL: matchingOPDS?.url ?? customURL,
-                    customParameter: matchingOPDS?.searchParameter ?? customParameter,
-                    language: languageChoice, onResults: { page in
-                        await MainActor.run {
-                            guard requestID == token, !Task.isCancelled else { return }
-                            results = page.filter {$0.epubURL != nil || $0.navigationURL != nil}
-                        }
+                let final = try await UnifiedSearchService.books(query: term, byAuthor: authorMode, language: selectedLanguage, onResults: { update in
+                    await MainActor.run {
+                        guard requestID == token, !Task.isCancelled, update.sequence > acceptedRevision else { return }
+                        acceptedRevision = update.sequence; results = update.books; sourceFailures = update.failed.count
                     }
-                )
+                })
                 try Task.checkCancellation()
                 guard requestID == token else { return }
-                results = books.filter {$0.epubURL != nil || $0.navigationURL != nil}
-                hasSearched = true
-                heading = "Результаты"
-                history.removeAll()
-                completedTitle = nil
-            } catch is CancellationError {
-                return
-            } catch {
-                guard requestID == token else { return }
-                self.error = "Каталог не ответил. Проверьте интернет или попробуйте VPN."
-            }
-            guard requestID == token else { return }
-            searching = false
-            vpnTask?.cancel()
-            showVPNHint = false
+                results = final
+            } catch is CancellationError { }
+            catch { if requestID == token { error = L10n.errorDescription(error) } }
         }
     }
 

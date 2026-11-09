@@ -74,10 +74,10 @@ struct SettingsScreen: View {
                             .buttonStyle(.plain)
                             ReaderDivider()
                             NavigationLink {
-                                CustomOPDSCatalogsScreen()
+                                SourcesSettingsScreen()
                             } label: {
-                                ReaderRow(icon: "network", title: "Каталоги",
-                                          subtitle: "Ваши OPDS-библиотеки") {
+                                ReaderRow(icon: "network", title: "Источники",
+                                          subtitle: "Книги и аудиокниги") {
                                     Image(systemName: "chevron.right").foregroundStyle(ReaderStyle.secondary)
                                 }
                             }
@@ -118,13 +118,8 @@ struct SettingsScreen: View {
                         }
                     }
 
-                    HStack(spacing:16) {
-                        Link("Конфиденциальность",destination:URL(string:"https://idontdark.github.io/dark-reader/privacy.html")!)
-                        Link("Условия",destination:URL(string:"https://idontdark.github.io/dark-reader/terms.html")!)
-                    }.font(.system(size:11)).foregroundStyle(ReaderStyle.secondary).frame(maxWidth:.infinity)
-                    Text(verbatim:String(format:L10n.text("Сборка %@ · %@"),Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "13",String((Bundle.main.infoDictionary?["ReaderSourceCommit"] as? String ?? "local").prefix(7))))
-                        .font(.caption2).foregroundStyle(ReaderStyle.secondary).frame(maxWidth:.infinity)
-                    Text("Dark Reader · \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0")")
+                    Text(verbatim: String(format: L10n.text("Версия — %@", language: language),
+                                          Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"))
                         .font(.caption)
                         .foregroundStyle(ReaderStyle.secondary)
                         .frame(maxWidth: .infinity)

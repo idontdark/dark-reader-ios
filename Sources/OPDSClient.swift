@@ -116,6 +116,9 @@ final class OPDSFeedParser: NSObject, XMLParserDelegate {
     private var coverURL: URL?
     private var summary = ""
     private var downloadFormat: String?
+    private var language: String?
+    private var subjects: [String] = []
+    private var issued: String?
 
     init(baseURL: URL) { self.baseURL = baseURL }
 
@@ -143,10 +146,12 @@ final class OPDSFeedParser: NSObject, XMLParserDelegate {
             coverURL = nil
             summary = ""
             downloadFormat = nil
+            language = nil; subjects = []; issued = nil
         }
         guard currentEntry else { return }
         if name == "author" { inAuthor = true }
-        if name == "title" || name == "id" || name == "summary" || name == "content" || (name == "name" && inAuthor) {
+        if name == "category", let subject = attributeDict["label"] ?? attributeDict["term"] { subjects.append(subject) }
+        if name == "language" || name == "issued" || name == "title" || name == "id" || name == "summary" || name == "content" || (name == "name" && inAuthor) {
             currentField = name
             textBuffer = ""
         }
@@ -185,6 +190,8 @@ final class OPDSFeedParser: NSObject, XMLParserDelegate {
         if currentEntry && name == currentField {
             let value = textBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
             switch name {
+            case "language": language = value
+            case "issued": issued = value
             case "title": title = value
             case "id": identifier = value
             case "summary", "content": if summary.isEmpty { summary = value }
@@ -205,7 +212,8 @@ final class OPDSFeedParser: NSObject, XMLParserDelegate {
                     navigationURL: navigationURL,
                     coverURL: coverURL,
                     summary: summary.isEmpty ? nil : summary,
-                    downloadFormat: downloadFormat,audioURL:audioURL
+                    downloadFormat: downloadFormat,audioURL:audioURL, language:language,
+                    genres:GenreTaxonomy.normalize(subjects), publicationDate:issued
                 ))
             }
             currentEntry = false

@@ -40,6 +40,15 @@ struct CatalogBook: Identifiable, Hashable, Sendable, Codable {
     var summary: String? = nil
     var downloadFormat: String? = nil
     var audioURL:URL? = nil
+    var sourceID: String? = nil
+    var language: String? = nil
+    var genres: [String]? = nil
+    var isbn: String? = nil
+    var publicationDate: String? = nil
+    var popularity: Double? = nil
+    var popularityBasis: String? = nil
+    var offers: [BookOffer]? = nil
+    var recommendationReason: String? = nil
 }
 
 enum ReaderError: LocalizedError {

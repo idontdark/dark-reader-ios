@@ -4,7 +4,11 @@ import SwiftUI
 enum ReaderPreferences {
     static let genres: [(id: String, ru: String, en: String, icon: String)] = [
         ("detective", "Детективы", "Mystery", "magnifyingglass"),
-        ("fantasy", "Фантастика", "Sci-Fi & Fantasy", "sparkles"),
+        ("fantasy", "Фэнтези", "Fantasy", "sparkles"),
+        ("science_fiction", "Научная фантастика", "Science fiction", "moon.stars"),
+        ("historical_fiction", "Исторические романы", "Historical fiction", "building.columns"),
+        ("psychology", "Психология", "Psychology", "brain"),
+        ("business", "Бизнес", "Business", "briefcase"),
         ("romance", "Романы", "Romance", "heart"),
         ("classics", "Классика", "Classics", "books.vertical"),
         ("adventure", "Приключения", "Adventure", "safari"),

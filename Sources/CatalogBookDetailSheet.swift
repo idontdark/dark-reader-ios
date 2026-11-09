@@ -4,6 +4,9 @@ struct CatalogBookDetailSheet:View {
     @AppStorage("appLanguage") private var localizationLanguage="ru"
 
     let book:CatalogBook
+    @State private var resolvedBook: CatalogBook?
+    @State private var webOffer: BookOffer?
+    private var displayed: CatalogBook { resolvedBook ?? book }
     let onClose:()->Void
     @EnvironmentObject private var library:BookshelfStore
     @EnvironmentObject private var navigation:ReaderNavigation
@@ -16,19 +19,19 @@ struct CatalogBookDetailSheet:View {
     @State private var reading:LocalBook?
     @State private var loadedSummary: String?
     @State private var loadingSummary = false
-    private var local:LocalBook? {library.books.first {$0.catalogID == book.id}}
-    private var favorite:Bool {local?.isFavorite == true || CatalogBookmarks.decode(favoritesJSON).contains {$0.id == book.id}}
-    private var wished:Bool {CatalogBookmarks.decode(wishlistJSON).contains {$0.id == book.id}}
-    private var task:BookDownload? {downloads.items.first {$0.id == book.id}}
+    private var local:LocalBook? {library.books.first {$0.catalogID == displayed.id}}
+    private var favorite:Bool {local?.isFavorite == true || CatalogBookmarks.decode(favoritesJSON).contains {$0.id == displayed.id}}
+    private var wished:Bool {CatalogBookmarks.decode(wishlistJSON).contains {$0.id == displayed.id}}
+    private var task:BookDownload? {downloads.items.first {$0.id == displayed.id}}
     private var busy:Bool {task.map {[.queued,.connecting,.downloading,.paused].contains($0.state)} ?? false}
     var body:some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment:.leading,spacing:16) {
-                    BookDetailHero(title:book.title,author:book.author,coverURL:book.coverURL,
-                                   tags:RecommendationProfile.classify(book.summary ?? "").prefix(2).map {ReaderPreferences.genreName($0,language:language)})
+                    BookDetailHero(title:displayed.title,author:displayed.author,coverURL:displayed.coverURL,
+                                   tags:(displayed.genres ?? []).prefix(2).map {ReaderPreferences.genreName($0,language:language)})
                     ReaderSegmentedControl(items:[("books","Книга"),("audio","Аудиокнига")],selection:$format)
-                    let summary=BookDescription.clean(loadedSummary ?? book.summary ?? "")
+                    let summary=BookDescription.clean(loadedSummary ?? displayed.summary ?? "")
                     if loadingSummary && summary.isEmpty { ProgressView().controlSize(.small) }
                     Text(verbatim:L10n.render(summary.isEmpty ? "Описание пока недоступно.":summary,language:localizationLanguage))
                         .font(.system(size:14)).lineSpacing(4)
@@ -45,8 +48,9 @@ struct CatalogBookDetailSheet:View {
                     }
                     PurpleAction(title:actionTitle,icon:local == nil ? "arrow.down.to.line":"book") {
                         if let local {reading=local}
-                        else if task?.state == .paused {downloads.retry(book.id)}
-                        else if book.epubURL != nil {downloads.enqueue(book)}
+                        else if task?.state == .paused {downloads.retry(displayed.id)}
+                        else if displayed.epubURL != nil {downloads.enqueue(displayed)}
+                        else if let offer = displayed.offers?.first { webOffer = offer }
                         else {findBook()}
                     }.disabled(busy && task?.state != .paused)
                     if local != nil {
@@ -55,9 +59,16 @@ struct CatalogBookDetailSheet:View {
                         Button("Открыть библиотеку") {navigation.libraryScope="books";navigation.tab = .library;onClose()}
                             .font(.system(size:13,weight:.semibold))
                     }
+                    if let offers = displayed.offers, offers.count > 1 {
+                        Menu("Источники и форматы") {
+                            ForEach(offers) { offer in
+                                Button(offer.sourceName + " · " + (offer.format?.uppercased() ?? L10n.text("На сайте"))) { select(offer) }
+                            }
+                        }.frame(minHeight: 44)
+                    }
                     BookFavoriteButton(favorite:favorite) {
                         let newValue = !favorite
-                        CatalogBookmarks.set(book,key:CatalogBookmarks.favoritesKey,enabled:newValue)
+                        CatalogBookmarks.set(displayed,key:CatalogBookmarks.favoritesKey,enabled:newValue)
                         if let local, (local.isFavorite ?? false) != newValue {library.toggleFavorite(local)}
                     }
                     if task?.state == .failed {
@@ -72,23 +83,30 @@ struct CatalogBookDetailSheet:View {
                             .accessibilityLabel(Text(verbatim:L10n.render("Назад",language:localizationLanguage)))
                     }
                     ToolbarItemGroup(placement:.topBarTrailing) {
-                        if let url=book.epubURL ?? book.navigationURL {
+                        if let url=displayed.epubURL ?? displayed.navigationURL {
                             ShareLink(item:url) {Image(systemName:"square.and.arrow.up").font(.system(size:17))}
                         }
-                        Button {CatalogBookmarks.toggle(book,key:CatalogBookmarks.wishlistKey)} label:{
+                        Button {CatalogBookmarks.toggle(displayed,key:CatalogBookmarks.wishlistKey)} label:{
                             Image(systemName:wished ? "bookmark.fill":"bookmark").font(.system(size:17))
                         }.accessibilityLabel(Text(verbatim:L10n.render(wished ? "Убрать из списка чтения":"Хочу прочитать",language:localizationLanguage)))
                     }
                 }.tint(Color(hex:accentHex))
                 .task(id:book.id) {
                     loadingSummary=true
-                    loadedSummary=await BookDescription.catalog(book,language:language)
+                    resolvedBook = try? await UnifiedSearchService.detail(displayed)
+                    if let summary = displayed.summary { loadedSummary = summary }
+                    else { loadedSummary = await BookDescription.catalog(displayed,language:language) }
                     loadingSummary=false
                 }
                 .onChange(of:format) {_,value in
                     if value == "audio" {
-                        navigation.bookToSearch=book.title;navigation.searchScope="audio";navigation.tab = .search
+                        navigation.bookToSearch=displayed.title;navigation.searchScope="audio";navigation.tab = .search
                         onClose()
+                    }
+                }
+                .sheet(item: $webOffer) { offer in
+                    if let source = SourceCatalog.source(offer.sourceID) {
+                        SourceWebScreen(source: source, url: offer.pageURL, title: displayed.title, author: displayed.author)
                     }
                 }
                 .fullScreenCover(item:$reading) {ReaderScreen(bookID:$0.id)}
@@ -98,10 +116,15 @@ struct CatalogBookDetailSheet:View {
         if local != nil{return "Читать книгу"}
         if task?.state == .paused {return "Продолжить загрузку"}
         if busy{return task?.state.title ?? "В очереди"}
-        if book.epubURL == nil{return "Найти книгу в каталоге"}
-        return "Скачать книгу (EPUB)"
+        if displayed.epubURL == nil{return displayed.offers?.isEmpty == false ? "Открыть на сайте" : "Найти книгу в каталоге"}
+        return "Скачать книгу"
+    }
+    private func select(_ offer: BookOffer) {
+        guard let file = offer.fileURL else { webOffer = offer; return }
+        var choice = displayed; choice.epubURL = file; choice.downloadFormat = offer.format
+        resolvedBook = choice; downloads.enqueue(choice)
     }
     private func findBook() {
-        navigation.bookToSearch=book.title;navigation.searchScope="books";navigation.tab = .search;onClose()
+        navigation.bookToSearch=displayed.title;navigation.searchScope="books";navigation.tab = .search;onClose()
     }
 }

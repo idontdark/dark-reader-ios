@@ -90,9 +90,9 @@ struct AudioCollectionScreen:View {
     private func load() async {
         let token=UUID();requestID=token;loading=true;message=nil;failed=false
         defer {if requestID == token {loading=false}}
-        guard !disabled.components(separatedBy:",").contains(source.rawValue) else {message="Включите источник аудиокниг.";return}
         do {
-            let found=try await AudioCatalogService.featured(source:source,language:contentLanguage,genres:genres,newest:newest)
+            let found=try await UnifiedDiscoveryService.audio(genres:genres,language:contentLanguage,
+                shelf:newest ? .recent : personalized ? .personalized : genres.isEmpty ? .popular : .genre)
             try Task.checkCancellation()
             guard requestID == token else{return}
             books=found

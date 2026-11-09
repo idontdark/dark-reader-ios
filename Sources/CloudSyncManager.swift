@@ -17,6 +17,7 @@ final class CloudSyncManager: ObservableObject {
         BGTaskScheduler.shared.cancel(taskRequestWithIdentifier:"com.ipadark.reader.sync")
     }
     func attach(_ books:BookshelfStore) {
+        SourcePreferences.migrate()
         bookStore=books
         GoogleDriveBackup.shared.attach(books,cloud:self)
         books.onLocalChange = {GoogleDriveBackup.shared.requestBackup()}
@@ -40,7 +41,7 @@ final class CloudSyncManager: ObservableObject {
             "readerTheme", "readerFont", "readerFontSize", "readerScroll", "readerProgressDisplay", "readerPageAnimation", "readerPersistentProgress",
             "appTheme", "appAppearance", "accentHex", "readerBackgroundHex", "readerTextHex",
             "appLanguage", "preferredBookLanguage", "preferredGenresJSON",
-            "preferredAuthorsJSON", "wantsBooks", "wantsAudiobooks", "savedOPDSCatalogs", "favoriteBooksJSON",
+            "preferredAuthorsJSON", "wantsBooks", "wantsAudiobooks", "favoriteBooksJSON",
             "catalog.wishlistJSON", "catalog.favoritesJSON", "discovery.wishlistJSON"
         ]
         var values: [String: String] = [:]
@@ -49,6 +50,8 @@ final class CloudSyncManager: ObservableObject {
                 values[key] = String(describing: value)
             }
         }
+        if let data = defaults.data(forKey: SourcePreferences.key), let value = String(data: data, encoding: .utf8) { values[SourcePreferences.key] = value }
+        if let value = defaults.string(forKey: "preferredAudioGenresJSON") { values["preferredAudioGenresJSON"] = value }
         return values
     }
 
@@ -57,6 +60,10 @@ final class CloudSyncManager: ObservableObject {
         remotelyAppliedUntil = Date(timeIntervalSinceNow: 5)
         for (key, value) in values {
             switch key {
+            case "sources.enabled.v1":
+                if let data = value.data(using: .utf8), (try? JSONDecoder().decode([String: Bool].self, from: data)) != nil { defaults.set(data, forKey: key) }
+            case "preferredAudioGenresJSON":
+                if let data = value.data(using: .utf8), (try? JSONDecoder().decode([String].self, from: data)) != nil { defaults.set(value, forKey: key) }
             case "readerProgressDisplay":
                 if ["percent","pages"].contains(value) { defaults.set(value,forKey:key) }
             case "readerFontSize":
@@ -67,7 +74,7 @@ final class CloudSyncManager: ObservableObject {
                 defaults.set(value == "1" || value.lowercased() == "true", forKey: key)
             case "readerTheme", "readerFont", "appTheme", "appAppearance", "accentHex",
                  "readerBackgroundHex", "readerTextHex", "appLanguage",
-                 "preferredBookLanguage", "preferredGenresJSON", "preferredAuthorsJSON", "savedOPDSCatalogs", "favoriteBooksJSON",
+                 "preferredBookLanguage", "preferredGenresJSON", "preferredAuthorsJSON", "favoriteBooksJSON",
                  "catalog.wishlistJSON", "catalog.favoritesJSON", "discovery.wishlistJSON":
                 defaults.set(value, forKey: key)
             default:

@@ -29,6 +29,9 @@ struct AudioCatalogScreen: View {
     @State private var showPlayer = false
     @AppStorage("savedOPDSCatalogs") private var savedCatalogs="[]"
     @AppStorage("preferredAudioCatalogID") private var customCatalogID=""
+    @State private var acceptedRevision = 0
+    @State private var sourceFailures = 0
+    @AppStorage(SourcePreferences.key) private var enabledSourceData = Data()
     @State private var showCatalogs=false
     @State private var webCatalog:AudioWebCatalog?
     private var customCatalog:NamedOPDSCatalog? {OPDSSources.decode(savedCatalogs).first {$0.isAudio && $0.id.uuidString == customCatalogID}}
@@ -44,19 +47,6 @@ struct AudioCatalogScreen: View {
                         ReaderHeader(title: "Аудиокниги", trailingIcon: nil, trailingAction: nil)
                     }
                     VStack(alignment: .leading, spacing: ReaderMetrics.formSpacing) {
-                        Menu {
-                            ForEach(AudioSource.online.filter {!disabledSources.components(separatedBy:",").contains($0.rawValue)}) {item in
-                                Button(L10n.text(item.title),systemImage:"headphones") {customCatalogID="";source=item}
-                            }
-                            ForEach(OPDSSources.decode(savedCatalogs).filter {$0.isAudio}) {item in
-                                Button(item.name,systemImage:"headphones") {customCatalogID=item.id.uuidString}
-                            }
-                            Divider()
-                            Button("Настроить каталоги") {showCatalogs=true}
-                            if source == .knigavuhe || source == .akniga {
-                                Button("Открыть поиск на сайте",systemImage:"safari") {webCatalog=AudioWebCatalog.search(host:source == .knigavuhe ? "knigavuhe.org":"akniga.org",query:query)}
-                            }
-                        } label:{ReaderSearchSourceLabel(title:sourceName,icon:"headphones")}
                         ReaderQueryField(query:$navigation.searchQuery, focus:$queryFocused) {if !searching {startSearch()}}
                         ReaderSegmentedControl(items:[("title","По названию"),("author","По автору")],selection:Binding(
                             get:{byAuthor ? "author":"title"},set:{byAuthor=$0 == "author"}))
@@ -92,7 +82,7 @@ struct AudioCatalogScreen: View {
                     }
                     HStack {
                         SectionLabel(text:"Результаты")
-                        if !books.isEmpty && [.knigavuhe,.akniga].contains(source) {Text(verbatim:L10n.text("Показана часть выдачи сайта. Уточните запрос, если нужной книги нет.")).font(.caption).foregroundStyle(ReaderStyle.secondary)}
+                        if sourceFailures > 0 {Text(verbatim:L10n.text("Часть источников не ответила. Результаты остальных уже доступны.")).font(.caption).foregroundStyle(ReaderStyle.secondary)}
                         if books.count>=100 {Text(verbatim:L10n.text("Показаны первые 100 результатов. Уточните название или автора.")).font(.caption).foregroundStyle(ReaderStyle.secondary)}
                         Spacer()
                         if didSearch {
@@ -135,7 +125,7 @@ struct AudioCatalogScreen: View {
                                                 .font(.footnote)
                                                 .foregroundStyle(ReaderStyle.secondary)
                                                 .lineLimit(2)
-                                            Text(verbatim:L10n.render(book.source.title,language:localizationLanguage))
+                                            Text(verbatim:L10n.render(book.sourceTitle,language:localizationLanguage))
                                                 .font(.caption2)
                                                 .foregroundStyle(color)
                                         }
@@ -161,7 +151,6 @@ struct AudioCatalogScreen: View {
             }
             .readerCanvas()
             .toolbar(.hidden, for: .navigationBar)
-            .navigationDestination(isPresented:$showCatalogs) {CustomOPDSCatalogsScreen()}
             .sheet(item:$webCatalog) {AudioWebCatalogScreen(url:$0.url)}
             .onChange(of:customCatalogID) {_,_ in cancelSearch();didSearch=false;books=[];message=nil}
             .fullScreenCover(item: $selected) { book in
@@ -182,7 +171,7 @@ struct AudioCatalogScreen: View {
             }
             .onChange(of:navigation.bookToSearch) {_,_ in handlePendingSearch()}
             .onChange(of:navigation.authorToSearch) {_,_ in handlePendingSearch()}
-            .onChange(of: source) { _, _ in
+            .onChange(of: enabledSourceData) { _, _ in
                 cancelSearch()
                 didSearch = false
                 message = nil
@@ -213,61 +202,41 @@ struct AudioCatalogScreen: View {
     }
 
     private func startSearch() {
-        queryFocused = false
-        cancelSearch()
-        guard customCatalog != nil || (!disabledSources.components(separatedBy:",").contains(source.rawValue) && source != .local) else {
-            message = "Включите выбранный источник в настройках источников."
-            return
-        }
-        didSearch = true
-        books = []
-        message = nil
-        searching = true
-        let token = UUID()
-        searchID = token
-        let chosenSource = source
-        let selectedCatalog=customCatalog
-        let term = query
-        let authorMode = byAuthor
-        hintTask = Task {
-            try? await Task.sleep(nanoseconds: 7_000_000_000)
-            if !Task.isCancelled && searching && searchID == token { showVPNHint = true }
-        }
+        queryFocused = false; cancelSearch()
+        guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        didSearch = true; books = []; message = nil; searching = true; acceptedRevision = 0; sourceFailures = 0
+        let token = UUID(); searchID = token
+        let term = query; let authorMode = byAuthor
+        let selectedLanguage = ReaderPreferences.effectiveLanguage(bookLanguage, appLanguage: language)
         searchTask = Task {
+            defer { if searchID == token { searching = false } }
             do {
-                let result:[AudioBook]
-                if let selectedCatalog {
-                    let entries=try await OPDSClient(searchEndpoint:selectedCatalog.url,queryParameter:selectedCatalog.searchParameter).search(term)
-                    result=entries.filter {$0.audioURL != nil || $0.navigationURL != nil}.map {entry in
-                        AudioBook(id:"opds:"+selectedCatalog.id.uuidString+":"+entry.id,source:.opds,sourceID:entry.id,
-                                  title:entry.title,author:entry.author,description:entry.summary ?? "",coverURL:entry.coverURL,language:nil,
-                                  streamURL:entry.audioURL,feedURL:entry.navigationURL)
+                let final = try await UnifiedSearchService.audio(query: term, byAuthor: authorMode, language: selectedLanguage, onResults: { update in
+                    await MainActor.run {
+                        guard searchID == token, !Task.isCancelled, update.sequence > acceptedRevision else { return }
+                        acceptedRevision = update.sequence; books = update.books; sourceFailures = update.failed.count
                     }
-                } else {
-                    result=try await AudioCatalogService.search(source:chosenSource,query:term,byAuthor:authorMode,
-                             language:ReaderPreferences.effectiveLanguage(bookLanguage,appLanguage:language))
-                }
+                })
                 try Task.checkCancellation()
-                guard source == chosenSource && searchID == token else { return }
-                books = result
-            } catch is CancellationError {
-                // A canceled search is not an error and must not repaint old results.
-            } catch {
-                guard !Task.isCancelled && searchID == token else { return }
-                message = "Не удалось загрузить записи. Проверьте интернет или попробуйте VPN."
-            }
-            guard searchID == token else { return }
-            hintTask?.cancel()
-            searching = false
-            showVPNHint = false
+                guard searchID == token else { return }
+                books = final
+            } catch is CancellationError { }
+            catch { if searchID == token { message = L10n.errorDescription(error) } }
         }
     }
+
 }
 
 struct AudioBookDetailScreen:View {
     @AppStorage("appLanguage") private var localizationLanguage="ru"
 
     let book:AudioBook
+    @State private var selectedEdition: AudioEdition?
+    @State private var resolvedBook: AudioBook?
+    @State private var webPage = false
+    @State private var playable = false
+    private var editionBook: AudioBook { selectedEdition.map { book.selecting($0) } ?? book }
+    private var displayed: AudioBook { resolvedBook ?? editionBook }
     let onPlay:()->Void
     @EnvironmentObject private var player:AudioPlayerModel
     @EnvironmentObject private var navigation:ReaderNavigation
@@ -280,42 +249,62 @@ struct AudioBookDetailScreen:View {
     @State private var message:String?
     @State private var format="audio"
     @State private var showPlayer=false
-    private var favorite:Bool {decode(favoritesJSON).contains {$0.id == book.id}}
-    private var saved:Bool {decode(historyJSON).contains {$0.id == book.id}}
+    private var favorite:Bool {decode(favoritesJSON).contains {$0.id == displayed.id}}
+    private var saved:Bool {decode(historyJSON).contains {$0.id == displayed.id}}
     var body:some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment:.leading,spacing:16) {
-                    BookDetailHero(title:book.title,author:book.author,coverURL:book.coverURL,
-                                   tags:(book.genres ?? []).prefix(2).map {ReaderPreferences.genreName($0,language:UserDefaults.standard.string(forKey:"appLanguage") ?? "ru")})
+                    BookDetailHero(title:displayed.title,author:displayed.author,coverURL:displayed.coverURL,
+                                   tags:(displayed.genres ?? []).prefix(2).map {ReaderPreferences.genreName($0,language:UserDefaults.standard.string(forKey:"appLanguage") ?? "ru")})
                     ReaderSegmentedControl(items:[("books","Книга"),("audio","Аудиокнига")],selection:$format)
-                    let description=BookDescription.clean(book.description)
+                    let description=BookDescription.clean(displayed.description)
                     if !description.isEmpty {
                         Text(description).font(.system(size:14)).lineSpacing(4).foregroundStyle(.white.opacity(0.88))
                     }
                     if loading {ProgressView().padding(.vertical,10).tint(Color(hex:accentHex))}
                     if let message {Text(verbatim:L10n.render(message,language:localizationLanguage)).font(.system(size:12)).foregroundStyle(ReaderStyle.secondary)}
-                    PurpleAction(title:"Слушать аудиокнигу",icon:"play.fill") {
-                        player.open(book,tracks:chapters);showPlayer=true;onPlay()
-                    }.disabled(chapters.isEmpty || loading)
-                    AudioDownloadAction(book:book,chapters:chapters)
-                    if [.knigavuhe,.akniga].contains(book.source),let url=book.feedURL {Link("Открыть книгу на сайте",destination:url).font(.subheadline).frame(minHeight:44)}
+                    if let narrator = displayed.narrator, !narrator.isEmpty {
+                        Label(narrator, systemImage: "person.wave.2").font(.subheadline).foregroundStyle(ReaderStyle.secondary)
+                    }
+                    if let duration = displayed.durationSeconds, duration > 0 {
+                        Text(verbatim: String(format: L10n.text("%d ч %d мин"), Int(duration) / 3600, Int(duration) % 3600 / 60)).font(.caption).foregroundStyle(ReaderStyle.secondary)
+                    }
+                    if let editions = book.editions, editions.count > 1 {
+                        Menu("Озвучка и источник") {
+                            ForEach(editions) { edition in
+                                Button((edition.narrator?.isEmpty == false ? edition.narrator! : SourceCatalog.source(edition.providerID)?.name ?? edition.providerID)) {
+                                    selectedEdition = edition; resolvedBook = nil
+                                }
+                            }
+                        }.frame(minHeight: 44)
+                    }
+                    if playable && !chapters.isEmpty && !loading {
+                        PurpleAction(title:"Слушать аудиокнигу",icon:"play.fill") {
+                            player.open(displayed,tracks:chapters);showPlayer=true;onPlay()
+                        }
+                        if chapters.allSatisfy({["mp3", "m4b", "m4a", "wav", "flac", "aac"].contains($0.url.pathExtension.lowercased()) || $0.url.isFileURL}) {
+                            AudioDownloadAction(book:displayed,chapters:chapters)
+                        }
+                    } else if !loading && displayed.pageURL != nil {
+                        PurpleAction(title: "Слушать на сайте", icon: "safari") { webPage = true }
+                    }
                     BookFavoriteButton(favorite:favorite) {
                         var values=decode(favoritesJSON)
-                        if favorite {values.removeAll {$0.id == book.id}}
-                        else {values.insert(book,at:0);RecommendationProfile.record(title:book.title,author:book.author,weight:4,genre:book.genres?.first)}
+                        if favorite {values.removeAll {$0.id == displayed.id}}
+                        else {values.insert(displayed,at:0);RecommendationProfile.record(title:displayed.title,author:displayed.author,weight:4,genre:displayed.genres?.first)}
                         favoritesJSON=encode(values)
                     }
-                    if book.source == .local {
+                    if displayed.source == .local {
                         NavigationLink("Изменить книгу и порядок глав") {AudioEditScreen(book:book)}
                             .font(.system(size:12)).foregroundStyle(ReaderStyle.secondary)
                     }
-                    if !chapters.isEmpty {
+                    if playable && !chapters.isEmpty {
                         VStack(alignment:.leading,spacing:5) {
                             Text(verbatim:L10n.render("Главы",language:localizationLanguage)).font(.system(size:15,weight:.semibold)).padding(.top,8).padding(.bottom,5)
                             ForEach(Array(chapters.enumerated()),id:\.element.id) {index,chapter in
                                 Button {
-                                    player.open(book,tracks:chapters);player.playChapter(index);showPlayer=true;onPlay()
+                                    player.open(displayed,tracks:chapters);player.playChapter(index);showPlayer=true;onPlay()
                                 } label:{
                                     HStack {
                                         Text("\(index+1)").font(.system(size:11)).foregroundStyle(ReaderStyle.secondary).frame(width:20)
@@ -341,18 +330,42 @@ struct AudioBookDetailScreen:View {
                         }
                         Button {
                             var values=decode(historyJSON)
-                            if saved {values.removeAll {$0.id == book.id}} else {values.insert(book,at:0)}
+                            if saved {values.removeAll {$0.id == displayed.id}} else {values.insert(displayed,at:0)}
                             historyJSON=encode(values)
                         } label:{Image(systemName:saved ? "bookmark.fill":"bookmark").font(.system(size:17))}
                             .accessibilityLabel(Text(verbatim:L10n.render(saved ? "Удалить из библиотеки":"Добавить в библиотеку",language:localizationLanguage)))
                     }
                 }.tint(Color(hex:accentHex))
-                .task {defer{loading=false};do{chapters=try await AudioCatalogService.chapters(for:book)}catch{message=L10n.errorDescription(error)}}
+                .task(id: selectedEdition?.id ?? book.id) { await loadEdition() }
+                .sheet(isPresented: $webPage) {
+                    if let id = displayed.providerID, let source = SourceCatalog.source(id), let page = displayed.pageURL {
+                        SourceWebScreen(source: source, url: page, title: displayed.title, author: displayed.author)
+                    }
+                }
                 .onChange(of:format) {_,value in
-                    if value == "books" {navigation.bookToSearch=book.title;navigation.searchScope="books";navigation.tab = .search;dismiss()}
+                    if value == "books" {navigation.bookToSearch=displayed.title;navigation.searchScope="books";navigation.tab = .search;dismiss()}
                 }
                 .fullScreenCover(isPresented:$showPlayer) {AudioPlayerScreen().environmentObject(player)}
         }
+    }
+    private func loadEdition() async {
+        loading = true; chapters = []; message = nil; playable = false
+        defer { if !Task.isCancelled { loading = false } }
+        let current = editionBook
+        do {
+            if let id = current.providerID, let source = SourceCatalog.source(id) {
+                resolvedBook = try await AudioSourceFactory.adapter(source).detail(current)
+            }
+            let tracks = try await AudioCatalogService.chapters(for: resolvedBook ?? current)
+            try Task.checkCancellation()
+            guard let first = tracks.first else { return }
+            var valid = first.url.isFileURL
+            if !valid { valid = await SourceFileProbe.playable(first.url) }
+            try Task.checkCancellation()
+            if valid { chapters = tracks; playable = true }
+            else { message = "Встроенное воспроизведение недоступно. Можно открыть книгу на сайте." }
+        } catch is CancellationError { }
+        catch { if !Task.isCancelled { message = "Встроенное воспроизведение недоступно. Можно открыть книгу на сайте." } }
     }
     private func decode(_ raw:String)->[AudioBook] {raw.data(using:.utf8).flatMap{try? JSONDecoder().decode([AudioBook].self,from:$0)} ?? []}
     private func encode(_ values:[AudioBook])->String {(try? JSONEncoder().encode(values)).map{String(decoding:$0,as:UTF8.self)} ?? "[]"}
