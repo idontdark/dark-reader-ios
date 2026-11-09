@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run production catalog client regressions
         run: |
-          swiftc -swift-version 5 -parse-as-library Sources/SourceCatalog.swift Sources/SourceCatalogGenerated.swift Sources/Book.swift Sources/GenreTaxonomy.swift Sources/SearchQueryPolicy.swift Sources/CatalogSearchAccumulator.swift Sources/OPDSClient.swift scripts/catalog_regressions.swift -o /tmp/catalog-regressions
+          swiftc -swift-version 5 -parse-as-library Sources/SourceHTTPClient.swift Sources/SourceCatalog.swift Sources/SourceCatalogGenerated.swift Sources/Book.swift Sources/GenreTaxonomy.swift Sources/SearchQueryPolicy.swift Sources/CatalogSearchAccumulator.swift Sources/OPDSClient.swift scripts/catalog_regressions.swift -o /tmp/catalog-regressions
           /tmp/catalog-regressions
   validate:
     runs-on: macos-15-intel
@@ -50,7 +50,7 @@ jobs:
         id: core-tests
         continue-on-error: true
         run: |
-          cp Sources/{SourceHTTPClient,SourceFileProbe,SourceHealthChecker,SearchQueryPolicy,CatalogSearchAccumulator,OPDSClient,CatalogProviders,FlibustaCatalog,HTMLSourceParser,BookSourceAdapters,AudioSourceAdapters,AudioModels,AudioCatalogService,AudioTrackCache,AudioWebCatalogModels,WebAudioSourceService,EditionIdentity,UnifiedSearchService,UnifiedDiscoveryService,RecommendationEngine,RecommendationProfile,DiscoveryModels,SourceCatalog,SourceCatalogGenerated,GenreTaxonomy,DocumentImport,Book,BookFormatConverter,FB2Document,BookMetadata,ReaderOptions,CloudLibraryModels,LocalLibraryBackup}.swift scripts/core-regressions/Harness/
+          cp Sources/{MediaDownloadState,SourceHTTPClient,SourceFileProbe,SourceHealthChecker,SearchQueryPolicy,CatalogSearchAccumulator,OPDSClient,CatalogProviders,FlibustaCatalog,HTMLSourceParser,BookSourceAdapters,AudioSourceAdapters,AudioModels,AudioCatalogService,AudioTrackCache,AudioWebCatalogModels,WebAudioSourceService,EditionIdentity,UnifiedSearchService,UnifiedDiscoveryService,RecommendationEngine,RecommendationProfile,DiscoveryModels,SourceCatalog,SourceCatalogGenerated,GenreTaxonomy,DocumentImport,Book,BookFormatConverter,FB2Document,BookMetadata,ReaderOptions,CloudLibraryModels,LocalLibraryBackup}.swift scripts/core-regressions/Harness/
           swift run --package-path scripts/core-regressions ReaderCoreRegressions
       - name: Prepare project
         run: |
@@ -89,7 +89,7 @@ jobs:
           key: source-core-${{ runner.os }}-${{ hashFiles('scripts/core-regressions/Package.swift') }}
       - name: Audit real source adapters and genre metadata
         run: |
-          cp Sources/{SourceHTTPClient,SourceFileProbe,SourceHealthChecker,SearchQueryPolicy,CatalogSearchAccumulator,OPDSClient,CatalogProviders,FlibustaCatalog,HTMLSourceParser,BookSourceAdapters,AudioSourceAdapters,AudioModels,AudioCatalogService,AudioTrackCache,AudioWebCatalogModels,WebAudioSourceService,EditionIdentity,UnifiedSearchService,UnifiedDiscoveryService,RecommendationEngine,RecommendationProfile,DiscoveryModels,SourceCatalog,SourceCatalogGenerated,GenreTaxonomy,DocumentImport,Book,BookFormatConverter,FB2Document,BookMetadata,ReaderOptions,CloudLibraryModels,LocalLibraryBackup}.swift scripts/core-regressions/Harness/
+          cp Sources/{MediaDownloadState,SourceHTTPClient,SourceFileProbe,SourceHealthChecker,SearchQueryPolicy,CatalogSearchAccumulator,OPDSClient,CatalogProviders,FlibustaCatalog,HTMLSourceParser,BookSourceAdapters,AudioSourceAdapters,AudioModels,AudioCatalogService,AudioTrackCache,AudioWebCatalogModels,WebAudioSourceService,EditionIdentity,UnifiedSearchService,UnifiedDiscoveryService,RecommendationEngine,RecommendationProfile,DiscoveryModels,SourceCatalog,SourceCatalogGenerated,GenreTaxonomy,DocumentImport,Book,BookFormatConverter,FB2Document,BookMetadata,ReaderOptions,CloudLibraryModels,LocalLibraryBackup}.swift scripts/core-regressions/Harness/
           swift run --package-path scripts/core-regressions ReaderCoreRegressions --live-audit
       - uses: actions/upload-artifact@v4
         if: always()

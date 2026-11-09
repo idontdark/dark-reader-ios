@@ -158,7 +158,7 @@ enum AudioCatalogService {
                       let url = secureURL(address) else { return nil }
                 return AudioChapter(
                     id: "\(book.id):\(index)",
-                    title: string(value["title"]) ?? "Глава \(index + 1)",
+                    title: string(value["title"]) ?? String(index + 1),
                     url: url,
                     durationSeconds: Double(string(value["playtime"]) ?? "")
                 )

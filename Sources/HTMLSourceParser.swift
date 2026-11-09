@@ -131,7 +131,9 @@ enum HTMLSourceParser {
                            genres: genres, isbn: scalar(ld["isbn"]), publicationDate: scalar(ld["datePublished"]),
                            popularity: popularity, popularityBasis: popularity == nil ? nil : "Рейтинг и число оценок в источнике",
                            offers: offers, series: scalar(ld["isPartOf"]) ?? field(["серия", "цикл", "series"], in: doc),
-                           seriesNumber: scalar(ld["position"]).flatMap(Double.init))
+                           seriesNumber: scalar(ld["position"]).flatMap(Double.init),
+                           narrator: scalar(ld["readBy"]) ?? field(["читает", "исполнитель", "исполнители", "reader", "narrator"], in: doc) ?? value("[itemprop=readBy], .book-reader, .book_reader", in: doc),
+                           durationSeconds: duration(scalar(ld["duration"])))
     }
     static func chapters(_ doc: Document, base: URL) throws -> [AudioChapter] {
         var result: [AudioChapter] = []; var seen = Set<URL>()

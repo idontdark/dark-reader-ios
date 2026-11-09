@@ -28,7 +28,7 @@ final class SourceFileProbe: NSObject, URLSessionDataDelegate, @unchecked Sendab
         configuration.timeoutIntervalForRequest = 8; configuration.timeoutIntervalForResource = 12
         let session = URLSession(configuration: configuration, delegate: self, delegateQueue: nil)
         self.session = session
-        var request = URLRequest(url: url); request.setValue("bytes=0-63", forHTTPHeaderField: "Range")
+        var request = URLRequest(url: url); request.setValue(kind == .book ? "bytes=0-4095" : "bytes=0-63", forHTTPHeaderField: "Range")
         session.dataTask(with: request).resume()
     }
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse,
@@ -39,8 +39,10 @@ final class SourceFileProbe: NSObject, URLSessionDataDelegate, @unchecked Sendab
         validStatus = true; completionHandler(.allow)
     }
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
-        bytes.append(data.prefix(max(0, 64 - bytes.count)))
-        if bytes.count >= 16 { finish(accepted()) }
+        let limit = kind == .book ? 4096 : 64
+        bytes.append(data.prefix(max(0, limit - bytes.count)))
+        if accepted() { finish(true) }
+        else if bytes.count >= limit { finish(false) }
     }
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) { finish(error == nil && accepted()) }
     private func accepted() -> Bool {
@@ -48,7 +50,7 @@ final class SourceFileProbe: NSObject, URLSessionDataDelegate, @unchecked Sendab
         switch kind {
         case .book:
             return bytes.starts(with: [0x50, 0x4B]) || bytes.starts(with: Data("%PDF".utf8)) ||
-                String(decoding: bytes, as: UTF8.self).contains("FictionBook") || bytes.starts(with: Data("{\\rtf".utf8))
+                String(decoding: bytes, as: UTF8.self).contains("FictionBook") || bytes.starts(with: Data("{\\rtf".utf8)) || (bytes.count >= 68 && String(decoding: bytes[60..<68], as: UTF8.self) == "BOOKMOBI")
         case .audio, .audioFile:
             return bytes.starts(with: Data("ID3".utf8)) || (bytes.count > 2 && bytes[0] == 0xFF && bytes[1] & 0xE0 == 0xE0) ||
                 (bytes.count >= 8 && String(decoding: bytes[4..<8], as: UTF8.self) == "ftyp") ||

@@ -693,3 +693,10 @@
 "Загрузка приостановлена" = "Download paused";
 "Источник не проверен и выключен по умолчанию." = "This source is unverified and disabled by default.";
 "Язык не указан источником" = "Language not provided by the source";
+
+"По исполнителю" = "By narrator";
+"Имя исполнителя" = "Narrator’s name";
+"Приостановить" = "Pause download";
+"Найдите книгу по названию или автору. Приложение проверит все включённые источники и покажет доступные форматы." = "Search by title or author. The app checks all enabled sources and shows the available formats.";
+
+"Веб-источник" = "Website source";

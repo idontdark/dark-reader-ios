@@ -58,7 +58,7 @@ enum L10n {
         return message
     }
     static func authorName(_ value:String)->String {
-        value == "Неизвестный автор" ? text(value):value
+        ["Неизвестный автор", "Автор не указан"].contains(value) ? text(value):value
     }
     static func bookmarkCount(_ count:Int,language:String?=nil)->String {
         let code=language ?? self.language

@@ -76,6 +76,7 @@ import ReadiumZIPFoundation
         check(!LegacyReaderUpgrade.canUpgrade(locatorJSON: book.locatorJSON, bookmarks: [], explicitLocation: nil), "legacy optimization preserves nonzero progress")
         check(!LegacyReaderUpgrade.canUpgrade(locatorJSON: nil, bookmarks: ["bookmark"], explicitLocation: nil), "legacy optimization preserves saved bookmarks")
         check(LegacyReaderUpgrade.canUpgrade(locatorJSON: "{\"locations\":{\"totalProgression\":0,\"position\":1}}", bookmarks: [], explicitLocation: nil), "unread legacy compilation may be optimized")
+        try await DocumentRegressionChecks.run(in: folder, epub: epub)
         print("Reader core regressions completed")
     }
 }

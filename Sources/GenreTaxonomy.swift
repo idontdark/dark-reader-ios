@@ -31,6 +31,7 @@ enum GenreTaxonomy {
             if aliases[subject] != nil { found.insert(subject); continue }
             let text = normalized(subject)
             guard !text.isEmpty else { continue }
+            if ["science fiction and fantasy", "science fiction fantasy", "fantasy and science fiction", "fantasy science fiction", "фантастика и фэнтези", "фантастика фэнтези", "фэнтези и фантастика", "фэнтези фантастика"].contains(text) { continue }
             if text.contains("history and criticism") || text.contains("история и критика") { continue }
             if (text.contains("history") && text.hasSuffix(" fiction")) || text.contains("historical fiction") || text.contains("historical romance") || text.contains("историческ") && text.contains("роман") {
                 found.insert("historical_fiction"); continue

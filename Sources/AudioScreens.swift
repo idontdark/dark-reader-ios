@@ -14,7 +14,11 @@ struct AudioCatalogScreen: View {
         get { navigation.searchQuery }
         nonmutating set { navigation.searchQuery = newValue }
     }
-    @State private var byAuthor = false
+    @State private var searchMode = "title"
+    private var byAuthor: Bool {
+        get { searchMode == "author" }
+        nonmutating set { searchMode = newValue ? "author" : "title" }
+    }
     @State private var books: [AudioBook] = []
     @State private var searching = false
     @State private var didSearch = false
@@ -41,9 +45,8 @@ struct AudioCatalogScreen: View {
                         ReaderHeader(title: "Аудиокниги", trailingIcon: nil, trailingAction: nil)
                     }
                     VStack(alignment: .leading, spacing: ReaderMetrics.formSpacing) {
-                        ReaderQueryField(query:$navigation.searchQuery, focus:$queryFocused) {if !searching {startSearch()}}
-                        ReaderSegmentedControl(items:[("title","По названию"),("author","По автору")],selection:Binding(
-                            get:{byAuthor ? "author":"title"},set:{byAuthor=$0 == "author"}))
+                        ReaderQueryField(query:$navigation.searchQuery, focus:$queryFocused, placeholder: searchMode == "narrator" ? "Имя исполнителя" : "Название или автор") {if !searching {startSearch()}}
+                        ReaderSegmentedControl(items:[("title","По названию"),("author","По автору"),("narrator","По исполнителю")],selection:$searchMode)
                         ReaderSearchLanguage(selection:$bookLanguage)
 
                         PurpleAction(title: searching ? "Отменить поиск" : "Найти аудиокниги",
@@ -199,12 +202,12 @@ struct AudioCatalogScreen: View {
         guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         didSearch = true; books = []; message = nil; searching = true; acceptedRevision = 0; sourceFailures = 0
         let token = UUID(); searchID = token
-        let term = query; let authorMode = byAuthor
+        let term = query; let authorMode = byAuthor; let narratorMode = searchMode == "narrator"
         let selectedLanguage = ReaderPreferences.effectiveLanguage(bookLanguage, appLanguage: language)
         searchTask = Task {
             defer { if searchID == token { searching = false } }
             do {
-                let final = try await UnifiedSearchService.audio(query: term, byAuthor: authorMode, language: selectedLanguage, onResults: { update in
+                let final = try await UnifiedSearchService.audio(query: term, byAuthor: authorMode, language: selectedLanguage, byNarrator: narratorMode, onResults: { update in
                     await MainActor.run {
                         guard searchID == token, !Task.isCancelled, update.sequence > acceptedRevision else { return }
                         acceptedRevision = update.sequence; books = update.books; sourceFailures = update.failed.count
@@ -253,6 +256,7 @@ struct AudioBookDetailScreen:View {
                     BookDetailHero(title:displayed.title,author:displayed.author,coverURL:displayed.coverURL,
                                    tags:(displayed.genres ?? []).prefix(2).map {ReaderPreferences.genreName($0,language:UserDefaults.standard.string(forKey:"appLanguage") ?? "ru")})
                     ReaderSegmentedControl(items:[("books","Книга"),("audio","Аудиокнига")],selection:$format)
+                    PublicationFacts(language: displayed.language, date: displayed.publicationDate, series: displayed.series, number: displayed.seriesNumber)
                     let description=BookDescription.clean(displayed.description)
                     if !description.isEmpty {
                         Text(description).font(.system(size:14)).lineSpacing(4).foregroundStyle(.white.opacity(0.88))
@@ -268,7 +272,10 @@ struct AudioBookDetailScreen:View {
                     if let editions = book.editions, editions.count > 1 {
                         Menu("Озвучка и источник") {
                             ForEach(editions) { edition in
-                                Button((edition.narrator?.isEmpty == false ? edition.narrator! : SourceCatalog.source(edition.providerID)?.name ?? edition.providerID)) {
+                                let label = [edition.narrator?.isEmpty == false ? edition.narrator : nil,
+                                             SourceCatalog.source(edition.providerID)?.name ?? edition.providerID,
+                                             edition.year.map(String.init)].compactMap { $0 }.joined(separator: " · ")
+                                Button(label) {
                                     selectedEdition = edition; resolvedBook = nil
                                 }
                             }
@@ -337,7 +344,7 @@ struct AudioBookDetailScreen:View {
                 .task(id: selectedEdition?.id ?? book.id) { await loadEdition() }
                 .sheet(isPresented: $webPage) {
                     if let id = displayed.providerID, let source = SourceCatalog.source(id), let page = downloadArchive ? displayed.archiveURL : displayed.pageURL {
-                        SourceWebScreen(source: source, url: page, title: displayed.title, author: displayed.author)
+                        SourceWebScreen(source: source, url: page, title: displayed.title, author: displayed.author, language: displayed.language, narrator: displayed.narrator, series: displayed.series)
                     }
                 }
                 .onChange(of:format) {_,value in

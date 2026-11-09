@@ -3,7 +3,7 @@ import Foundation
 enum AudioSource: String, CaseIterable, Identifiable, Codable, Sendable {
     case librivox, archive, knigavuhe, akniga, local, opds
     var id: String { rawValue }
-    var title: String { switch self { case .librivox: "LibriVox"; case .archive: "Internet Archive"; case .knigavuhe:"Книга в ухе"; case .akniga:"Аудиокниги Клуб"; case .local: "Импортированные";case .opds:"OPDS" } }
+    var title: String { switch self { case .librivox: "LibriVox"; case .archive: "Internet Archive"; case .knigavuhe:"Книга в ухе"; case .akniga:"Аудиокниги Клуб"; case .local: "Импортированные";case .opds:"Веб-источник" } }
     static var online: [AudioSource] { [.librivox, .archive, .knigavuhe, .akniga] }
 }
 

@@ -75,6 +75,7 @@ struct OPDSClient {
 
     private func fetch(_ url: URL) async throws -> (Data, URL) {
         guard ["http", "https"].contains(url.scheme ?? "") else { throw ReaderError.invalidCatalogURL }
+        try await SourceRequestPacer.shared.wait(host: url.host ?? "")
         var request = URLRequest(url: url)
         request.timeoutInterval = 12
         request.setValue("application/atom+xml, application/opensearchdescription+xml, application/xml;q=0.9", forHTTPHeaderField: "Accept")

@@ -24,11 +24,12 @@ struct ReaderQueryField:View {
 
     @Binding var query:String
     var focus: FocusState<Bool>.Binding
+    var placeholder = "Название или автор"
     let search:()->Void
     var body:some View {
         HStack(spacing:10) {
             Image(systemName:"magnifyingglass").foregroundStyle(ReaderStyle.secondary)
-            TextField("Название или автор",text:$query).textInputAutocapitalization(.never).autocorrectionDisabled()
+            TextField(L10n.text(placeholder),text:$query).textInputAutocapitalization(.never).autocorrectionDisabled()
                 .focused(focus).submitLabel(.search).onSubmit { focus.wrappedValue=false; search() }.foregroundStyle(.white)
             if !query.isEmpty {
                 Button {query=""} label:{Image(systemName:"xmark.circle.fill").foregroundStyle(ReaderStyle.secondary)}

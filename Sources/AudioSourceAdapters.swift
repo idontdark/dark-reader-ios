@@ -5,10 +5,16 @@ protocol AudiobookSourceAdapter: Sendable {
     var source: SourceDescriptor { get }
     func search(_ query: String, byAuthor: Bool, onPage: AudioSearchProgress?) async throws -> [AudioBook]
     func detail(_ book: AudioBook) async throws -> AudioBook
+    func searchNarrator(_ query: String, onPage: AudioSearchProgress?) async throws -> [AudioBook]
     func chapters(_ book: AudioBook) async throws -> [AudioChapter]
     func browse(genre: String?, shelf: RecommendationShelf, language: String?) async throws -> [AudioBook]
 }
 extension AudiobookSourceAdapter {
+    func searchNarrator(_ query: String, onPage: AudioSearchProgress?) async throws -> [AudioBook] {
+        let books = try await search(query, byAuthor: false, onPage: nil)
+        let found = books.filter { SearchQueryPolicy.matches(title: "", author: $0.narrator ?? "", query: query, byAuthor: true) }
+        await onPage?(found); return found
+    }
     func detail(_ book: AudioBook) async throws -> AudioBook { book }
     func browse(genre: String?, shelf: RecommendationShelf, language: String?) async throws -> [AudioBook] { [] }
     func stamp(_ books: [AudioBook]) -> [AudioBook] {
@@ -68,11 +74,15 @@ struct HTMLAudiobookSource: AudiobookSourceAdapter {
         })
         return books.map(make)
     }
+    func searchNarrator(_ query: String, onPage: AudioSearchProgress?) async throws -> [AudioBook] {
+        let books = try await HTMLBookSource(source: source).search(query, byAuthor: false, matchingNarrator: true, onPage: { await onPage?($0.map(make)) })
+        return books.map(make)
+    }
     private func make(_ entry: CatalogBook) -> AudioBook {
         AudioBook(id: entry.id, source: .opds, sourceID: entry.id, title: entry.title, author: entry.author,
                   description: entry.summary ?? "", coverURL: entry.coverURL, language: entry.language,
                   genres: entry.genres, feedURL: entry.navigationURL, providerID: source.id,
-                  pageURL: entry.navigationURL, publicationDate: entry.publicationDate,
+                  pageURL: entry.navigationURL, narrator: entry.narrator, durationSeconds: entry.durationSeconds, publicationDate: entry.publicationDate,
                   popularity: entry.popularity, popularityBasis: entry.popularityBasis,
                   series: entry.series, seriesNumber: entry.seriesNumber)
     }
@@ -84,15 +94,15 @@ struct HTMLAudiobookSource: AudiobookSourceAdapter {
         // Preserve native source/track identity and stored positions during hydration.
         var result = book
         result = AudioBook(id: book.id, source: book.source, sourceID: book.sourceID,
-            title: metadata.title, author: metadata.author == "Неизвестный автор" ? book.author : metadata.author,
+            title: book.title, author: metadata.author == "Неизвестный автор" ? book.author : metadata.author,
             description: metadata.summary ?? book.description, coverURL: metadata.coverURL ?? book.coverURL,
             language: metadata.language ?? book.language, genres: metadata.genres?.isEmpty == false ? metadata.genres : book.genres,
             streamURL: book.streamURL, feedURL: book.feedURL, providerID: source.id, pageURL: response.url,
             publicationDate: metadata.publicationDate, popularity: metadata.popularity, popularityBasis: metadata.popularityBasis,
             series: metadata.series, seriesNumber: metadata.seriesNumber)
         let ld = HTMLSourceParser.linkedData(doc).first { (HTMLSourceParser.scalar($0["@type"]) ?? "").localizedCaseInsensitiveContains("audiobook") } ?? [:]
-        result.narrator = HTMLSourceParser.scalar(ld["readBy"]) ?? HTMLSourceParser.value("[itemprop=readBy], .book-reader, .book_reader", in: doc)
-        result.durationSeconds = HTMLSourceParser.duration(HTMLSourceParser.scalar(ld["duration"]))
+        result.narrator = metadata.narrator ?? HTMLSourceParser.scalar(ld["readBy"]) ?? HTMLSourceParser.value("[itemprop=readBy], .book-reader, .book_reader", in: doc)
+        result.durationSeconds = metadata.durationSeconds ?? HTMLSourceParser.duration(HTMLSourceParser.scalar(ld["duration"]))
         // Only the site's actual download anchor is accepted; routes are never guessed.
         if source.domain == "aknigi24.com" {
             for link in try doc.select("a[href]") {
@@ -163,7 +173,7 @@ private actor UnifiedAudioAccumulator {
     }
 }
 extension UnifiedSearchService {
-    static func audio(query: String, byAuthor: Bool, language: String?, sources explicit: [SourceDescriptor]? = nil,
+    static func audio(query: String, byAuthor: Bool, language: String?, byNarrator: Bool = false, sources explicit: [SourceDescriptor]? = nil,
                       onResults: UnifiedAudioProgress? = nil) async throws -> [AudioBook] {
         if explicit == nil { SearchHistory.record(query, kind: .audio) }
         let sources = explicit ?? SourcePreferences.enabled(.audio)
@@ -174,10 +184,14 @@ extension UnifiedSearchService {
             func add(_ source: SourceDescriptor) {
                 group.addTask {
                     do {
-                        let books = try await AudioSourceFactory.adapter(source).search(query, byAuthor: byAuthor, onPage: { page in
+                        let adapter = AudioSourceFactory.adapter(source)
+                        let progress: AudioSearchProgress = { page in
                             guard !Task.isCancelled else { return }
                             await onResults?(await accumulator.merge(page))
-                        })
+                        }
+                        let books: [AudioBook]
+                        if byNarrator { books = try await adapter.searchNarrator(query, onPage: progress) }
+                        else { books = try await adapter.search(query, byAuthor: byAuthor, onPage: progress) }
                         try Task.checkCancellation()
                         await onResults?(await accumulator.merge(books, finished: true))
                     } catch is CancellationError { throw CancellationError() }

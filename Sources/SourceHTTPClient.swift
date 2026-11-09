@@ -18,17 +18,13 @@ struct SourceResponse: Sendable { let data: Data; let url: URL; let contentType:
 actor SourceHTTPClient {
     static let shared = SourceHTTPClient()
     private var cache: [String: (Date, SourceResponse)] = [:]
-    private var nextRequest: [String: Date] = [:]
     private let session: URLSession
     init(session: URLSession = .shared) { self.session = session }
     func load(_ original: URLRequest, cached: Bool = true) async throws -> SourceResponse {
         guard let url = original.url, url.scheme == "https", let host = url.host else { throw SourceError.unavailable }
         let key = (original.httpMethod ?? "GET") + url.absoluteString + (original.httpBody?.base64EncodedString() ?? "")
         if cached, let (date, response) = cache[key], Date().timeIntervalSince(date) < 300 { return response }
-        let scheduled = max(Date(), nextRequest[host] ?? .distantPast)
-        nextRequest[host] = scheduled.addingTimeInterval(host == "librivox.org" ? 1 : 0.4)
-        let delay = scheduled.timeIntervalSinceNow
-        if delay > 0 { try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000)) }
+        try await SourceRequestPacer.shared.wait(host: host)
         try Task.checkCancellation()
         var request = original; request.timeoutInterval = 12
         request.setValue("DarkReader/1.0 (+https://idontdark.github.io/dark-reader/)", forHTTPHeaderField: "User-Agent")
@@ -42,6 +38,7 @@ actor SourceHTTPClient {
         cache[key] = (Date(), result)
         return result
     }
+    func clearCache() { cache.removeAll() }
     func load(_ url: URL, cached: Bool = true) async throws -> SourceResponse { try await load(URLRequest(url: url), cached: cached) }
     func json(_ url: URL) async throws -> [String: Any] {
         let response = try await load(url)
@@ -50,5 +47,17 @@ actor SourceHTTPClient {
     }
     static func html(_ response: SourceResponse) -> String? {
         String(data: response.data, encoding: .utf8) ?? String(data: response.data, encoding: .windowsCP1251)
+    }
+}
+
+actor SourceRequestPacer {
+    static let shared = SourceRequestPacer()
+    private var nextRequest: [String: Date] = [:]
+    func wait(host: String) async throws {
+        let scheduled = max(Date(), nextRequest[host] ?? .distantPast)
+        nextRequest[host] = scheduled.addingTimeInterval(host == "librivox.org" ? 1 : 0.3)
+        let delay = scheduled.timeIntervalSinceNow
+        if delay > 0 { try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000)) }
+        try Task.checkCancellation()
     }
 }

@@ -145,9 +145,8 @@ enum WebAudioSourceService {
         request.setValue(referer.absoluteString,forHTTPHeaderField:"Referer")
         request.setValue("https://akniga.org",forHTTPHeaderField:"Origin")
         request.setValue("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15",forHTTPHeaderField:"User-Agent")
-        let (data,response)=try await URLSession.shared.data(for:request)
-        guard let http=response as? HTTPURLResponse,(200..<300).contains(http.statusCode),data.count<4_000_000,
-              let json=try JSONSerialization.jsonObject(with:data) as? [String:Any] else {throw WebAudioError.unavailable}
+        let response = try await SourceHTTPClient.shared.load(request, cached: false)
+        guard let json = try JSONSerialization.jsonObject(with: response.data) as? [String: Any] else { throw WebAudioError.unavailable }
         return json
     }
 }

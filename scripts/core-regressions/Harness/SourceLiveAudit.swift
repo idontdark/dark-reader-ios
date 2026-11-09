@@ -40,7 +40,7 @@ enum SourceLiveAudit {
         var sources: [Source] = []
         // Default-enabled sources must have reproducible checks. Disabled candidate
         // HTTP/search-form investigations are in docs/source-audit-http.json.
-        var iterator = SourceCatalog.all.filter(\.defaultEnabled).makeIterator()
+        var iterator = SourceCatalog.all.filter { $0.defaultEnabled || $0.domain == "aknigi24.com" }.makeIterator()
         await withTaskGroup(of: Source.self) { group in
             for _ in 0..<2 { if let source = iterator.next() { group.addTask { await audit(source) } } }
             while let result = await group.next() {
@@ -54,7 +54,9 @@ enum SourceLiveAudit {
         let gutenberg = GutenbergBookSource(source: SourceCatalog.source("books:gutenberg.org")!)
         for genre in topics {
             do {
-                let candidates = try await gutenberg.browse(genre: genre, shelf: .genre, language: "en")
+                var candidates = (try? await gutenberg.browse(genre: genre, shelf: .genre, language: "en")) ?? []
+                let archive = ArchiveBookSource(source: SourceCatalog.source("books:archive.org")!)
+                if let books = try? await archive.browse(genre: genre, shelf: .genre, language: "en") { candidates += books }
                 let ranked = RecommendationEngine.rank(candidates, context: RecommendationContext(genres: [genre], language: "en"), shelf: .genre, limit: 20)
                 genres.append(Genre(genre: genre, candidates: candidates.count, matched: ranked.count, titles: ranked.map(\.title)))
             } catch { genres.append(Genre(genre: genre, candidates: 0, matched: 0, titles: [], error: error.localizedDescription)) }
@@ -67,7 +69,7 @@ enum SourceLiveAudit {
         print("SOURCE_AUDIT_JSON " + String(decoding: bytes, as: UTF8.self))
     }
     static func audit(_ source: SourceDescriptor) async -> Source {
-        let query = [SourceAdapter.gutenberg, .librivox].contains(source.adapter) ? "Doyle" : "Дойл"
+        let query = [SourceAdapter.gutenberg, .librivox, .archiveBooks, .archiveAudio].contains(source.adapter) ? "Doyle" : "Дойл"
         var result = Source(id: source.id, query: query, works: [], nativeVerified: false)
         do {
             if source.kind == .books {

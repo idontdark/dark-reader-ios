@@ -35,6 +35,7 @@ enum SourceRegressionChecks {
         check(GenreTaxonomy.normalize(["Fantasy fiction", "Magic", "Wizards"]) == ["fantasy"], "Harry Potter subject metadata cannot become History")
         check(GenreTaxonomy.normalize(["Great Britain -- History -- Fiction"]) == ["historical_fiction"], "historical fiction differs from historical nonfiction")
         check(GenreTaxonomy.normalize(["Science fiction -- History and criticism"]).isEmpty, "literary criticism is not mislabeled as science fiction")
+        check(GenreTaxonomy.normalize(["Science fiction and fantasy"]).isEmpty, "broad mixed categories cannot interchange science fiction and fantasy")
         let contexts: [(String, [String])] = [
             ("history", ["History", "История"]), ("fantasy", ["Fantasy fiction", "Фэнтези"]),
             ("science_fiction", ["Science fiction", "Научная фантастика"]), ("detective", ["Mystery", "Детективы"]),
@@ -68,6 +69,8 @@ enum SourceRegressionChecks {
         var duplicate = a; duplicate.id = "another-source"; duplicate.coverURL = URL(string: "https://example.org/cover.jpg")
         a.offers = [BookOffer(sourceID: "one", sourceName: "One", pageURL: a.epubURL!, fileURL: a.epubURL, format: "epub")]
         duplicate.offers = [BookOffer(sourceID: "two", sourceName: "Two", pageURL: URL(string: "https://example.org/b")!, format: "fb2")]
+        check(EditionIdentity.isbn("0-14-143951-3") == EditionIdentity.isbn("9780141439518"), "ISBN-10 and ISBN-13 checksums identify the same edition")
+        check(EditionIdentity.isbn("9780141439510") == nil, "invalid ISBN check digit cannot merge unrelated editions")
         let merged = EditionIdentity.mergeBooks([a, duplicate], query: "History", byAuthor: false, language: "en")
         check(merged.count == 1 && merged[0].offers?.count == 2 && merged[0].coverURL != nil, "duplicate edition combines source offers and complementary metadata")
         duplicate.publicationDate = "2000"
@@ -81,7 +84,7 @@ enum SourceRegressionChecks {
         let doc = try SwiftSoup.parse(html, base.absoluteString)
         let parsed = try HTMLSourceParser.book(doc, url: base, source: SourceCatalog.source("audio:aknigi24.com")!)
         let tracks = try HTMLSourceParser.chapters(doc, base: base)
-        check(parsed.title == "Желтое лицо" && parsed.author == "Дойл Артур Конан" && parsed.language == "ru", "real Aknigi24 structured metadata retains author array and language")
+        check(parsed.title == "Желтое лицо" && parsed.author == "Дойл Артур Конан" && parsed.language == "ru" && parsed.narrator == "Василевский Пётр" && parsed.durationSeconds == 3120, "real Aknigi24 structured metadata retains author array and language")
         check(tracks.count == 2 && tracks[0].durationSeconds == 1456 && tracks[1].url.path == "/book/31554/chapter/2", "ordinary player data retains chapter order, durations and actual route")
         let canonicalLinks = try HTMLSourceParser.bookLinks(doc, base: base)
         check(canonicalLinks.count == 1, "URL fragments do not create duplicate work cards")
@@ -89,6 +92,17 @@ enum SourceRegressionChecks {
         RecommendationProfile.record(title: "Audio", author: "Audio author", weight: 3, genre: "history", kind: .audio, defaults: settings)
         RecommendationProfile.record(title: "Book", author: "Book author", weight: 3, genre: "fantasy", kind: .books, defaults: settings)
         check(RecommendationProfile.genres([], kind: .audio, defaults: settings) == ["history"] && RecommendationProfile.genres([], kind: .books, defaults: settings) == ["fantasy"], "reading and listening histories do not leak across preferences")
+        let gate = MediaTransferGate(limit: 1)
+        let firstPermit = try await gate.acquire()
+        let waiting = Task { try await gate.acquire() }
+        try await Task.sleep(nanoseconds: 5_000_000)
+        waiting.cancel()
+        do { _ = try await waiting.value; fatalError("cancelled transfer kept a queue slot") }
+        catch is CancellationError { print("PASS: cancellation removes a waiting shared transfer") }
+        await gate.release(firstPermit)
+        let nextPermit = try await gate.acquire()
+        await gate.release(nextPermit)
+        check(true, "shared transfer budget releases slots after cancellation")
         try await asynchronousSearchChecks()
     }
     static func asynchronousSearchChecks() async throws {

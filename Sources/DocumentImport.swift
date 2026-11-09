@@ -1,5 +1,8 @@
 import Foundation
 import SwiftSoup
+#if canImport(PDFKit)
+import PDFKit
+#endif
 #if canImport(UIKit)
 import UIKit
 #elseif canImport(AppKit)
@@ -19,7 +22,11 @@ enum BookFileValidator {
         let data = try file.read(upToCount: 256) ?? Data()
         switch url.pathExtension.lowercased() {
         case "epub": guard data.starts(with: [0x50, 0x4B]) else { throw ImportFormatError.corrupt }
-        case "pdf": guard data.starts(with: Data("%PDF-".utf8)) else { throw ImportFormatError.corrupt }
+        case "pdf":
+            guard data.starts(with: Data("%PDF-".utf8)) else { throw ImportFormatError.corrupt }
+            #if canImport(PDFKit)
+            guard let document = PDFDocument(url: url), document.pageCount > 0, !document.isLocked else { throw ImportFormatError.corrupt }
+            #endif
         case "doc":
             guard data.starts(with: [0xD0,0xCF,0x11,0xE0,0xA1,0xB1,0x1A,0xE1]) else { throw ImportFormatError.corrupt }
         default: throw ImportFormatError.unsupported

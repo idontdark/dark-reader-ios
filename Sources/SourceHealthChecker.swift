@@ -14,6 +14,7 @@ enum SourceHealthChecker {
         }
     }
     private static func perform(_ source: SourceDescriptor) async -> SourceHealthResult {
+        await SourceHTTPClient.shared.clearCache()
         var domain = false; var search = false; var detail = false; var download = false; var playback = false
         do { _ = try await SourceHTTPClient.shared.load(source.homepage, cached: false); domain = true } catch { }
         do {
@@ -41,7 +42,7 @@ enum SourceHealthChecker {
                 }
             }
         } catch { }
-        let state: SourceHealthState = search && detail ? .working : (domain || search ? .partial : .unverified)
+        let state: SourceHealthState = search && detail && (domain || download || playback) ? .working : (domain || search ? .partial : .unverified)
         let message = search && detail ? "Поиск и карточка произведения доступны." :
             domain ? "Сайт открывается, но поиск или карточку подтвердить не удалось." : "Не удалось связаться с источником. Он не был отключён."
         return SourceHealthResult(state: state, checkedAt: Date(), domainReachable: domain, searchSucceeded: search,

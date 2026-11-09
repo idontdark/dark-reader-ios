@@ -3,12 +3,36 @@ import Foundation
 import FoundationXML
 #endif
 import ReadiumZIPFoundation
+#if canImport(PDFKit)
+import PDFKit
+#endif
+#if canImport(UIKit)
+import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
 
 struct BookMetadata: Sendable {
     var title: String?
     var author: String?
     var cover: Data?
     static func read(_ url: URL) async throws -> BookMetadata {
+        #if canImport(PDFKit)
+        if url.pathExtension.lowercased() == "pdf" {
+            guard let doc = PDFDocument(url: url), !doc.isLocked else { throw ImportFormatError.corrupt }
+            var result = BookMetadata(title: doc.documentAttributes?[PDFDocumentAttribute.titleAttribute] as? String,
+                                      author: doc.documentAttributes?[PDFDocumentAttribute.authorAttribute] as? String)
+            if let page = doc.page(at: 0) {
+                let image = page.thumbnail(of: CGSize(width: 240, height: 360), for: .mediaBox)
+                #if canImport(UIKit)
+                result.cover = image.pngData()
+                #elseif canImport(AppKit)
+                result.cover = image.tiffRepresentation
+                #endif
+            }
+            return result
+        }
+        #endif
         let archive = try await Archive(url: url, accessMode: .read)
         let entries = try await archive.entries()
         let temporary = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

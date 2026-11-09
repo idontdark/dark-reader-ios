@@ -6,16 +6,19 @@ struct SourceWebScreen: View {
     let url: URL
     var title = ""
     var author = ""
+    var language: String? = nil
+    var narrator: String? = nil
+    var series: String? = nil
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var library: BookshelfStore
     @EnvironmentObject private var navigation: ReaderNavigation
     @State private var error: String?
     var body: some View {
         NavigationStack {
-            SourceWebBrowser(url: url, source: source, title: title, author: author, library: library, navigation: navigation, error: $error)
+            SourceWebBrowser(url: url, source: source, title: title, author: author, language: language, narrator: narrator, series: series, library: library, navigation: navigation, error: $error)
                 .readerNavigationTitle(source.name, localized: false).navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Готово") { dismiss() } } }
-        }.readerError($error, title: "Не удалось импортировать файл")
+        }.readerError($error, title: "Не удалось импортировать файл").readerNotice()
     }
 }
 private struct SourceWebBrowser: UIViewRepresentable {
@@ -23,6 +26,9 @@ private struct SourceWebBrowser: UIViewRepresentable {
     let source: SourceDescriptor
     let title: String
     let author: String
+    let language: String?
+    let narrator: String?
+    let series: String?
     let library: BookshelfStore
     let navigation: ReaderNavigation
     @Binding var error: String?
@@ -66,10 +72,11 @@ private struct SourceWebBrowser: UIViewRepresentable {
             guard let file = targets.removeValue(forKey: ObjectIdentifier(download)) else { return }
             let library = parent.library; let navigation = parent.navigation
             let title = parent.title; let author = parent.author; let audio = parent.source.kind == .audio
+            let language = parent.language; let narrator = parent.narrator; let series = parent.series
             Task { @MainActor in
                 defer { try? FileManager.default.removeItem(at: file.deletingLastPathComponent()) }
                 do {
-                    if audio { _ = try await AudioImportStore.importFiles([file], title: title, author: author) }
+                    if audio { _ = try await AudioImportStore.importFiles([file], title: title, author: author, language: language, narrator: narrator, series: series) }
                     else { try await library.addImportedFile(from: file, title: title.isEmpty ? file.deletingPathExtension().lastPathComponent : title, author: author.isEmpty ? "Неизвестный автор" : author) }
                     navigation.notice = ReaderNotice(title: "Импорт завершён", message: L10n.text("Произведение добавлено в библиотеку."), audio: audio)
                 } catch { self.parent.error = L10n.errorDescription(error) }

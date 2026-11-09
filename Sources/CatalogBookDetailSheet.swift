@@ -31,6 +31,7 @@ struct CatalogBookDetailSheet:View {
                     BookDetailHero(title:displayed.title,author:displayed.author,coverURL:displayed.coverURL,
                                    tags:(displayed.genres ?? []).prefix(2).map {ReaderPreferences.genreName($0,language:language)})
                     ReaderSegmentedControl(items:[("books","Книга"),("audio","Аудиокнига")],selection:$format)
+                    PublicationFacts(language: displayed.language, date: displayed.publicationDate, series: displayed.series, number: displayed.seriesNumber)
                     let summary=BookDescription.clean(loadedSummary ?? displayed.summary ?? "")
                     if loadingSummary && summary.isEmpty { ProgressView().controlSize(.small) }
                     Text(verbatim:L10n.render(summary.isEmpty ? "Описание пока недоступно.":summary,language:localizationLanguage))

@@ -31,7 +31,7 @@ struct SourceSearchForm: Codable, Hashable, Sendable {
             request.httpBody = body.percentEncodedQuery?.data(using: .utf8)
             request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         } else {
-            parts.queryItems = (parts.queryItems ?? []) + items
+            parts.queryItems = (parts.queryItems ?? []).filter { $0.name != field && hidden[$0.name] == nil } + items
             request = URLRequest(url: parts.url!)
         }
         return request

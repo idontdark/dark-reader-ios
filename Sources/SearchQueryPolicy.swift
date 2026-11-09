@@ -26,6 +26,11 @@ enum SearchQueryPolicy {
         let key = normalized(literal)
         var values = [literal]
         let aliases: [String: [String]] = byAuthor ? [
+            "дойл": ["Doyle"], "артур конан дойл": ["Arthur Conan Doyle"], "doyle": ["Дойл"],
+            "чехов": ["Chekhov"], "chekhov": ["Чехов"],
+            "пушкин": ["Pushkin"], "pushkin": ["Пушкин"],
+            "толстой": ["Tolstoy"], "tolstoy": ["Толстой"],
+            "достоевский": ["Dostoyevsky"], "dostoevsky": ["Достоевский"],
             "шантель тессье": ["Тессье", "Тессье Шанталь"],
             "шанталь тессье": ["Тессье"],
             "sara cate": ["Сара Кейт"], "сара кейт": ["Sara Cate"],

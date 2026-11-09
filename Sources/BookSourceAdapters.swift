@@ -32,7 +32,7 @@ struct FlibustaBookSource: BookSourceAdapter {
             func add(_ entry: CatalogBook) {
                 group.addTask {
                     guard let url = entry.navigationURL else { return [] }
-                    do { return try await OPDSClient(searchEndpoint: "", queryParameter: "").browse(url, maxPages: 2) }
+                    do { return try await descend(url, genre: nil, depth: 3) }
                     catch is CancellationError { throw CancellationError() } catch { return [] }
                 }
             }
@@ -106,7 +106,7 @@ struct GutenbergBookSource: BookSourceAdapter {
         }
     }
     private func load(search: String?, genre: String?, language: String?, shelf: RecommendationShelf) async throws -> [CatalogBook] {
-        var url = URLComponents(string: "https://gutendex.com/books/")!
+        var url = URLComponents(string: "https://gutendex.com/books")!
         var query: [URLQueryItem] = [.init(name: "sort", value: "popular")]
         if let search { query.append(.init(name: "search", value: search)) }
         if let language, language != "all" { query.append(.init(name: "languages", value: language)) }
@@ -136,9 +136,19 @@ struct GutenbergBookSource: BookSourceAdapter {
 struct ArchiveBookSource: BookSourceAdapter {
     let source: SourceDescriptor
     func search(_ query: String, byAuthor: Bool, onPage: CatalogSearchProgress?) async throws -> [CatalogBook] {
-        let words = GenreTaxonomy.normalized(query).split(separator: " ").map { (byAuthor ? "creator:" : "title:") + $0 + "*" }.joined(separator: " AND ")
-        let result = try await load(expression: words, genre: nil, shelf: .popular, language: nil)
-        await onPage?(result); return result
+        var found: [CatalogBook] = []; var seen = Set<String>(); var succeeded = false
+        var lastError: Error?
+        for variant in SearchQueryPolicy.variants(query, byAuthor: byAuthor) {
+            let words = GenreTaxonomy.normalized(variant).split(separator: " ").map { (byAuthor ? "creator:" : "title:") + $0 + "*" }.joined(separator: " AND ")
+            do {
+                let books = try await load(expression: words, genre: nil, shelf: .popular, language: nil)
+                succeeded = true
+                for book in books where seen.insert(book.id).inserted { found.append(book) }
+                await onPage?(found)
+            } catch is CancellationError { throw CancellationError() } catch { lastError = error }
+        }
+        if !succeeded, let lastError { throw lastError }
+        return found
     }
     func browse(genre: String?, shelf: RecommendationShelf, language: String?) async throws -> [CatalogBook] {
         try await load(expression: nil, genre: genre, shelf: shelf, language: language)
@@ -195,6 +205,9 @@ struct ArchiveBookSource: BookSourceAdapter {
 struct HTMLBookSource: BookSourceAdapter {
     let source: SourceDescriptor
     func search(_ query: String, byAuthor: Bool, onPage: CatalogSearchProgress?) async throws -> [CatalogBook] {
+        try await search(query, byAuthor: byAuthor, matchingNarrator: false, onPage: onPage)
+    }
+    func search(_ query: String, byAuthor: Bool, matchingNarrator: Bool, onPage: CatalogSearchProgress?) async throws -> [CatalogBook] {
         let homepage = try await SourceHTTPClient.shared.load(source.homepage)
         let document = try HTMLSourceParser.document(homepage)
         guard let form = try HTMLSourceParser.searchForm(document, base: homepage.url) ?? source.searchConfiguration else { throw SourceError.noSearch }
@@ -208,7 +221,10 @@ struct HTMLBookSource: BookSourceAdapter {
                     do {
                         let page = try await SourceHTTPClient.shared.load(link.0)
                         let book = try HTMLSourceParser.book(HTMLSourceParser.document(page), url: page.url, source: source, fallbackTitle: link.1)
-                        return SearchQueryPolicy.matches(title: book.title, author: book.author, query: query, byAuthor: byAuthor) ? book : nil
+                        let matches = matchingNarrator
+                            ? SearchQueryPolicy.matches(title: "", author: book.narrator ?? "", query: query, byAuthor: true)
+                            : SearchQueryPolicy.matches(title: book.title, author: book.author, query: query, byAuthor: byAuthor)
+                        return matches ? book : nil
                     } catch is CancellationError { throw CancellationError() } catch { return nil }
                 }
             }
