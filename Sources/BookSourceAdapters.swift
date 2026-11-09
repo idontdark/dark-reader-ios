@@ -122,6 +122,8 @@ struct GutenbergBookSource: BookSourceAdapter {
         return stamp([book])[0]
     }
     func browse(genre: String?, shelf: RecommendationShelf, language: String?) async throws -> [CatalogBook] {
+        // Project Gutenberg release timestamps are catalog dates, not new literary editions.
+        if shelf == .recent { return [] }
         do { return try await load(search: nil, genre: genre, language: language, shelf: shelf) }
         catch is CancellationError { throw CancellationError() }
         catch {

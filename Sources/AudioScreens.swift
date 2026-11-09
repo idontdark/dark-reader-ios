@@ -45,7 +45,7 @@ struct AudioCatalogScreen: View {
                         ReaderHeader(title: "Аудиокниги", trailingIcon: nil, trailingAction: nil)
                     }
                     VStack(alignment: .leading, spacing: ReaderMetrics.formSpacing) {
-                        ReaderQueryField(query:$navigation.searchQuery, focus:$queryFocused, placeholder: searchMode == "narrator" ? "Имя исполнителя" : "Название или автор") {if !searching {startSearch()}}
+                        ReaderQueryField(query:$navigation.searchQuery, focus:$queryFocused, placeholder: searchMode == "narrator" ? "Имя исполнителя" : "Название или автор") {startSearch()}
                         ReaderSegmentedControl(items:[("title","По названию"),("author","По автору"),("narrator","По исполнителю")],selection:$searchMode)
                         ReaderSearchLanguage(selection:$bookLanguage)
 

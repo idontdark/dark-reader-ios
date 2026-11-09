@@ -54,7 +54,7 @@ struct CatalogScreen: View {
                     }
 
                     VStack(alignment: .leading, spacing: ReaderMetrics.formSpacing) {
-                        ReaderQueryField(query:$navigation.searchQuery, focus:$queryFocused) {if !searching {startSearch()}}
+                        ReaderQueryField(query:$navigation.searchQuery, focus:$queryFocused) {startSearch()}
 
                         ReaderSegmentedControl(items:[("title","По названию"),("author","По автору")],selection:$mode)
                         ReaderSearchLanguage(selection:$bookLanguage)

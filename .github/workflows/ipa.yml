@@ -76,3 +76,13 @@ jobs:
           body_path: docs/RELEASE_UNIFIED_SOURCES.md
           files: release-files/*.ipa
 
+      - name: Preserve requested installation filename
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = 'v1.0.0-build-' + context.runNumber;
+            const desired = 'dark-signer [v1.1].ipa';
+            const {data: release} = await github.rest.repos.getReleaseByTag({...context.repo, tag});
+            const asset = release.assets.find(a => a.name.endsWith('.ipa') && a.size > 0);
+            if (!asset) throw new Error('IPA asset missing');
+            if (asset.name !== desired) await github.rest.repos.updateReleaseAsset({...context.repo, asset_id: asset.id, name: desired, label: desired});
