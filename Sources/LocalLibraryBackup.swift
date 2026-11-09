@@ -26,7 +26,7 @@ enum LocalLibraryBackup {
         for book in snapshot.books {
             try Task.checkCancellation()
             guard let file = files[book.id] else { throw CloudSyncError.unavailableData }
-            try await archive.addEntry(with: "Books/\(book.id.uuidString).epub", fileURL: file)
+            try await archive.addEntry(with: "Books/\(book.id.uuidString).\(BookFileValidator.storedExtension(book.filename))", fileURL: file)
         }
         success = true
         return url
@@ -50,7 +50,7 @@ enum LocalLibraryBackup {
             let raw = try Data(contentsOf: url)
             let json = raw.starts(with: [0xEF, 0xBB, 0xBF]) ? Data(raw.dropFirst(3)) : raw
             let snapshot = try JSONDecoder().decode(CloudLibrarySnapshot.self, from: json)
-            guard snapshot.schema == 1, snapshot.books.count <= 10_000,
+            guard [1,2].contains(snapshot.schema), snapshot.books.count <= 10_000,
                   Set(snapshot.books.map(\.id)).count == snapshot.books.count else { throw CloudSyncError.invalidSnapshot }
             let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -69,17 +69,17 @@ enum LocalLibraryBackup {
         let json = folder.appendingPathComponent("library.json")
         try await archive.extract(manifest, to: json)
         let snapshot = try JSONDecoder().decode(CloudLibrarySnapshot.self, from: Data(contentsOf: json))
-        guard snapshot.schema == 1, snapshot.books.count <= 10_000,
+        guard [1,2].contains(snapshot.schema), snapshot.books.count <= 10_000,
               Set(snapshot.books.map(\.id)).count == snapshot.books.count else { throw CloudSyncError.invalidSnapshot }
         var staged: [String: URL] = [:]
         var total: UInt64 = 0
         for book in snapshot.books {
             try Task.checkCancellation()
-            guard let entry = entries.first(where: { $0.path == "Books/\(book.id.uuidString).epub" }),
+            guard let entry = entries.first(where: { $0.path == "Books/\(book.id.uuidString).\(BookFileValidator.storedExtension(book.filename))" }),
                   entry.type == .file, entry.uncompressedSize <= 50 * 1024 * 1024 else { throw CloudSyncError.badBook }
             total += UInt64(entry.uncompressedSize)
             guard total <= 2_000_000_000 else { throw ImportFormatError.oversized }
-            let target = folder.appendingPathComponent(book.id.uuidString + ".epub")
+            let target = folder.appendingPathComponent(book.id.uuidString + "." + BookFileValidator.storedExtension(book.filename))
             try await archive.extract(entry, to: target)
             try await BookFormatConverter.validateContainer(target)
             staged[book.id.uuidString] = target

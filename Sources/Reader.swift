@@ -221,7 +221,11 @@ struct ReaderScreen: View {
     private var readerOptions: ReaderOptions {
         ReaderOptions(fontSize: fontSize, font: font, theme: effectiveTheme, scroll: scroll, animated: pageAnimation && !reduceMotion)
     }
-    var body: some View { preferenceObservers }
+    @ViewBuilder var body: some View {
+        if let book, BookFileValidator.storedExtension(book.filename) != "epub" {
+            NativeDocumentReader(bookID: bookID, initialLocation: initialLocation)
+        } else { preferenceObservers }
+    }
 
     @ViewBuilder private var publicationLayer: some View {
         if let session {

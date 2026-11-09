@@ -44,7 +44,8 @@ enum AudioImportStore {
             defer { if scoped { url.stopAccessingSecurityScopedResource() } }
             if url.pathExtension.lowercased() == "zip" {
                 let archive = try await Archive(url: url, accessMode: .read)
-                for entry in try await archive.entries() {
+                let ordered = try await archive.entries().sorted { $0.path.localizedStandardCompare($1.path) == .orderedAscending }
+                for entry in ordered {
                     let ext = URL(fileURLWithPath: entry.path).pathExtension.lowercased()
                     guard entry.type == .file, ["mp3", "m4a", "m4b"].contains(ext) else { continue }
                     total += UInt64(entry.uncompressedSize)

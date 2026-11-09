@@ -31,7 +31,7 @@ final class CloudSyncManager: ObservableObject {
     func syncNow() async -> Bool {false}
     func makeSnapshot()->CloudLibrarySnapshot? {
         guard let bookStore else{return nil}
-        return CloudLibrarySnapshot(schema:1,deviceID:"local",savedAt:Date(),books:bookStore.books,deletions:bookStore.deletions,settings:collectSettings(),settingsChangedAt:defaults.object(forKey:settingsDateKey) as? Date ?? .distantPast)
+        return CloudLibrarySnapshot(schema:bookStore.books.contains(where: {BookFileValidator.storedExtension($0.filename) != "epub"}) ? 2 : 1,deviceID:"local",savedAt:Date(),books:bookStore.books,deletions:bookStore.deletions,settings:collectSettings(),settingsChangedAt:defaults.object(forKey:settingsDateKey) as? Date ?? .distantPast)
     }
     func restoreSettings(_ values:[String:String],changedAt:Date) {
         applySettings(values);defaults.set(changedAt,forKey:settingsDateKey)

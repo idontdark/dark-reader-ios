@@ -28,7 +28,7 @@ jobs:
           swiftc -swift-version 5 -parse-as-library Sources/SourceCatalog.swift Sources/SourceCatalogGenerated.swift Sources/Book.swift Sources/GenreTaxonomy.swift Sources/SearchQueryPolicy.swift Sources/CatalogSearchAccumulator.swift Sources/OPDSClient.swift scripts/catalog_regressions.swift -o /tmp/catalog-regressions
           /tmp/catalog-regressions
   validate:
-    runs-on: macos-15
+    runs-on: macos-15-intel
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
@@ -39,7 +39,7 @@ jobs:
         run: brew install xcodegen
       - name: Run real import and backup round trips on macOS
         run: |
-          cp Sources/{SourceCatalog,SourceCatalogGenerated,GenreTaxonomy,Book,BookFormatConverter,FB2Document,BookMetadata,ReaderOptions,CloudLibraryModels,LocalLibraryBackup}.swift scripts/core-regressions/Harness/
+          cp Sources/{SourceCatalog,SourceCatalogGenerated,GenreTaxonomy,DocumentImport,Book,BookFormatConverter,FB2Document,BookMetadata,ReaderOptions,CloudLibraryModels,LocalLibraryBackup}.swift scripts/core-regressions/Harness/
           swift run --package-path scripts/core-regressions ReaderCoreRegressions
       - name: Prepare project
         run: |

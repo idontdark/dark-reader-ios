@@ -24,6 +24,11 @@ enum BookFormatConverter {
         switch ext {
         case "epub":
             return input
+        case "pdf", "doc":
+            try BookFileValidator.validate(input)
+            return input
+        case "txt", "html", "htm", "rtf":
+            return try await DocumentImport.convert(input)
         case "fb2":
             return try await fromFB2(input)
         case "mobi":
@@ -36,6 +41,7 @@ enum BookFormatConverter {
     }
 
     static func validateContainer(_ url: URL) async throws {
+        if ["pdf", "doc"].contains(url.pathExtension.lowercased()) { try BookFileValidator.validate(url); return }
         let archive = try await Archive(url: url, accessMode: .read)
         let entries = try await archive.entries()
         guard entries.contains(where: { $0.path == "META-INF/container.xml" }),
@@ -70,7 +76,7 @@ enum BookFormatConverter {
         let entries = try await archive.entries()
         let choices = entries.filter { entry in
             let ext = URL(fileURLWithPath: entry.path).pathExtension.lowercased()
-            return ["epub", "fb2", "mobi"].contains(ext)
+            return BookFileValidator.importExtensions.filter { $0 != "zip" }.contains(ext)
                 && entry.type == .file
                 && entry.uncompressedSize > 0
                 && entry.uncompressedSize <= 50 * 1024 * 1024

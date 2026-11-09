@@ -42,7 +42,7 @@ final class BookshelfStore: ObservableObject {
         let prepared = try await BookFormatConverter.prepare(source)
         try validateEPUB(prepared)
         try await BookFormatConverter.validateContainer(prepared)
-        let filename = UUID().uuidString + ".epub"
+        let filename = UUID().uuidString + "." + BookFileValidator.storedExtension(prepared.lastPathComponent)
         try fileManager.copyItem(at: prepared, to: directory.appendingPathComponent(filename))
         let metadata = try? await BookMetadata.read(prepared)
         var imported = LocalBook(title: metadata?.title ?? title, author: metadata?.author ?? author, filename: filename)
@@ -80,12 +80,16 @@ final class BookshelfStore: ObservableObject {
         }
         // Some OPDS and direct links don't include a file extension.
         // Detect a supported format using the response and a short file signature.
-        let accepted = ["epub", "fb2", "mobi", "zip"]
+        let accepted = BookFileValidator.importExtensions
         let declared = (book.downloadFormat ?? epubURL.pathExtension).lowercased()
         let mime = http.mimeType?.lowercased() ?? ""
         let type: String
         if accepted.contains(declared) {
             type = declared
+        } else if mime == "application/pdf" { type = "pdf"
+        } else if mime.contains("rtf") { type = "rtf"
+        } else if mime == "text/plain" { type = "txt"
+        } else if mime == "text/html", declared == "html" || declared == "htm" { type = "html"
         } else if mime.contains("epub") {
             type = "epub"
         } else if mime.contains("fictionbook") || mime.contains("fb2") {
@@ -99,7 +103,8 @@ final class BookshelfStore: ObservableObject {
             defer { try? handle.close() }
             let first = try handle.read(upToCount: 256) ?? Data()
             let header = String(decoding: first, as: UTF8.self).lowercased()
-            if first.count >= 68 && String(decoding: first[60..<68], as: UTF8.self) == "BOOKMOBI" {
+            if first.starts(with: Data("%PDF-".utf8)) { type = "pdf" }
+            else if first.count >= 68 && String(decoding: first[60..<68], as: UTF8.self) == "BOOKMOBI" {
                 type = "mobi"
             } else if first.starts(with: [0x50, 0x4B]) {
                 type = header.contains("application/epub+zip") ? "epub" : "zip"
@@ -124,7 +129,7 @@ final class BookshelfStore: ObservableObject {
         let prepared = try await BookFormatConverter.prepare(staging)
         try validateEPUB(prepared)
         try await BookFormatConverter.validateContainer(prepared)
-        let filename = UUID().uuidString + ".epub"
+        let filename = UUID().uuidString + "." + BookFileValidator.storedExtension(prepared.lastPathComponent)
         try fileManager.copyItem(at: prepared, to: directory.appendingPathComponent(filename))
         var imported = LocalBook(title: book.title, author: book.author, filename: filename)
         let metadata = try? await BookMetadata.read(prepared)
@@ -275,7 +280,7 @@ final class BookshelfStore: ObservableObject {
                 winners[item.id] = newer
             } else if let stagedFile = staged[item.id.uuidString] {
                 try validateEPUB(stagedFile)
-                let filename = UUID().uuidString + ".epub"
+                let filename = UUID().uuidString + "." + BookFileValidator.storedExtension(item.filename)
                 try fileManager.moveItem(at: stagedFile, to: directory.appendingPathComponent(filename))
                 var incoming = item
                 incoming.filename = filename
@@ -322,15 +327,8 @@ final class BookshelfStore: ObservableObject {
         if localChange { onLocalChange?() }
     }
 
-    private func validateEPUB(_ url: URL) throws {
-        let attributes = try fileManager.attributesOfItem(atPath: url.path)
-        let byteSize = (attributes[.size] as? NSNumber)?.int64Value ?? 0
-        guard byteSize > 4, byteSize <= 50 * 1024 * 1024 else { throw ReaderError.fileTooLarge }
-        let handle = try FileHandle(forReadingFrom: url)
-        defer { try? handle.close() }
-        let magic = try handle.read(upToCount: 4) ?? Data()
-        guard magic.starts(with: [0x50, 0x4B]) else { throw ReaderError.invalidEPUB }
-    }
+    private func validateEPUB(_ url: URL) throws { try BookFileValidator.validate(url) }
+
 }
 
 

@@ -31,11 +31,11 @@ struct ImportScreen: View {
                         }
                         .buttonStyle(.plain)
                         ReaderDivider()
-                        Button { UserDefaults.standard.set("flibusta",forKey:"catalogProvider")
+                        Button {
                             navigation.searchScope = "books"
                             navigation.tab = .search } label: {
-                            ReaderRow(icon: "books.vertical", title: "Найти на Флибусте",
-                                      subtitle: "Поиск и загрузка EPUB прямо в приложении") {
+                            ReaderRow(icon: "books.vertical", title: "Найти книгу",
+                                      subtitle: "По всем включённым источникам") {
                                 Image(systemName: "chevron.right").foregroundStyle(ReaderStyle.secondary)
                             }
                         }
@@ -120,7 +120,7 @@ struct ImportScreen: View {
             .toolbar(.hidden, for: .navigationBar)
             .fileImporter(
                 isPresented: $importing,
-                allowedContentTypes: ["epub", "fb2", "mobi", "zip"].compactMap { UTType(filenameExtension: $0) },
+                allowedContentTypes: BookFileValidator.importExtensions.compactMap { UTType(filenameExtension: $0) },
                 allowsMultipleSelection: true
             ) { result in
                 switch result {

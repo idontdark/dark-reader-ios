@@ -78,7 +78,7 @@ final class GoogleDriveBackup: ObservableObject {
             for (index,book) in snapshot.books.enumerated() {
                 try Task.checkCancellation()
                 status="Сохраняем книги: \(index+1) из \(snapshot.books.count)…"
-                let name="book_\(book.id.uuidString).epub"
+                let name="book_\(book.id.uuidString).\(BookFileValidator.storedExtension(book.filename))"
                 if files[name] == nil {
                     let bytes=try Data(contentsOf:library.fileURL(for:book),options:.mappedIfSafe)
                     guard bytes.count<=50*1024*1024 else {throw CloudSyncError.badBook}
@@ -106,7 +106,7 @@ final class GoogleDriveBackup: ObservableObject {
             status="Загружаем сведения о резервной копии…"
             let bytes=try await get(manifest,limit:5_000_000)
             let snapshot=try JSONDecoder().decode(CloudLibrarySnapshot.self,from:bytes)
-            guard snapshot.schema == 1,snapshot.books.count<=10_000 else {throw CloudSyncError.invalidSnapshot}
+            guard [1,2].contains(snapshot.schema),snapshot.books.count<=10_000 else {throw CloudSyncError.invalidSnapshot}
             let fingerprint=SHA256.hash(data:bytes).map {String(format:"%02x",$0)}.joined()
             let folder=FileManager.default.urls(for:.cachesDirectory,in:.userDomainMask)[0]
                 .appendingPathComponent("GoogleDriveRestore",isDirectory:true)
@@ -118,8 +118,8 @@ final class GoogleDriveBackup: ObservableObject {
                 try Task.checkCancellation()
                 if let local=library.books.first(where:{$0.id == book.id}),FileManager.default.fileExists(atPath:library.fileURL(for:local).path) {continue}
                 status="Восстанавливаем книги: \(index+1) из \(snapshot.books.count)…"
-                guard let id=files["book_\(book.id.uuidString).epub"] else {throw CloudSyncError.unavailableData}
-                let file=folder.appendingPathComponent(book.id.uuidString+".epub")
+                guard let id=files["book_\(book.id.uuidString).\(BookFileValidator.storedExtension(book.filename))"] else {throw CloudSyncError.unavailableData}
+                let file=folder.appendingPathComponent(book.id.uuidString+"."+BookFileValidator.storedExtension(book.filename))
                 if FileManager.default.fileExists(atPath:file.path) {
                     do {
                         try await BookFormatConverter.validateContainer(file)
@@ -128,7 +128,6 @@ final class GoogleDriveBackup: ObservableObject {
                     } catch {try? FileManager.default.removeItem(at:file)}
                 }
                 let data=try await get(id,limit:50*1024*1024)
-                guard data.starts(with:[0x50,0x4B]) else {throw CloudSyncError.badBook}
                 try await Task.detached(priority:.utility) {try data.write(to:file,options:.atomic)}.value
                 try await BookFormatConverter.validateContainer(file)
                 staged[book.id.uuidString]=file
