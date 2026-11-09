@@ -66,6 +66,12 @@ enum SourceRegressionChecks {
         check(RecommendationEngine.rank([a], context: RecommendationContext(genres: [], language: "en"), shelf: .popular).isEmpty, "missing popularity data never produces a fabricated ranking")
         a.popularity = 500; a.popularityBasis = "Recorded downloads"
         check(RecommendationEngine.rank([a], context: RecommendationContext(genres: [], language: "en"), shelf: .popular).count == 1, "recorded popularity has an explicit basis")
+        var withoutISBN = a; withoutISBN.id = "without-isbn"
+        var withISBN = a; withISBN.id = "with-isbn"; withISBN.isbn = "9780141439518"
+        check(EditionIdentity.mergeBooks([withoutISBN, withISBN], query: "", byAuthor: false, language: "en").count == 1, "missing ISBN does not duplicate an otherwise identical edition")
+        check(EditionIdentity.mergeBooks([withISBN, withoutISBN], query: "", byAuthor: false, language: "en").count == 1, "incomplete edition metadata merges in either arrival order")
+        var otherISBN = withISBN; otherISBN.id = "another-isbn"; otherISBN.isbn = "9780141439587"
+        check(EditionIdentity.mergeBooks([withISBN, otherISBN], query: "", byAuthor: false, language: "en").count == 2, "distinct validated ISBN editions remain selectable")
         var duplicate = a; duplicate.id = "another-source"; duplicate.coverURL = URL(string: "https://example.org/cover.jpg")
         a.offers = [BookOffer(sourceID: "one", sourceName: "One", pageURL: a.epubURL!, fileURL: a.epubURL, format: "epub")]
         duplicate.offers = [BookOffer(sourceID: "two", sourceName: "Two", pageURL: URL(string: "https://example.org/b")!, format: "fb2")]
@@ -75,6 +81,12 @@ enum SourceRegressionChecks {
         check(merged.count == 1 && merged[0].offers?.count == 2 && merged[0].coverURL != nil, "duplicate edition combines source offers and complementary metadata")
         duplicate.publicationDate = "2000"
         check(EditionIdentity.mergeBooks([a, duplicate], query: "", byAuthor: false, language: "en").count == 2, "different book edition years remain distinct")
+        let atom = #"""
+        <feed xmlns="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/terms/"><entry><id>edition</id><title>Format fixture</title><dc:creator>Author</dc:creator><link rel="alternate" type="text/html" href="https://example.org/book/1"/><link rel="http://opds-spec.org/acquisition" type="application/fb2+zip" href="https://example.org/book.fb2.zip"/><link rel="http://opds-spec.org/acquisition" type="application/epub+zip" href="https://example.org/book.epub"/></entry></feed>
+        """#
+        let feed = try OPDSClient.parse(Data(atom.utf8), baseURL: URL(string: "https://example.org/feed")!)
+        check(feed.books.first?.downloadFormat == "epub" && feed.books.first?.offers?.count == 2 && feed.books.first?.author == "Author", "OPDS prefers EPUB but retains every actual acquisition and Dublin Core author")
+        check(feed.books.first?.offers?.first?.pageURL.absoluteString == "https://example.org/book/1", "OPDS browser fallback uses the declared HTML page")
         let html = #"""
         <html><head><script type="application/ld+json">{"@type":"Audiobook","name":"Желтое лицо","author":[{"name":"Дойл Артур Конан"}],"inLanguage":"ru","duration":"PT52M","datePublished":"2009","readBy":[{"name":"Василевский Пётр"}]}</script></head>
         <body><script id="player-data" type="application/json">{"chapterBase":"https://aknigi24.com/book/31554/chapter/","chapters":[{"n":1,"d":1456},{"n":2,"d":1664}]}</script>

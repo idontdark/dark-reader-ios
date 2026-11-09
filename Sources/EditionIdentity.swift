@@ -18,10 +18,12 @@ enum EditionIdentity {
     static func book(_ book: CatalogBook) -> String {
         let language = GenreTaxonomy.language(book.language) ?? "unknown"
         if let isbn = isbn(book.isbn) { return "isbn:" + isbn + ":" + language }
-        // Unknown author must not merge unrelated editions with the same title.
+        return titleEdition(book) ?? book.id
+    }
+    private static func titleEdition(_ book: CatalogBook) -> String? {
         let author = GenreTaxonomy.normalized(book.author)
-        if author.isEmpty || ["неизвестный автор", "автор не указан", "unknown author"].contains(author) { return book.id }
-        return [GenreTaxonomy.normalized(book.title), author, language, PublicationDate.year(book.publicationDate).map(String.init) ?? "undated"].joined(separator: ":")
+        if author.isEmpty || ["неизвестный автор", "автор не указан", "unknown author"].contains(author) { return nil }
+        return [GenreTaxonomy.normalized(book.title), author, GenreTaxonomy.language(book.language) ?? "unknown", PublicationDate.year(book.publicationDate).map(String.init) ?? "undated"].joined(separator: ":")
     }
     static func audioWork(_ book: AudioBook) -> String {
         let author = GenreTaxonomy.normalized(book.author)
@@ -29,12 +31,21 @@ enum EditionIdentity {
         return [GenreTaxonomy.normalized(book.title), author, GenreTaxonomy.language(book.language) ?? "unknown"].joined(separator: ":")
     }
     static func mergeBooks(_ entries: [CatalogBook], query: String, byAuthor: Bool, language: String?) -> [CatalogBook] {
-        var values: [String: CatalogBook] = [:]; var order: [String] = []
+        var values: [String: CatalogBook] = [:]; var order: [String] = []; var aliases: [String: [String]] = [:]
         for book in entries where SearchQueryPolicy.matchesSearchLanguage(book.language, requested: language) {
-            let key = self.book(book)
+            let primary = self.book(book)
+            let fallback = titleEdition(book)
+            let compatible = (fallback.flatMap { aliases[$0] } ?? []).filter { key in
+                guard let old = values[key] else { return false }
+                let a = isbn(old.isbn); let b = isbn(book.isbn)
+                return a == nil || b == nil || a == b
+            }
+            let key = values[primary] != nil ? primary : compatible.count == 1 ? compatible[0] : primary
+            if let fallback, !aliases[fallback, default: []].contains(key) { aliases[fallback, default: []].append(key) }
             if var existing = values[key] {
                 var seen = Set<String>()
                 existing.offers = ((existing.offers ?? []) + (book.offers ?? [])).filter { seen.insert($0.id).inserted }
+                if existing.isbn == nil { existing.isbn = book.isbn }
                 if existing.coverURL == nil { existing.coverURL = book.coverURL }
                 if existing.summary?.isEmpty != false { existing.summary = book.summary }
                 if existing.epubURL == nil { existing.epubURL = book.epubURL; existing.downloadFormat = book.downloadFormat }

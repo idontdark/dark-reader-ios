@@ -283,7 +283,7 @@ struct AudioBookDetailScreen:View {
                     }
                     if playable && !chapters.isEmpty && !loading {
                         PurpleAction(title:"Слушать аудиокнигу",icon:"play.fill") {
-                            player.open(displayed,tracks:chapters);showPlayer=true;onPlay()
+                            player.open(displayed,tracks:chapters,downloadsAllowed:downloadable);showPlayer=true;onPlay()
                         }
                         if downloadable {
                             AudioDownloadAction(book:displayed,chapters:chapters)
@@ -309,7 +309,7 @@ struct AudioBookDetailScreen:View {
                             Text(verbatim:L10n.render("Главы",language:localizationLanguage)).font(.system(size:15,weight:.semibold)).padding(.top,8).padding(.bottom,5)
                             ForEach(Array(chapters.enumerated()),id:\.element.id) {index,chapter in
                                 Button {
-                                    player.open(displayed,tracks:chapters);player.playChapter(index);showPlayer=true;onPlay()
+                                    player.open(displayed,tracks:chapters,downloadsAllowed:downloadable);player.playChapter(index);showPlayer=true;onPlay()
                                 } label:{
                                     HStack {
                                         Text("\(index+1)").font(.system(size:11)).foregroundStyle(ReaderStyle.secondary).frame(width:20)
@@ -376,9 +376,9 @@ struct AudioBookDetailScreen:View {
                 }
                 try Task.checkCancellation(); downloadable = direct
             }
-            else { message = "Встроенное воспроизведение недоступно. Можно открыть книгу на сайте." }
+            else { message = current.source == .local ? "Файлы аудиокниги недоступны. Импортируйте её повторно." : "Встроенное воспроизведение недоступно. Можно открыть книгу на сайте." }
         } catch is CancellationError { }
-        catch { if !Task.isCancelled { message = "Встроенное воспроизведение недоступно. Можно открыть книгу на сайте." } }
+        catch { if !Task.isCancelled { message = current.source == .local ? "Файлы аудиокниги недоступны. Импортируйте её повторно." : "Встроенное воспроизведение недоступно. Можно открыть книгу на сайте." } }
     }
     private func decode(_ raw:String)->[AudioBook] {raw.data(using:.utf8).flatMap{try? JSONDecoder().decode([AudioBook].self,from:$0)} ?? []}
     private func encode(_ values:[AudioBook])->String {(try? JSONEncoder().encode(values)).map{String(decoding:$0,as:UTF8.self)} ?? "[]"}
@@ -403,13 +403,15 @@ struct AudioPlayerScreen:View {
                             .accessibilityLabel(Text(verbatim:L10n.render("Свернуть плеер",language:localizationLanguage)))
                         Spacer()
                         Menu {
-                            if let book=player.book {
+                            if let book=player.book, player.canDownloadBook {
                                 Button("Скачать аудиокнигу",systemImage:"arrow.down.to.line") {
                                     player.startDownload(book,tracks:player.chapters)
-                                }.disabled(player.downloadingBookID != nil)
+                                }.disabled(player.downloadingBookID == book.id)
                             }
-                            Button("Сохранить текущую главу",systemImage:"arrow.down.to.line") {Task {await player.downloadCurrentChapter()}}
-                                .disabled(player.downloadingChapter != nil)
+                            if player.canDownloadBook {
+                                Button("Сохранить текущую главу",systemImage:"arrow.down.to.line") {Task {await player.downloadCurrentChapter()}}
+                                    .disabled(player.downloadingChapter != nil)
+                            }
                             Button("Добавить закладку",systemImage:"bookmark") {player.addBookmark()}
                             if player.chapterIndex>0 {Button("Предыдущая глава") {player.previous()}}
                             if player.chapterIndex+1<player.chapters.count {Button("Следующая глава") {player.next()}}

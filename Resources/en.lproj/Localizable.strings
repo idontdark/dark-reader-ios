@@ -700,3 +700,5 @@
 "Найдите книгу по названию или автору. Приложение проверит все включённые источники и покажет доступные форматы." = "Search by title or author. The app checks all enabled sources and shows the available formats.";
 
 "Веб-источник" = "Website source";
+
+"Файлы аудиокниги недоступны. Импортируйте её повторно." = "The audiobook files are unavailable. Import the audiobook again.";

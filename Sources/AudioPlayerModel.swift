@@ -18,6 +18,7 @@ final class AudioPlayerModel: ObservableObject {
     @Published private(set) var isPlaying = false
     @Published private(set) var position: Double = 0
     @Published private(set) var duration: Double = 0
+    @Published private(set) var canDownloadBook = false
     @Published private(set) var canSeek = false
     @Published private(set) var seekLowerBound: Double = 0
     @Published private(set) var seekUpperBound: Double = 0
@@ -68,8 +69,9 @@ final class AudioPlayerModel: ObservableObject {
         Task { @MainActor [weak self] in self?.pumpDownloads() }
     }
 
-    func open(_ selected: AudioBook, tracks: [AudioChapter], bookmark: Bookmark? = nil) {
+    func open(_ selected: AudioBook, tracks: [AudioChapter], bookmark: Bookmark? = nil, downloadsAllowed: Bool? = nil) {
         pause()
+        canDownloadBook = downloadsAllowed ?? tracks.allSatisfy { $0.url.isFileURL || ["mp3", "m4a", "m4b", "aac", "flac", "wav"].contains($0.url.pathExtension.lowercased()) }
         guard !tracks.isEmpty else { error = AudioCatalogError.noTracks.localizedDescription; return }
         stopObserver()
         player = nil
@@ -280,7 +282,7 @@ final class AudioPlayerModel: ObservableObject {
     }
 
     func downloadCurrentChapter() async {
-        guard let book, chapters.indices.contains(chapterIndex) else { return }
+        guard canDownloadBook, let book, chapters.indices.contains(chapterIndex) else { return }
         startDownload(book, tracks: [chapters[chapterIndex]])
     }
 
@@ -392,7 +394,7 @@ final class AudioPlayerModel: ObservableObject {
     }
 
     func localURL(for track: AudioChapter) -> URL? {
-        if track.url.isFileURL { return track.url }
+        if track.url.isFileURL { return FileManager.default.fileExists(atPath: track.url.path) ? track.url : nil }
         guard downloaded.contains(track.id),
               let base = try? audioFolder() else { return nil }
         for name in [safeFilename(for: track), safeFilename(for: track, legacy: true)] {

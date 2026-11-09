@@ -114,11 +114,14 @@ final class OPDSFeedParser: NSObject, XMLParserDelegate {
     private var epubURL: URL?
     private var audioURL:URL?
     private var navigationURL: URL?
+    private var alternateURL: URL?
     private var coverURL: URL?
     private var summary = ""
     private var downloadFormat: String?
     private var language: String?
     private var subjects: [String] = []
+    private var acquisitions: [BookOffer] = []
+    private var bestRank = 100
     private var issued: String?
 
     init(baseURL: URL) { self.baseURL = baseURL }
@@ -144,15 +147,15 @@ final class OPDSFeedParser: NSObject, XMLParserDelegate {
             epubURL = nil
             audioURL=nil
             navigationURL = nil
-            coverURL = nil
+            coverURL = nil; alternateURL = nil
             summary = ""
             downloadFormat = nil
-            language = nil; subjects = []; issued = nil
+            language = nil; subjects = []; issued = nil; acquisitions = []; bestRank = 100
         }
         guard currentEntry else { return }
-        if name == "author" { inAuthor = true }
+        if name == "author" || name == "creator" { inAuthor = true }
         if name == "category", let subject = attributeDict["label"] ?? attributeDict["term"] { subjects.append(subject) }
-        if name == "language" || name == "issued" || name == "title" || name == "id" || name == "summary" || name == "content" || (name == "name" && inAuthor) {
+        if name == "creator" || name == "language" || name == "issued" || name == "title" || name == "id" || name == "summary" || name == "content" || (name == "name" && inAuthor) {
             currentField = name
             textBuffer = ""
         }
@@ -162,16 +165,16 @@ final class OPDSFeedParser: NSObject, XMLParserDelegate {
             let rel = attributeDict["rel"] ?? ""
             let mime = (attributeDict["type"] ?? "").lowercased()
             guard !["buy", "borrow", "sample", "subscribe"].contains(where: { rel.hasSuffix("/" + $0) }) else { return }
+            if rel == "alternate", mime == "text/html" { alternateURL = linkURL }
             if (rel.contains("image") || rel == "x-stanza-cover-image" || rel == "x-stanza-cover-image-thumbnail"), mime.hasPrefix("image/") {
                 if coverURL == nil { coverURL = linkURL }
             } else if mime.hasPrefix("audio/") && (rel.contains("acquisition") || rel == "http://opds-spec.org/acquisition/open-access" || rel == "enclosure") {
                 if audioURL == nil {audioURL=linkURL}
-            } else if mime.contains("epub+zip") || mime.contains("application/epub")
-                        || mime.contains("fb2") || mime.contains("fictionbook") || mime.contains("mobipocket") {
-                if epubURL == nil {
-                    epubURL = linkURL
-                    downloadFormat = (mime.contains("fb2") || mime.contains("fictionbook")) ? (mime.contains("zip") ? "zip" : "fb2") : (mime.contains("mobipocket") ? "mobi" : "epub")
-                }
+            } else if let format = Self.format(mime), rel.isEmpty || rel.contains("acquisition") || rel == "enclosure" {
+                let page = entryBase ?? baseURL
+                acquisitions.append(BookOffer(sourceID: "books:" + (baseURL.host ?? ""), sourceName: baseURL.host ?? "", pageURL: page, fileURL: linkURL, format: format))
+                let rank = mime.contains("epub") ? 0 : mime.contains("fb2") || mime.contains("fictionbook") ? 1 : ["zip", "mobi", "pdf", "txt", "html", "rtf", "doc"].firstIndex(of: format).map { $0 + 2 } ?? 99
+                if rank < bestRank { epubURL = linkURL; downloadFormat = format; bestRank = rank }
             } else if mime.contains("atom+xml")
                         && !rel.contains("facet")
                         && rel != "related"
@@ -179,6 +182,18 @@ final class OPDSFeedParser: NSObject, XMLParserDelegate {
                 navigationURL = linkURL
             }
         }
+    }
+
+    private static func format(_ mime: String) -> String? {
+        if mime.contains("epub") { return "epub" }
+        if mime.contains("fb2") || mime.contains("fictionbook") { return mime.contains("zip") ? "zip" : "fb2" }
+        if mime.contains("mobipocket") { return "mobi" }
+        if mime == "application/zip" || mime == "application/x-zip-compressed" { return "zip" }
+        if mime == "application/pdf" { return "pdf" }
+        if mime == "text/plain" { return "txt" }
+        if mime.contains("rtf") { return "rtf" }
+        if mime == "application/msword" { return "doc" }
+        return nil
     }
 
     func parser(_ parser: XMLParser, foundCharacters string: String) {
@@ -196,12 +211,13 @@ final class OPDSFeedParser: NSObject, XMLParserDelegate {
             case "title": title = value
             case "id": identifier = value
             case "summary", "content": if summary.isEmpty { summary = value }
-            case "name": if inAuthor { author = value }
+            case "name", "creator":
+                if inAuthor, !value.isEmpty { author = author.isEmpty ? value : author.contains(value) ? author : author + ", " + value }
             default: break
             }
             currentField = ""
         }
-        if name == "author" { inAuthor = false }
+        if name == "author" || name == "creator" { inAuthor = false }
         if name == "entry" {
             if !title.isEmpty && (epubURL != nil || navigationURL != nil || audioURL != nil) {
                 let fallbackID = (epubURL ?? audioURL ?? navigationURL)?.absoluteString ?? title
@@ -214,7 +230,7 @@ final class OPDSFeedParser: NSObject, XMLParserDelegate {
                     coverURL: coverURL,
                     summary: summary.isEmpty ? nil : summary,
                     downloadFormat: downloadFormat,audioURL:audioURL, language:language,
-                    genres:GenreTaxonomy.normalize(subjects), publicationDate:issued
+                    genres:GenreTaxonomy.normalize(subjects), publicationDate:issued, offers: acquisitions.isEmpty ? nil : acquisitions.map { BookOffer(sourceID: $0.sourceID, sourceName: $0.sourceName, pageURL: alternateURL ?? navigationURL ?? $0.pageURL, fileURL: $0.fileURL, format: $0.format) }
                 ))
             }
             currentEntry = false

@@ -12,6 +12,9 @@ extension BookSourceAdapter {
     func stamp(_ books: [CatalogBook]) -> [CatalogBook] {
         books.map { entry in
             var book = entry; book.sourceID = source.id
+            if let offers = book.offers {
+                book.offers = offers.map { BookOffer(sourceID: source.id, sourceName: source.name, pageURL: $0.pageURL, fileURL: $0.fileURL, format: $0.format) }
+            }
             if book.offers == nil, let page = book.navigationURL ?? book.epubURL {
                 book.offers = [BookOffer(sourceID: source.id, sourceName: source.name, pageURL: page,
                                         fileURL: book.epubURL, format: book.downloadFormat)]
@@ -93,8 +96,30 @@ struct GutenbergBookSource: BookSourceAdapter {
         catch {
             // Gutendex is a community mirror; the official OPDS remains independent.
             let books = try await OPDSClient(searchEndpoint: "https://www.gutenberg.org/ebooks/search.opds/", queryParameter: "query").search(query)
-            let found = stamp(books); await onPage?(found); return found
+            let candidates = books.filter { entry in
+                entry.epubURL != nil || (entry.navigationURL?.path.range(of: #"/ebooks/\d+"#, options: .regularExpression) != nil)
+            }
+            var result: [CatalogBook] = []
+            for book in candidates.prefix(24) {
+                try Task.checkCancellation()
+                do {
+                    let resolved = try await detail(book)
+                    guard SearchQueryPolicy.matches(title: resolved.title, author: resolved.author, query: query, byAuthor: byAuthor) else { continue }
+                    result.append(resolved); await onPage?(result)
+                } catch is CancellationError { throw CancellationError() } catch { continue }
+            }
+            return result
         }
+    }
+    func detail(_ book: CatalogBook) async throws -> CatalogBook {
+        guard book.epubURL == nil, let page = book.navigationURL else { return book }
+        let entries = try await OPDSClient(searchEndpoint: "", queryParameter: "").browse(page, maxPages: 1)
+        if var found = entries.first(where: { $0.epubURL != nil && GenreTaxonomy.normalized($0.title) == GenreTaxonomy.normalized(book.title) }) ?? entries.first(where: { $0.epubURL != nil }) {
+            found.id = book.id
+            if found.coverURL == nil { found.coverURL = book.coverURL }
+            return stamp([found])[0]
+        }
+        return stamp([book])[0]
     }
     func browse(genre: String?, shelf: RecommendationShelf, language: String?) async throws -> [CatalogBook] {
         do { return try await load(search: nil, genre: genre, language: language, shelf: shelf) }
